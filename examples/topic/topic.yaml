@@ -1,9 +1,10 @@
 apiVersion: topic.template.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: example
+  name: workshop
 spec:
   forProvider:
-    configurableField: test
+    replicationFactor: 3
+    partitions: 100
   providerConfigRef:
     name: example

@@ -60,10 +60,13 @@ spec:
               forProvider:
                 description: TopicParameters are the configurable fields of a Topic.
                 properties:
-                  configurableField:
-                    type: string
+                  partitions:
+                    type: integer
+                  replicationFactor:
+                    type: integer
                 required:
-                - configurableField
+                - partitions
+                - replicationFactor
                 type: object
               providerConfigRef:
                 default:
@@ -115,7 +118,7 @@ spec:
               atProvider:
                 description: TopicObservation are the observable fields of a Topic.
                 properties:
-                  observableField:
+                  id:
                     type: string
                 type: object
               conditions:
