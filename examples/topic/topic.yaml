@@ -1,5 +1,5 @@
-apiVersion: sample.template.crossplane.io/v1alpha1
-kind: MyType
+apiVersion: topic.template.crossplane.io/v1alpha1
+kind: Topic
 metadata:
   name: example
 spec:
