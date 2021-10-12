@@ -27,12 +27,13 @@ import (
 
 // TopicParameters are the configurable fields of a Topic.
 type TopicParameters struct {
-	ConfigurableField string `json:"configurableField"`
+	ReplicationFactor int `json:"replicationFactor"`
+	Partitions int `json:"partitions"`
 }
 
 // TopicObservation are the observable fields of a Topic.
 type TopicObservation struct {
-	ObservableField string `json:"observableField,omitempty"`
+	ID string `json:"id,omitempty"`
 }
 
 // A TopicSpec defines the desired state of a Topic.
