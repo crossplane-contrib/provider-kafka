@@ -19,9 +19,11 @@ package topic
 import (
 	"context"
 	"fmt"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"k8s.io/apimachinery/pkg/util/json"
 
 	"github.com/pkg/errors"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,12 +49,26 @@ const (
 	errNewClient = "cannot create new Service"
 )
 
-// A NoOpService does nothing.
-type NoOpService struct{}
+func newKafkaClient(data []byte) (*kgo.Client, error) {
+	kc := KafkaConfig{}
 
-var (
-	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
-)
+	if err := json.Unmarshal(data, &kc); err != nil {
+		return nil, errors.Wrap(err, "cannot parse credentials")
+	}
+
+	opts := []kgo.Opt{
+		kgo.SeedBrokers(kc.Brokers...),
+	}
+
+	if kc.SASL != nil {
+		opts = append(opts, kgo.SASL(plain.Auth{
+			User: kc.SASL.Username,
+			Pass: kc.SASL.Password,
+		}.AsMechanism()))
+	}
+
+	return kgo.NewClient(opts...)
+}
 
 type KafkaConfig struct {
 	Brokers []string `json:"brokers"`
@@ -78,7 +94,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newNoOpService}),
+			newServiceFn: newKafkaClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
@@ -94,7 +110,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
+	newServiceFn func(creds []byte) (*kgo.Client, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -134,7 +150,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{kafkaClient: svc}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
@@ -142,7 +158,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	// A 'client' used to connect to the external resource API. In practice this
 	// would be something like an AWS SDK client.
-	service interface{}
+	kafkaClient *kgo.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
