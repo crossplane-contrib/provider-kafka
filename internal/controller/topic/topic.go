@@ -19,6 +19,7 @@ package topic
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/json"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,6 +53,17 @@ type NoOpService struct{}
 var (
 	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
+
+type KafkaConfig struct {
+	Brokers []string `json:"brokers"`
+	SASL *KafkaSASL `json:"sasl,omitempty"`
+}
+
+type KafkaSASL struct {
+	Mechanism string  `json:"mechanism"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 // Setup adds a controller that reconciles Topic managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
@@ -109,6 +121,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
+	}
+
+	kc := KafkaConfig{}
+
+	if err := json.Unmarshal(data, &kc); err != nil {
+		return nil, errors.Wrap(err, "cannot parse credentials")
 	}
 
 	svc, err := c.newServiceFn(data)
