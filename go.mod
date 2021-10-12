@@ -8,6 +8,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/pkg/errors v0.9.1
 	github.com/twmb/franz-go v1.1.4
+	github.com/twmb/franz-go/pkg/kadm v0.0.0-20211012173056-0a87df9fe9a0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3

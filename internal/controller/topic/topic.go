@@ -19,10 +19,15 @@ package topic
 import (
 	"context"
 	"fmt"
+
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"k8s.io/apimachinery/pkg/util/json"
 
 	"github.com/pkg/errors"
+	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -41,7 +46,7 @@ import (
 )
 
 const (
-	errNotTopic    = "managed resource is not a Topic custom resource"
+	errNotTopic     = "managed resource is not a Topic custom resource"
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"
@@ -49,7 +54,7 @@ const (
 	errNewClient = "cannot create new Service"
 )
 
-func newKafkaClient(data []byte) (*kgo.Client, error) {
+func newKafkaClient(data []byte) (*kadm.Client, error) {
 	kc := KafkaConfig{}
 
 	if err := json.Unmarshal(data, &kc); err != nil {
@@ -66,19 +71,22 @@ func newKafkaClient(data []byte) (*kgo.Client, error) {
 			Pass: kc.SASL.Password,
 		}.AsMechanism()))
 	}
-
-	return kgo.NewClient(opts...)
+	c, err := kgo.NewClient(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return kadm.NewClient(c), nil
 }
 
 type KafkaConfig struct {
-	Brokers []string `json:"brokers"`
-	SASL *KafkaSASL `json:"sasl,omitempty"`
+	Brokers []string   `json:"brokers"`
+	SASL    *KafkaSASL `json:"sasl,omitempty"`
 }
 
 type KafkaSASL struct {
-	Mechanism string  `json:"mechanism"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Mechanism string `json:"mechanism"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
 }
 
 // Setup adds a controller that reconciles Topic managed resources.
@@ -110,7 +118,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
-	newServiceFn func(creds []byte) (*kgo.Client, error)
+	newServiceFn func(creds []byte) (*kadm.Client, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -139,12 +147,6 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errGetCreds)
 	}
 
-	kc := KafkaConfig{}
-
-	if err := json.Unmarshal(data, &kc); err != nil {
-		return nil, errors.Wrap(err, "cannot parse credentials")
-	}
-
 	svc, err := c.newServiceFn(data)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
@@ -158,7 +160,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	// A 'client' used to connect to the external resource API. In practice this
 	// would be something like an AWS SDK client.
-	kafkaClient *kgo.Client
+	kafkaClient *kadm.Client
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -167,23 +169,24 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotTopic)
 	}
 
-	// These fmt statements should be removed in the real implementation.
-	fmt.Printf("Observing: %+v", cr)
+	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
 
+	t, ok := td[meta.GetExternalName(cr)]
+
+	if !ok || errors.Is(t.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
+	cr.Status.AtProvider.ID = t.ID.String()
+	cr.Status.SetConditions(v1.Available())
+
+	// todo(turkenh): check if up to date
 	return managed.ExternalObservation{
-		// Return false when the external resource does not exist. This lets
-		// the managed resource reconciler know that it needs to call Create to
-		// (re)create the resource, or that it has successfully been deleted.
-		ResourceExists: true,
-
-		// Return false when the external resource exists, but it not up to date
-		// with the desired managed resource state. This lets the managed
-		// resource reconciler know that it needs to call Update.
+		ResourceExists:   true,
 		ResourceUpToDate: true,
-
-		// Return any details that may be required to connect to the external
-		// resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
 	}, nil
 }
 
@@ -193,13 +196,19 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotTopic)
 	}
 
-	fmt.Printf("Creating: %+v", cr)
+	ctResp, err := c.kafkaClient.CreateTopics(ctx, int32(cr.Spec.ForProvider.Partitions), int16(cr.Spec.ForProvider.ReplicationFactor), nil, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
 
-	return managed.ExternalCreation{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+	if len(ctResp) != 1 {
+		return managed.ExternalCreation{}, errors.Errorf("unexpected number of createTopicResponse %d", len(ctResp))
+	}
+	if ctResp[0].Err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, "create failed")
+	}
+	cr.Status.AtProvider.ID = ctResp[0].ID.String()
+	return managed.ExternalCreation{}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -223,7 +232,16 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotTopic)
 	}
 
-	fmt.Printf("Deleting: %+v", cr)
+	dResp, err := c.kafkaClient.DeleteTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return err
+	}
 
+	if len(dResp) != 1 {
+		errors.Errorf("unexpected number of deleteTopicResponse %d", len(dResp))
+	}
+	if dResp[0].Err != nil {
+		errors.Wrap(err, "delete failed")
+	}
 	return nil
 }

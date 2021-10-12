@@ -4,14 +4,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: topics.topic.template.crossplane.io
+  name: topics.topic.kafka.crossplane.io
 spec:
-  group: topic.template.crossplane.io
+  group: topic.kafka.crossplane.io
   names:
     categories:
     - crossplane
     - managed
-    - template
+    - kafka
     kind: Topic
     listKind: TopicList
     plural: topics
@@ -19,11 +19,14 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.bindingPhase
-      name: STATUS
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
       type: string
-    - jsonPath: .status.atProvider.state
-      name: STATE
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
+      type: string
+    - jsonPath: .metadata.annotations.crossplane\.io/external-name
+      name: EXTERNAL-NAME
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
