@@ -39,8 +39,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/crossplane/provider-template/apis/topic/v1alpha1"
-	apisv1alpha1 "github.com/crossplane/provider-template/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 const (
@@ -202,19 +202,19 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotTopic)
 	}
 
-	ctResp, err := c.kafkaClient.CreateTopics(ctx, int32(cr.Spec.ForProvider.Partitions), int16(cr.Spec.ForProvider.ReplicationFactor), nil, meta.GetExternalName(cr))
+	resp, err := c.kafkaClient.CreateTopics(ctx, int32(cr.Spec.ForProvider.Partitions), int16(cr.Spec.ForProvider.ReplicationFactor), nil, meta.GetExternalName(cr))
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	if len(ctResp) != 1 {
-		return managed.ExternalCreation{}, errors.Errorf("unexpected number of createTopicResponse %d", len(ctResp))
+	if len(resp) != 1 {
+		return managed.ExternalCreation{}, errors.Errorf("unexpected number of createTopicResponse %d", len(resp))
 	}
-	if ctResp[0].Err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, "create failed")
+	if resp[0].Err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(resp[0].Err, "create failed")
 	}
 
-	cr.Status.AtProvider.ID = ctResp[0].ID.String()
+	cr.Status.AtProvider.ID = resp[0].ID.String()
 	return managed.ExternalCreation{}, nil
 }
 
@@ -230,15 +230,15 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotTopic)
 	}
 
-	dResp, err := c.kafkaClient.DeleteTopics(ctx, meta.GetExternalName(cr))
+	resp, err := c.kafkaClient.DeleteTopics(ctx, meta.GetExternalName(cr))
 	if err != nil {
 		return err
 	}
-	if len(dResp) != 1 {
-		errors.Errorf("unexpected number of deleteTopicResponse %d", len(dResp))
+	if len(resp) != 1 {
+		errors.Errorf("unexpected number of deleteTopicResponse %d", len(resp))
 	}
-	if dResp[0].Err != nil {
-		errors.Wrap(err, "delete failed")
+	if resp[0].Err != nil {
+		errors.Wrap(resp[0].Err, "delete failed")
 	}
 
 	return nil

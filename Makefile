@@ -2,8 +2,8 @@
 SHELL := /bin/bash
 
 # Options
-ORG_NAME=crossplane
-PROVIDER_NAME=provider-template
+ORG_NAME=crossplane-contrib
+PROVIDER_NAME=provider-kafka
 
 build: generate test
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o ./bin/$(PROVIDER_NAME)-controller cmd/provider/main.go

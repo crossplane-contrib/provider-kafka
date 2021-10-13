@@ -1,19 +1,11 @@
-# provider-template
+# provider-kafka
 
-`provider-template` is a minimal [Crossplane](https://crossplane.io/) Provider
-that is meant to be used as a template for implementing new Providers. It comes
-with the following features that are meant to be refactored:
-
-- A `ProviderConfig` type that only points to a credentials `Secret`.
-- A `Topic` resource type that serves as an example managed resource.
-- A managed resource controller that reconciles `Topic` objects and simply
-  prints their configuration in its `Observe` method.
+`provider-kafka` is a [Crossplane](https://crossplane.io/) Provider
+that is used to manage [Kafka](https://kafka.apache.org/) resources.
 
 ## Developing
 
 ### Setting up a Development Kafka Cluster
-
-# Development Environment
 
 The following instructions will setup a development environment where you will
 have a locally running Kafka installation (SASL-Plain enabled). To change the
@@ -77,7 +69,7 @@ services locally accessible.
       kaf nodes
       ```
 
-### Building and Running controller locally
+### Building and Running the provider locally
 
 Run against a Kubernetes cluster:
 

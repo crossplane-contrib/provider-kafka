@@ -1,4 +1,4 @@
-module github.com/crossplane/provider-template
+module github.com/crossplane-contrib/provider-kafka
 
 go 1.16
 
