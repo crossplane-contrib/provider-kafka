@@ -18,25 +18,23 @@ package topic
 
 import (
 	"context"
-	"fmt"
-
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/twmb/franz-go/pkg/kerr"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
-	"k8s.io/apimachinery/pkg/util/json"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -51,7 +49,7 @@ const (
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"
 
-	errNewClient = "cannot create new Service"
+	errNewClient = "cannot create new Kafka client"
 )
 
 func newKafkaClient(data []byte) (*kadm.Client, error) {
@@ -102,6 +100,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			log:          l,
 			newServiceFn: newKafkaClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
@@ -118,6 +117,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
+	log          logging.Logger
 	newServiceFn func(creds []byte) (*kadm.Client, error)
 }
 
@@ -152,15 +152,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{kafkaClient: svc}, nil
+	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	// A 'client' used to connect to the external resource API. In practice this
-	// would be something like an AWS SDK client.
 	kafkaClient *kadm.Client
+	log         logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -183,10 +182,17 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.ID = t.ID.String()
 	cr.Status.SetConditions(v1.Available())
 
-	// todo(turkenh): check if up to date
+	upToDate := true
+	if len(t.Partitions) != cr.Spec.ForProvider.Partitions {
+		upToDate = false
+	}
+	if len(t.Partitions) > 0 && len(t.Partitions[0].Replicas) != cr.Spec.ForProvider.ReplicationFactor {
+		upToDate = false
+	}
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: true,
+		ResourceUpToDate: upToDate,
 	}, nil
 }
 
@@ -207,23 +213,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if ctResp[0].Err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, "create failed")
 	}
+
 	cr.Status.AtProvider.ID = ctResp[0].ID.String()
 	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Topic)
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotTopic)
-	}
-
-	fmt.Printf("Updating: %+v", cr)
-
-	return managed.ExternalUpdate{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+func (c *external) Update(_ context.Context, _ resource.Managed) (managed.ExternalUpdate, error) {
+	c.log.Info("topic updates not supported yet!")
+	// todo(turkenh): Support topic updates
+	return managed.ExternalUpdate{}, nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -236,12 +234,12 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if err != nil {
 		return err
 	}
-
 	if len(dResp) != 1 {
 		errors.Errorf("unexpected number of deleteTopicResponse %d", len(dResp))
 	}
 	if dResp[0].Err != nil {
 		errors.Wrap(err, "delete failed")
 	}
+
 	return nil
 }
