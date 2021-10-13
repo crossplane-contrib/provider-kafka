@@ -22,8 +22,8 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
-	"github.com/crossplane/provider-template/internal/controller/config"
-	"github.com/crossplane/provider-template/internal/controller/topic"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/config"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/topic"
 )
 
 // Setup creates all Template controllers with the supplied logger and adds them to
