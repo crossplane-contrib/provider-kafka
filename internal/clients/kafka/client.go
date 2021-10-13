@@ -20,6 +20,9 @@ func NewAdminClient(data []byte) (*kadm.Client, error) {
 	}
 
 	if kc.SASL != nil {
+		if kc.SASL.Mechanism != "PLAIN" {
+			return nil, errors.Errorf("SASL mechanims %q not supported, only %q supported for now.", kc.SASL.Username, "PLAIN")
+		}
 		opts = append(opts, kgo.SASL(plain.Auth{
 			User: kc.SASL.Username,
 			Pass: kc.SASL.Password,
