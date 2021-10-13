@@ -18,14 +18,12 @@ package topic
 
 import (
 	"context"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
-	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,41 +50,6 @@ const (
 	errNewClient = "cannot create new Kafka client"
 )
 
-func newKafkaClient(data []byte) (*kadm.Client, error) {
-	kc := KafkaConfig{}
-
-	if err := json.Unmarshal(data, &kc); err != nil {
-		return nil, errors.Wrap(err, "cannot parse credentials")
-	}
-
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(kc.Brokers...),
-	}
-
-	if kc.SASL != nil {
-		opts = append(opts, kgo.SASL(plain.Auth{
-			User: kc.SASL.Username,
-			Pass: kc.SASL.Password,
-		}.AsMechanism()))
-	}
-	c, err := kgo.NewClient(opts...)
-	if err != nil {
-		return nil, err
-	}
-	return kadm.NewClient(c), nil
-}
-
-type KafkaConfig struct {
-	Brokers []string   `json:"brokers"`
-	SASL    *KafkaSASL `json:"sasl,omitempty"`
-}
-
-type KafkaSASL struct {
-	Mechanism string `json:"mechanism"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-}
-
 // Setup adds a controller that reconciles Topic managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 	name := managed.ControllerName(v1alpha1.TopicGroupKind)
@@ -101,7 +64,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			log:          l,
-			newServiceFn: newKafkaClient}),
+			newServiceFn: kafka.NewAdminClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
