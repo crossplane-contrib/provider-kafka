@@ -14,66 +14,64 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mytype
+package topic
 
 import (
 	"context"
-	"fmt"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/pkg/errors"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/crossplane/provider-template/apis/sample/v1alpha1"
-	apisv1alpha1 "github.com/crossplane/provider-template/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 const (
-	errNotMyType    = "managed resource is not a MyType custom resource"
+	errNotTopic     = "managed resource is not a Topic custom resource"
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"
 
-	errNewClient = "cannot create new Service"
+	errNewClient = "cannot create new Kafka client"
 )
 
-// A NoOpService does nothing.
-type NoOpService struct{}
-
-var (
-	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
-)
-
-// Setup adds a controller that reconciles MyType managed resources.
+// Setup adds a controller that reconciles Topic managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
-	name := managed.ControllerName(v1alpha1.MyTypeGroupKind)
+	name := managed.ControllerName(v1alpha1.TopicGroupKind)
 
 	o := controller.Options{
 		RateLimiter: ratelimiter.NewDefaultManagedRateLimiter(rl),
 	}
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.MyTypeGroupVersionKind),
+		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newNoOpService}),
+			log:          l,
+			newServiceFn: kafka.NewAdminClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		For(&v1alpha1.MyType{}).
+		For(&v1alpha1.Topic{}).
 		Complete(r)
 }
 
@@ -82,7 +80,8 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
+	log          logging.Logger
+	newServiceFn func(creds []byte) (*kadm.Client, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -91,9 +90,9 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return nil, errors.New(errNotMyType)
+		return nil, errors.New(errNotTopic)
 	}
 
 	if err := c.usage.Track(ctx, mg); err != nil {
@@ -116,80 +115,94 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	// A 'client' used to connect to the external resource API. In practice this
-	// would be something like an AWS SDK client.
-	service interface{}
+	kafkaClient *kadm.Client
+	log         logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotMyType)
+		return managed.ExternalObservation{}, errors.New(errNotTopic)
 	}
 
-	// These fmt statements should be removed in the real implementation.
-	fmt.Printf("Observing: %+v", cr)
+	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
+	t, ok := td[meta.GetExternalName(cr)]
+
+	if !ok || errors.Is(t.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
+	cr.Status.AtProvider.ID = t.ID.String()
+	cr.Status.SetConditions(v1.Available())
+
+	upToDate := true
+	if len(t.Partitions) != cr.Spec.ForProvider.Partitions {
+		upToDate = false
+	}
+	if len(t.Partitions) > 0 && len(t.Partitions[0].Replicas) != cr.Spec.ForProvider.ReplicationFactor {
+		upToDate = false
+	}
 
 	return managed.ExternalObservation{
-		// Return false when the external resource does not exist. This lets
-		// the managed resource reconciler know that it needs to call Create to
-		// (re)create the resource, or that it has successfully been deleted.
-		ResourceExists: true,
-
-		// Return false when the external resource exists, but it not up to date
-		// with the desired managed resource state. This lets the managed
-		// resource reconciler know that it needs to call Update.
-		ResourceUpToDate: true,
-
-		// Return any details that may be required to connect to the external
-		// resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
+		ResourceExists:   true,
+		ResourceUpToDate: upToDate,
 	}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotMyType)
+		return managed.ExternalCreation{}, errors.New(errNotTopic)
 	}
 
-	fmt.Printf("Creating: %+v", cr)
+	resp, err := c.kafkaClient.CreateTopics(ctx, int32(cr.Spec.ForProvider.Partitions), int16(cr.Spec.ForProvider.ReplicationFactor), nil, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
 
-	return managed.ExternalCreation{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+	if len(resp) != 1 {
+		return managed.ExternalCreation{}, errors.Errorf("unexpected number of createTopicResponse %d", len(resp))
+	}
+	if resp[0].Err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(resp[0].Err, "create failed")
+	}
+
+	cr.Status.AtProvider.ID = resp[0].ID.String()
+	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotMyType)
-	}
-
-	fmt.Printf("Updating: %+v", cr)
-
-	return managed.ExternalUpdate{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+func (c *external) Update(_ context.Context, _ resource.Managed) (managed.ExternalUpdate, error) {
+	c.log.Info("topic updates not supported yet!")
+	// todo(turkenh): Support topic updates
+	return managed.ExternalUpdate{}, nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
-	cr, ok := mg.(*v1alpha1.MyType)
+	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return errors.New(errNotMyType)
+		return errors.New(errNotTopic)
 	}
 
-	fmt.Printf("Deleting: %+v", cr)
+	resp, err := c.kafkaClient.DeleteTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return err
+	}
+	if len(resp) != 1 {
+		errors.Errorf("unexpected number of deleteTopicResponse %d", len(resp))
+	}
+	if resp[0].Err != nil {
+		errors.Wrap(resp[0].Err, "delete failed")
+	}
 
 	return nil
 }
