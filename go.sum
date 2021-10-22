@@ -574,8 +574,12 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/twmb/franz-go v1.1.2/go.mod h1:KerrVhzNpasYrWJLr2Yj6Cui43f1BxH4U9SJEDVOjqQ=
 github.com/twmb/franz-go v1.1.4 h1:5La8ZyUDj0dzj0D6AMWGLFBlS/4MF+ke45RCC/bAS6s=
 github.com/twmb/franz-go v1.1.4/go.mod h1:KerrVhzNpasYrWJLr2Yj6Cui43f1BxH4U9SJEDVOjqQ=
+github.com/twmb/franz-go v1.2.0 h1:SyWJL/NteR+yVbHlcz0O1a/W1gze0a5pWDpeaNELblI=
+github.com/twmb/franz-go v1.2.0/go.mod h1:KerrVhzNpasYrWJLr2Yj6Cui43f1BxH4U9SJEDVOjqQ=
 github.com/twmb/franz-go/pkg/kadm v0.0.0-20211012173056-0a87df9fe9a0 h1:qnYuiR5Uf2Xqmg9bxkNzFLZ0/5+a0QNti53MLLP8IFc=
 github.com/twmb/franz-go/pkg/kadm v0.0.0-20211012173056-0a87df9fe9a0/go.mod h1:IfPX6t+NBXmMhU5v4ewAJGhLpoEsQVkfNhXCTzBe0Ck=
+github.com/twmb/franz-go/pkg/kadm v0.0.0-20211021211700-b415080bed36 h1:QwuP3aqUceSONQRr06T9+2sOfYIY0SX0ziH3iTaAGhc=
+github.com/twmb/franz-go/pkg/kadm v0.0.0-20211021211700-b415080bed36/go.mod h1:IfPX6t+NBXmMhU5v4ewAJGhLpoEsQVkfNhXCTzBe0Ck=
 github.com/twmb/franz-go/pkg/kmsg v0.0.0-20210914042331-106aef61b693/go.mod h1:SxG/xJKhgPu25SamAq0rrucfp7lbzCpEXOC+vH/ELrY=
 github.com/twmb/franz-go/pkg/kmsg v0.0.0-20211010181717-11efd498dac5 h1:ziz+BWPyRuoC2F47Vyu4n9WyCmlV1+RE/mY5vNdzKw0=
 github.com/twmb/franz-go/pkg/kmsg v0.0.0-20211010181717-11efd498dac5/go.mod h1:SxG/xJKhgPu25SamAq0rrucfp7lbzCpEXOC+vH/ELrY=
