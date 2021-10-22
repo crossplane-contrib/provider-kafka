@@ -137,9 +137,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	t, ok := td[meta.GetExternalName(cr)]
-
 	if !ok || errors.Is(t.Err, kerr.UnknownTopicOrPartition) {
 		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	if t.Err != nil {
+		return managed.ExternalObservation{}, errors.Wrapf(t.Err, "cannot get topic")
 	}
 
 	cr.Status.AtProvider.ID = t.ID.String()
@@ -170,14 +172,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	if len(resp) != 1 {
-		return managed.ExternalCreation{}, errors.Errorf("unexpected number of createTopicResponse %d", len(resp))
+	t, ok := resp[meta.GetExternalName(cr)]
+	if !ok {
+		return managed.ExternalCreation{}, errors.New("no create response for topic")
 	}
-	if resp[0].Err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(resp[0].Err, "create failed")
+	if t.Err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(t.Err, "cannot create")
 	}
 
-	cr.Status.AtProvider.ID = resp[0].ID.String()
+	cr.Status.AtProvider.ID = t.ID.String()
 	return managed.ExternalCreation{}, nil
 }
 
@@ -197,11 +200,13 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if err != nil {
 		return err
 	}
-	if len(resp) != 1 {
-		errors.Errorf("unexpected number of deleteTopicResponse %d", len(resp))
+
+	t, ok := resp[meta.GetExternalName(cr)]
+	if !ok {
+		return errors.New("no delete response for topic")
 	}
-	if resp[0].Err != nil {
-		errors.Wrap(resp[0].Err, "delete failed")
+	if t.Err != nil {
+		return errors.Wrap(t.Err, "cannot delete")
 	}
 
 	return nil
