@@ -184,9 +184,36 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) Update(_ context.Context, _ resource.Managed) (managed.ExternalUpdate, error) {
-	c.log.Info("topic updates not supported yet!")
-	// todo(turkenh): Support topic updates
+func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	cr, ok := mg.(*v1alpha1.Topic)
+	if !ok {
+		return managed.ExternalUpdate{}, errors.New(errNotTopic)
+	}
+
+	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	p, ok := td[meta.GetExternalName(cr)]
+	if !ok || errors.Is(p.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalUpdate{}, nil
+	}
+
+	resp, err := c.kafkaClient.CreatePartitions(ctx, cr.Spec.ForProvider.Partitions - len(p.Partitions.Numbers()), meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	t, ok := resp[meta.GetExternalName(cr)]
+	if !ok {
+		return managed.ExternalUpdate{}, errors.New("no create response for topic")
+	}
+	if t.Err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create")
+	}
+
+	cr.Status.AtProvider.ID = p.ID.String()
 	return managed.ExternalUpdate{}, nil
 }
 
