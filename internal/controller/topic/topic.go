@@ -209,7 +209,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	t, ok := resp[meta.GetExternalName(cr)]
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New("no create response for topic")
+		return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
 	}
 	if t.Err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create")
