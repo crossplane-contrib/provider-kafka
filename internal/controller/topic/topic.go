@@ -212,7 +212,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
 	}
 	if t.Err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create")
+		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
 	}
 
 	cr.Status.AtProvider.ID = p.ID.String()
