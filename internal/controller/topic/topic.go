@@ -200,7 +200,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, nil
 	}
 	if p.Err != nil {
-		return managed.ExternalUpdate{}, errors.Wrapf(t.Err, "cannot get topic")
+		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
 	}
 	resp, err := c.kafkaClient.CreatePartitions(ctx, cr.Spec.ForProvider.Partitions - len(p.Partitions), meta.GetExternalName(cr))
 	if err != nil {
