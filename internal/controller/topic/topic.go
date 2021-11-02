@@ -206,10 +206,13 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
 
 	if l < 1 {
-		return managed.ExternalUpdate{}, errors.New("cannot decrease partition count")
+		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
 	} else {
 		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
-
+	if l < 1 {
+		return managed.ExternalUpdate{}, errors.New("cannot decrease partition count")
+	} 
+	resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
 		if err != nil {
 			return managed.ExternalUpdate{}, err
 		}
