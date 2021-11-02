@@ -29,6 +29,64 @@ import (
 type TopicParameters struct {
 	ReplicationFactor int `json:"replicationFactor"`
 	Partitions int `json:"partitions"`
+	// +optional
+	CleanupPolicy []metav1.List `json:"cleanupPolicy"`
+	// +optional
+	CompressionType string `json:"compressionType"`
+	// +optional
+	DeleteRetentionMs int64 `json:"deleteRetentionMs"`
+	// +optional
+	FileDeleteDelayMs int64 `json:"fileDeleteDelayMs"`
+	// +optional
+	FlushMessages int64 `json:"flushMessages"`
+	// +optional
+	FlushMs int64 `json:"flushMs"`
+	// +optional
+	FollowerReplicationThrottledReplicas []metav1.List `json:"followerReplicationThrottledReplicas"`
+	// +optional
+	IndexIntervalBytes int `json:"indexIntervalBytes"`
+	// +optional
+	LeaderReplicationThrottledReplicas []metav1.List `json:"leaderReplicationThrottledReplicas"`
+	// +optional
+	LocalRetentionBytes int64 `json:"localRetentionBytes"`
+	// +optional
+	LocalRetentionMs int64 `json:"localRetentionMs"`
+	// +optional
+	MaxCompactionLagMs int64 `json:"maxCompactionLagMs"`
+	// +optional
+	MaxMessageBytes int `json:"maxMessageBytes"`
+	// +optional
+	MessageFormatVersion string `json:"messageFormatVersion"`
+	// +optional
+	MessageTimestampDifferenceMaxMs int64 `json:"messageTimestampDifferenceMaxMs"`
+	// +optional
+	MessageTimestampType string `json:"messageTimestampType"`
+	// +optional
+	MinCleanableDirtyRatio int32 `json:"minCleanableDirtyRatio"`
+	// +optional
+	MinCompactionLagMs int64 `json:"minCompactionLagMs"`
+	// +optional
+	MinInsyncReplicas int `json:"minInsyncReplicas"`
+	// +optional
+	Preallocate bool `json:"preallocate"`
+	// +optional
+	RemoteStorageEnable bool `json:"remoteStorageEnable"`
+	// +optional
+	RetentionBytes int64 `json:"retentionBytes"`
+	// +optional
+	RetentionMs int64 `json:"retentionMs"`
+	// +optional
+	SegmentBytes int `json:"segmentBytes"`
+	// +optional
+	SegmentIndexBytes int `json:"segmentIndexBytes"`
+	// +optional
+	SegmentJitterMs int64 `json:"segmentJitterMs"`
+	// +optional
+	SegmentMs int64 `json:"segmentMs"`
+	// +optional
+	UncleanLeaderElectionEnable bool `json:"uncleanLeaderElectionEnable"`
+	// +optional
+	MessageDownconversionEnable bool `json:"messageDownconversionEnable"`
 }
 
 // TopicObservation are the observable fields of a Topic.
