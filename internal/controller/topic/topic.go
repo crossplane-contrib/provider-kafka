@@ -208,7 +208,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if l < 1 {
 		return managed.ExternalUpdate{}, errors.New("cannot decrease partition count")
 	} else {
-		resp, err := c.kafkaClient.CreatePartitions(ctx, l, meta.GetExternalName(cr))
+		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+
 		if err != nil {
 			return managed.ExternalUpdate{}, err
 		}
@@ -220,10 +221,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		if t.Err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
 		}
-	}
 
-	cr.Status.AtProvider.ID = p.ID.String()
-	return managed.ExternalUpdate{}, nil
+		cr.Status.AtProvider.ID = p.ID.String()
+		return managed.ExternalUpdate{}, nil
+	}
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
