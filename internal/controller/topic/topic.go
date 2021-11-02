@@ -184,10 +184,50 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) Update(_ context.Context, _ resource.Managed) (managed.ExternalUpdate, error) {
-	c.log.Info("topic updates not supported yet!")
-	// todo(turkenh): Support topic updates
-	return managed.ExternalUpdate{}, nil
+func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	cr, ok := mg.(*v1alpha1.Topic)
+	if !ok {
+		return managed.ExternalUpdate{}, errors.New(errNotTopic)
+	}
+
+	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	p, ok := td[meta.GetExternalName(cr)]
+	if !ok || errors.Is(p.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalUpdate{}, nil
+	}
+	if p.Err != nil {
+		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
+	}
+
+	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
+
+	if l < 1 {
+		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
+	} else {
+		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+	if l < 1 {
+		return managed.ExternalUpdate{}, errors.New("cannot decrease partition count")
+	} 
+	resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+		if err != nil {
+			return managed.ExternalUpdate{}, err
+		}
+
+		t, ok := resp[meta.GetExternalName(cr)]
+		if !ok {
+			return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
+		}
+		if t.Err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
+		}
+
+		cr.Status.AtProvider.ID = p.ID.String()
+		return managed.ExternalUpdate{}, nil
+	}
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
