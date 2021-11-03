@@ -18,6 +18,7 @@ package topic
 
 import (
 	"context"
+	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/pkg/errors"
@@ -184,6 +185,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{}, nil
 }
 
+
+
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
@@ -201,6 +204,20 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 	if p.Err != nil {
 		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
+	}
+	value := fmt.Sprintf("%s", cr.Spec.ForProvider.FlushMs)
+	cfg := kadm.AlterConfig{
+		Op:    kadm.AppendConfig,                         // Op is the incremental alter operation to perform.
+		Name:  "flush.ms",                  // Name is the name of the config to alter.
+		Value: &value, // Value is the value to use when altering, if any.
+	}
+
+	r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{cfg}, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+	if len(r) > 0 {
+		return managed.ExternalUpdate{}, r[0].Err
 	}
 
 	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
@@ -225,6 +242,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		cr.Status.AtProvider.ID = p.ID.String()
 		return managed.ExternalUpdate{}, nil
 	}
+
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {

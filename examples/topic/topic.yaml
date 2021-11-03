@@ -6,5 +6,6 @@ spec:
   forProvider:
     replicationFactor: 1
     partitions: 3
+    flushMs: 2000
   providerConfigRef:
     name: example
