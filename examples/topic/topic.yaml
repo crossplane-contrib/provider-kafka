@@ -5,7 +5,7 @@ metadata:
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 3
-    flushMs: 2000
+    partitions: 2
+    compressionType: "snappy"
   providerConfigRef:
     name: example
