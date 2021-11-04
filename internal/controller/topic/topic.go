@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
@@ -49,6 +48,7 @@ const (
 	errGetCreds     = "cannot get credentials"
 
 	errNewClient = "cannot create new Kafka client"
+
 )
 
 // Setup adds a controller that reconciles Topic managed resources.
@@ -205,11 +205,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if p.Err != nil {
 		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
 	}
+
 	value := fmt.Sprintf("%s", cr.Spec.ForProvider.CompressionType)
 	cfg := kadm.AlterConfig{
-		Op:    kadm.SetConfig,                         // Op is the incremental alter operation to perform.
-		Name:  "compression.type",                  // Name is the name of the config to alter.
-		Value: &value, // Value is the value to use when altering, if any.
+		Op:    kadm.SetConfig,          // Op is the incremental alter operation to perform.
+		Name:  "compression.type",      // Name is the name of the config to alter.
+		Value: &value, 					// Value is the value to use when altering, if any.
 	}
 
 	r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{cfg}, meta.GetExternalName(cr))

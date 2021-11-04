@@ -36,82 +36,82 @@ type TopicParameters struct {
 	CleanupPolicy []metav1.List `json:"cleanupPolicy"`
 	// +optional
 	// +kubebuilder:validation:Enum:=uncompressed;zstd;lz4;snappy;gzip;producer
-	CompressionType string `json:"compressionType"`
+	CompressionType *string `json:"compressionType"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	DeleteRetentionMs int64 `json:"deleteRetentionMs"`
+	DeleteRetentionMs *int64 `json:"deleteRetentionMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	FileDeleteDelayMs int64 `json:"fileDeleteDelayMs"`
+	FileDeleteDelayMs *int64 `json:"fileDeleteDelayMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	FlushMessages int64 `json:"flushMessages"`
+	FlushMessages *int64 `json:"flushMessages"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	FlushMs int64 `json:"flushMs"`
+	FlushMs *int64 `json:"flushMs"`
 	// +optional
 	FollowerReplicationThrottledReplicas []metav1.List `json:"followerReplicationThrottledReplicas"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	IndexIntervalBytes int `json:"indexIntervalBytes"`
+	IndexIntervalBytes *int `json:"indexIntervalBytes"`
 	// +optional
 	LeaderReplicationThrottledReplicas []metav1.List `json:"leaderReplicationThrottledReplicas"`
 	// +optional
-	LocalRetentionBytes int64 `json:"localRetentionBytes"`
+	LocalRetentionBytes *int64 `json:"localRetentionBytes"`
 	// +optional
-	LocalRetentionMs int64 `json:"localRetentionMs"`
+	LocalRetentionMs *int64 `json:"localRetentionMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
-	MaxCompactionLagMs int64 `json:"maxCompactionLagMs"`
+	MaxCompactionLagMs *int64 `json:"maxCompactionLagMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	MaxMessageBytes int `json:"maxMessageBytes"`
+	MaxMessageBytes *int `json:"maxMessageBytes"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	MessageTimestampDifferenceMaxMs int64 `json:"messageTimestampDifferenceMaxMs"`
+	MessageTimestampDifferenceMaxMs *int64 `json:"messageTimestampDifferenceMaxMs"`
 	// +optional
 	// +kubebuilder:validation:Enum:=CreateTime;LogAppendTime
-	MessageTimestampType string `json:"messageTimestampType"`
+	MessageTimestampType *string `json:"messageTimestampType"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	// +kubebuilder:validation:Maximum:=1
-	MinCleanableDirtyRatio int32 `json:"minCleanableDirtyRatio"`
+	MinCleanableDirtyRatio *int32 `json:"minCleanableDirtyRatio"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	MinCompactionLagMs int64 `json:"minCompactionLagMs"`
+	MinCompactionLagMs *int64 `json:"minCompactionLagMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
-	MinInsyncReplicas int `json:"minInsyncReplicas"`
+	MinInsyncReplicas *int `json:"minInsyncReplicas"`
 	// +optional
 	// +kubebuilder:validation:Enum:=true;false
-	Preallocate bool `json:"preallocate"`
+	Preallocate *bool `json:"preallocate"`
 	// +optional
 	// +kubebuilder:validation:Enum:=true;false
-	RemoteStorageEnable bool `json:"remoteStorageEnable"`
+	RemoteStorageEnable *bool `json:"remoteStorageEnable"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=-1
-	RetentionBytes int64 `json:"retentionBytes"`
+	RetentionBytes *int64 `json:"retentionBytes"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=-1
-	RetentionMs int64 `json:"retentionMs"`
+	RetentionMs *int64 `json:"retentionMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=14
-	SegmentBytes int `json:"segmentBytes"`
+	SegmentBytes *int `json:"segmentBytes"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	SegmentIndexBytes int `json:"segmentIndexBytes"`
+	SegmentIndexBytes *int `json:"segmentIndexBytes"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	SegmentJitterMs int64 `json:"segmentJitterMs"`
+	SegmentJitterMs *int64 `json:"segmentJitterMs"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
-	SegmentMs int64 `json:"segmentMs"`
+	SegmentMs *int64 `json:"segmentMs"`
 	// +optional
 	// +kubebuilder:validation:Enum:=true;false
-	UncleanLeaderElectionEnable bool `json:"uncleanLeaderElectionEnable"`
+	UncleanLeaderElectionEnable *bool `json:"uncleanLeaderElectionEnable"`
 	// +optional
 	// +kubebuilder:validation:Enum:=true;false
-	MessageDownconversionEnable bool `json:"messageDownconversionEnable"`
+	MessageDownconversionEnable *bool `json:"messageDownconversionEnable"`
 }
 
 // TopicObservation are the observable fields of a Topic.
