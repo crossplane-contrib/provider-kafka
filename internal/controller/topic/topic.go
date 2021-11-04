@@ -18,6 +18,7 @@ package topic
 
 import (
 	"context"
+	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/pkg/errors"
@@ -204,10 +205,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if p.Err != nil {
 		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
 	}
-	value := "snappy"
-		//fmt.Sprintf("%s", cr.Spec.ForProvider.CompressionType)
+	value := fmt.Sprintf("%s", cr.Spec.ForProvider.CompressionType)
 	cfg := kadm.AlterConfig{
-		Op:    kadm.AppendConfig,                         // Op is the incremental alter operation to perform.
+		Op:    kadm.SetConfig,                         // Op is the incremental alter operation to perform.
 		Name:  "compression.type",                  // Name is the name of the config to alter.
 		Value: &value, // Value is the value to use when altering, if any.
 	}
@@ -216,10 +216,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
-	if r == nil {
-		return managed.ExternalUpdate{}, errors.New("no response from altertopicconfigs")
-	}
-	if len(r) < 0 {
+	if r[0].Err != nil {
 		return managed.ExternalUpdate{}, r[0].Err
 	}
 

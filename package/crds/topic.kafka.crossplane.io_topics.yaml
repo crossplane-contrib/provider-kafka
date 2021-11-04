@@ -64,6 +64,9 @@ spec:
                 description: TopicParameters are the configurable fields of a Topic.
                 properties:
                   cleanupPolicy:
+                    enum:
+                    - compact
+                    - delete
                     items:
                       description: List holds a list of objects, which may not be
                         known by the server.
@@ -138,18 +141,29 @@ spec:
                       type: object
                     type: array
                   compressionType:
+                    enum:
+                    - uncompressed
+                    - zstd
+                    - lz4
+                    - snappy
+                    - gzip
+                    - producer
                     type: string
                   deleteRetentionMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   fileDeleteDelayMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   flushMessages:
                     format: int64
+                    minimum: 0
                     type: integer
                   flushMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   followerReplicationThrottledReplicas:
                     items:
@@ -226,6 +240,7 @@ spec:
                       type: object
                     type: array
                   indexIntervalBytes:
+                    minimum: 0
                     type: integer
                   leaderReplicationThrottledReplicas:
                     items:
@@ -309,51 +324,79 @@ spec:
                     type: integer
                   maxCompactionLagMs:
                     format: int64
+                    minimum: 1
                     type: integer
                   maxMessageBytes:
+                    minimum: 0
                     type: integer
                   messageDownconversionEnable:
+                    enum:
+                    - true
+                    - false
                     type: boolean
-                  messageFormatVersion:
-                    type: string
                   messageTimestampDifferenceMaxMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   messageTimestampType:
+                    enum:
+                    - CreateTime
+                    - LogAppendTime
                     type: string
                   minCleanableDirtyRatio:
                     format: int32
+                    maximum: 1
+                    minimum: 0
                     type: integer
                   minCompactionLagMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   minInsyncReplicas:
+                    minimum: 1
                     type: integer
                   partitions:
+                    minimum: 1
                     type: integer
                   preallocate:
+                    enum:
+                    - true
+                    - false
                     type: boolean
                   remoteStorageEnable:
+                    enum:
+                    - true
+                    - false
                     type: boolean
                   replicationFactor:
+                    minimum: 1
                     type: integer
                   retentionBytes:
                     format: int64
+                    minimum: -1
                     type: integer
                   retentionMs:
                     format: int64
+                    minimum: -1
                     type: integer
                   segmentBytes:
+                    minimum: 14
                     type: integer
                   segmentIndexBytes:
+                    minimum: 0
                     type: integer
                   segmentJitterMs:
                     format: int64
+                    minimum: 0
                     type: integer
                   segmentMs:
                     format: int64
+                    minimum: 1
                     type: integer
                   uncleanLeaderElectionEnable:
+                    enum:
+                    - true
+                    - false
                     type: boolean
                 required:
                 - partitions

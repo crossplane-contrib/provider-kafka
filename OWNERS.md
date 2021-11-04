@@ -14,3 +14,5 @@ guidelines and responsibilities for the steering committee and maintainers.
 * Daniel Mangum <dan@upbound.io> ([hasheddan](https://github.com/hasheddan))
 * Muvaffak Onuş <monus@upbound.io> ([muvaf](https://github.com/muvaf))
 * Jon Graca <jon.graca@gmail.com> ([jograca](https://github.com/jograca))
+* Mallory Quaintance <mallory.quaintance@libertymutual.com> ([marshmallory](https://github.com/marshmallory))
+* Ed Lee <edward.lee@libertymutual.com> ([edklee](https://github.com/edklee))
