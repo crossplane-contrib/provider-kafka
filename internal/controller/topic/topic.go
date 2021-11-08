@@ -18,7 +18,6 @@ package topic
 
 import (
 	"context"
-	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -181,11 +180,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(t.Err, "cannot create")
 	}
 
+
 	cr.Status.AtProvider.ID = t.ID.String()
 	return managed.ExternalCreation{}, nil
 }
 
-
+func GetIntPointer(value **int64) **int64 {
+	return value
+}
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
@@ -206,14 +208,19 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
 	}
 
-	value := fmt.Sprintf("%s", cr.Spec.ForProvider.CompressionType)
-	cfg := kadm.AlterConfig{
-		Op:    kadm.SetConfig,          // Op is the incremental alter operation to perform.
-		Name:  "compression.type",      // Name is the name of the config to alter.
-		Value: &value, 					// Value is the value to use when altering, if any.
+	comptype := kadm.AlterConfig{
+		Op:    kadm.SetConfig,       				// Op is the incremental alter operation to perform.
+		Name:  "compression.type",      			// Name is the name of the config to alter.
+		Value: cr.Spec.ForProvider.CompressionType, // Value is the value to use when altering, if any.
 	}
 
-	r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{cfg}, meta.GetExternalName(cr))
+	//deletems := kadm.AlterConfig{
+	//	Op:    kadm.SetConfig,       				// Op is the incremental alter operation to perform.
+	//	Name:  "delete.retention.ms",      			// Name is the name of the config to alter.
+	//	Value: &s, // Value is the value to use when altering, if any.
+	//}
+
+	r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{comptype}, meta.GetExternalName(cr))
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}

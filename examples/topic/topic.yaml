@@ -1,11 +1,11 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: sample-topic
+  name: topic
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 3
-    compressionType: snappy
+    partitions: 11
+    compressionType: "snappy"
   providerConfigRef:
     name: example
