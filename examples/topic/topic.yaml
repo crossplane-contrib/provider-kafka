@@ -1,14 +1,13 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: topic
+  name: topic2
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 13
-    compressionType: "snappy"
-    deleteRetentionMs: 86400000
-    preallocate: false
-
+    partitions: 1
+    config:
+      compression.type: "snappy"
+      delete.retention.ms: "86400000"
   providerConfigRef:
     name: example
