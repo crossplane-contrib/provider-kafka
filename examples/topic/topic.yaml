@@ -5,7 +5,10 @@ metadata:
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 11
+    partitions: 13
     compressionType: "snappy"
+    deleteRetentionMs: 86400000
+    preallocate: false
+
   providerConfigRef:
     name: example

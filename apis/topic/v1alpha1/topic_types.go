@@ -87,19 +87,19 @@ type TopicParameters struct {
 	Preallocate *bool `json:"preallocate"`
 	// +optional
 	// +kubebuilder:validation:Enum:=true;false
-	RemoteStorageEnable *bool `json:"remoteStorageEnable"`
+	RemoteStorageEnable *bool `json:"remoteStorageEnable,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=-1
-	RetentionBytes *int64 `json:"retentionBytes"`
+	RetentionBytes *int64 `json:"retentionBytes,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=-1
-	RetentionMs *int64 `json:"retentionMs"`
+	RetentionMs *int64 `json:"retentionMs,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=14
-	SegmentBytes *int `json:"segmentBytes"`
+	SegmentBytes *int `json:"segmentBytes,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
-	SegmentIndexBytes *int `json:"segmentIndexBytes"`
+	SegmentIndexBytes *int `json:"segmentIndexBytes,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	SegmentJitterMs *int64 `json:"segmentJitterMs"`

@@ -18,7 +18,16 @@ package topic
 
 import (
 	"context"
+	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/event"
+	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
@@ -27,17 +36,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
-
-	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
-	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 const (
@@ -48,6 +46,37 @@ const (
 
 	errNewClient = "cannot create new Kafka client"
 
+)
+
+const (
+	CleanupPolicy = "cleanup.policy"
+	CompressionType = "compression.type"
+	DeleteRetentionMs = "delete.retention.ms"
+	FileDeleteDelayMs = "file.delete.delay.ms"
+	FlushMessages = "flush.messages"
+	FlushMs = "flush.ms"
+	FollowerReplicationThrottledReplicas = "follower.replication.throttled.replicas"
+	IndexIntervalBytes = "index.interval.bytes"
+	LeaderReplicationThrottledReplicas = "leader.replication.throttled.replicas"
+	LocalRetentionBytes = "local.retention.bytes"
+	LocalRetentionMs = "local.retention.ms"
+	MaxCompactionLagMs = "max.compaction.lag.ms"
+	MaxMessageBytes = "max.message.bytes"
+	MessageTimestampDifferenceMaxMs = "message.timestamp.difference.max.ms"
+	MessageTimestampType = "message.timestamp.type"
+	MinCleanableDirtyRatio = "min.cleanable.dirty.ratio"
+	MinCompactionLagMs = "min.compaction.lag.ms"
+	MinInsyncReplicas = "min.insync.replicas"
+	Preallocate = "preallocate"
+	RemoteStorageEnable = "remote.storage.enable"
+	RetentionBytes = "retention.bytes"
+	RetentionMs = "retention.ms"
+	SegmentBytes = "segment.bytes"
+	SegmentIndexBytes = "segment.index.bytes"
+	SegmentJitterMs = "segment.jitter.ms"
+	SegmentMs = "segment.ms"
+	UncleanLeaderElectionEnable = "unclean.leader.eleection.enable"
+	MessageDownconversionEnable = "message.downconversion.enable"
 )
 
 // Setup adds a controller that reconciles Topic managed resources.
@@ -125,6 +154,8 @@ type external struct {
 	log         logging.Logger
 }
 
+
+
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
@@ -135,6 +166,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, err
 	}
+
+
 
 	t, ok := td[meta.GetExternalName(cr)]
 	if !ok || errors.Is(t.Err, kerr.UnknownTopicOrPartition) {
@@ -148,12 +181,70 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.SetConditions(v1.Available())
 
 	upToDate := true
-	if len(t.Partitions) != cr.Spec.ForProvider.Partitions {
+	if cr.Spec.ForProvider.Partitions != len(t.Partitions) {
 		upToDate = false
 	}
 	if len(t.Partitions) > 0 && len(t.Partitions[0].Replicas) != cr.Spec.ForProvider.ReplicationFactor {
 		upToDate = false
 	}
+
+	//configs := cr.Spec.ForProvider
+	//
+	//if configs.CleanupPolicy != nil{
+	//policy := configs.CleanupPolicy      //[]metav1.List
+	//fmt.Println(policy)
+	//}
+	//if configs.CompressionType != nil {
+	//	compression := *configs.CompressionType //*string
+	//}
+	//retention := *configs.DeleteRetentionMs                    //*int64
+	//fmt.Println(retention)
+	//if configs.MessageDownconversionEnable != nil{
+	//msgdownconvert:= *configs.MessageDownconversionEnable          //*bool
+	//fmt.Println(msgdownconvert)
+	//}
+	//filedelete := configs.FileDeleteDelayMs                    //*int64
+	//flushmess := configs.FlushMessages                        //*int64
+	//flushms:= configs.FlushMs                              //*int64
+	//followerreps:= configs.FollowerReplicationThrottledReplicas //[]metav1.List
+	//indexint:= configs.IndexIntervalBytes                   //*int
+	//leaderrepthrottled:= configs.LeaderReplicationThrottledReplicas   //[]metav1.List
+	//localretbytes:= configs.LocalRetentionBytes                  //*int64
+	//localretms:= configs.LocalRetentionMs                     //*int64
+	//maxcompact:= configs.MaxCompactionLagMs                   //*int64
+	//maxmessage:= configs.MaxMessageBytes                      //*int
+	//msgtimediff:= configs.MessageTimestampDifferenceMaxMs      //*int64
+	//msgtimetype:= configs.MessageTimestampType                 //*string
+	//minclean:= configs.MinCleanableDirtyRatio               //*int32
+	//mincompact:= configs.MinCompactionLagMs                   //*int64
+	//mininsync:= configs.MinInsyncReplicas                    //*int
+	//preallocate:= configs.Preallocate                          //*bool
+	//remotestorage:= configs.RemoteStorageEnable                  //*bool
+	//retbytes:= configs.RetentionBytes                       //*int64
+	//retms:= configs.RetentionMs                          //*int64
+	//segbytes:= configs.SegmentBytes                         //*int
+	//segindxbytes:= configs.SegmentIndexBytes                    //*int
+	//segjitter:= configs.SegmentJitterMs                      //*int64
+	//segms:= configs.SegmentMs                            //*int64
+	//uncleanelect:= configs.UncleanLeaderElectionEnable          //*bool
+
+		//config := kadm.AlterConfig{
+	//	Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
+	//	Name:  name,           // Name is the name of the config to alter.
+	//	Value: value,          // Value is the value to use when altering, if any.
+	//}
+
+	//x := cr.Spec.ForProvider
+	//s := reflect.ValueOf(&x).Elem()
+	//typeOfT := s.Type()
+	//for i := 0; i < s.NumField(); i++ {
+	//	key := typeOfT.Field(i).Name
+	//	value := s.Field(i).Interface()
+	//	if value != nil{
+	//		fmt.Println(key)
+	//		fmt.Println(value)
+	//	}
+	//}
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -180,13 +271,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(t.Err, "cannot create")
 	}
 
-
 	cr.Status.AtProvider.ID = t.ID.String()
 	return managed.ExternalCreation{}, nil
-}
-
-func GetIntPointer(value **int64) **int64 {
-	return value
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -214,10 +300,19 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		Value: cr.Spec.ForProvider.CompressionType, // Value is the value to use when altering, if any.
 	}
 
+	//delms := strconv.FormatInt(*cr.Spec.ForProvider.DeleteRetentionMs, 10)
+	//
 	//deletems := kadm.AlterConfig{
 	//	Op:    kadm.SetConfig,       				// Op is the incremental alter operation to perform.
 	//	Name:  "delete.retention.ms",      			// Name is the name of the config to alter.
-	//	Value: &s, // Value is the value to use when altering, if any.
+	//	Value: &delms, // Value is the value to use when altering, if any.
+	//}
+
+	//boolparse := strconv.FormatBool(*cr.Spec.ForProvider.Preallocate)
+	//bools := kadm.AlterConfig{
+	//	Op:    kadm.SetConfig,       				// Op is the incremental alter operation to perform.
+	//	Name:  "preallocate",      			// Name is the name of the config to alter.
+	//	Value: &boolparse, // Value is the value to use when altering, if any.
 	//}
 
 	r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{comptype}, meta.GetExternalName(cr))
