@@ -18,6 +18,7 @@ package topic
 
 import (
 	"context"
+	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
@@ -122,6 +123,11 @@ type external struct {
 	log         logging.Logger
 }
 
+// Note(turkenh): Temporary until https://github.com/twmb/franz-go/issues/104
+// resolved.
+func errMissing(name string) error {
+	return fmt.Errorf("missing %q", name)
+}
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
@@ -152,24 +158,55 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		upToDate = false
 	}
 
-	if cr.Spec.ForProvider.Config != nil {
-		configs := cr.Spec.ForProvider.Config
-		for key, value := range configs{
-			s := kadm.AlterConfig{
-				Op:    kadm.SetConfig,                      // Op is the incremental alter operation to perform.
-				Name:  key,                  // Name is the name of the config to alter.
-				Value: &value, // Value is the value to use when altering, if any.
-			}
+	tc, err := c.kafkaClient.DescribeTopicConfigs(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
 
-			r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
-			if err != nil {
-				return managed.ExternalObservation{}, err
-			}
-			if r[0].Err != nil {
-				return managed.ExternalObservation{}, r[0].Err
-			}
+	rc, err := tc.On(meta.GetExternalName(cr), nil)
+	if err == errMissing(meta.GetExternalName(cr)) {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	if errors.Is(rc.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	if rc.Err != nil {
+		return managed.ExternalObservation{}, errors.Wrapf(rc.Err, "cannot get topic")
+	}
+
+	fmt.Println("Current config")
+	setconfigs := map[int]string{}
+	i := 0
+	for _, v := range rc.Configs {
+		//fmt.Println(i)
+		//fmt.Printf("%s=%s \n", v.Key, *v.Value)
+		//keymap = map[string]string{"key": v.Key}
+		//valuemap = map[string]string{"value": *v.Value}
+		//defaultmap = map[string]string{"default": v.Source.String()}
+		setconfigs[i] = v.Key
+		i++
+	}
+	fmt.Println(setconfigs)
+	adminconfigs := cr.Spec.ForProvider.Config
+	if adminconfigs == nil {
+		fmt.Println("Reset to defaults or")
+	}
+	if adminconfigs != nil{
+		fmt.Println("Update config")
+		fmt.Println(adminconfigs)
+		for k, v := range adminconfigs{
+			fmt.Printf("%s=%s \n", k, v)
 		}
 	}
+
+	// {key: "key", value: "value", default: true/false}
+		// loop over provided values
+		// loop over set values
+		// if provided value is nil and set value is !default
+			// UPDATE to default
+		// if provided value is !nil and is != to set value
+			// UPDATE to provided value
+
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -196,6 +233,24 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Wrap(t.Err, "cannot create")
 	}
 
+	if cr.Spec.ForProvider.Config != nil {
+		configs := cr.Spec.ForProvider.Config
+		for key, value := range configs{
+			s := kadm.AlterConfig{
+				Op:    kadm.SetConfig,                      // Op is the incremental alter operation to perform.
+				Name:  key,                  // Name is the name of the config to alter.
+				Value: &value, // Value is the value to use when altering, if any.
+			}
+
+			r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
+			if err != nil {
+				return managed.ExternalCreation{}, err
+			}
+			if r[0].Err != nil {
+				return managed.ExternalCreation{}, r[0].Err
+			}
+		}
+	}
 	cr.Status.AtProvider.ID = t.ID.String()
 	return managed.ExternalCreation{}, nil
 }
