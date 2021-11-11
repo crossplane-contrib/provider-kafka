@@ -6,8 +6,5 @@ spec:
   forProvider:
     replicationFactor: 1
     partitions: 1
-    config:
-      compression.type: "snappy"
-      delete.retention.ms: "86400000"
   providerConfigRef:
     name: example

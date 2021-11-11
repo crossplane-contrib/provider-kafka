@@ -174,39 +174,27 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrapf(rc.Err, "cannot get topic")
 	}
 
-	fmt.Println("Current config")
-	setconfigs := map[int]string{}
-	i := 0
-	for _, v := range rc.Configs {
-		//fmt.Println(i)
-		//fmt.Printf("%s=%s \n", v.Key, *v.Value)
-		//keymap = map[string]string{"key": v.Key}
-		//valuemap = map[string]string{"value": *v.Value}
-		//defaultmap = map[string]string{"default": v.Source.String()}
-		setconfigs[i] = v.Key
-		i++
-	}
-	fmt.Println(setconfigs)
-	adminconfigs := cr.Spec.ForProvider.Config
-	if adminconfigs == nil {
-		fmt.Println("Reset to defaults or")
-	}
-	if adminconfigs != nil{
-		fmt.Println("Update config")
-		fmt.Println(adminconfigs)
-		for k, v := range adminconfigs{
-			fmt.Printf("%s=%s \n", k, v)
+	provided := cr.Spec.ForProvider.Config
+	for k, v := range provided {
+		for _, y := range rc.Configs {
+			if k == y.Key {
+				// if provided value is != to set value set upToDate false
+				if v != *y.Value {
+					upToDate = false
+				}
+			}
 		}
 	}
 
-	// {key: "key", value: "value", default: true/false}
-		// loop over provided values
-		// loop over set values
-		// if provided value is nil and set value is !default
-			// UPDATE to default
-		// if provided value is !nil and is != to set value
-			// UPDATE to provided value
-
+	for _, y := range rc.Configs {
+		// if the set value is not default (has been altered before)
+		if y.Source.String() == "DYNAMIC_TOPIC_CONFIG" {
+			// check to see if the key is present in the provided configs
+			if _, ok := provided[y.Key]; !ok {
+				upToDate = false
+			}
+		}
+	}
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -235,11 +223,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	if cr.Spec.ForProvider.Config != nil {
 		configs := cr.Spec.ForProvider.Config
-		for key, value := range configs{
+		for key, value := range configs {
 			s := kadm.AlterConfig{
-				Op:    kadm.SetConfig,                      // Op is the incremental alter operation to perform.
-				Name:  key,                  // Name is the name of the config to alter.
-				Value: &value, // Value is the value to use when altering, if any.
+				Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
+				Name:  key,            // Name is the name of the config to alter.
+				Value: &value,         // Value is the value to use when altering, if any.
 			}
 
 			r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
@@ -274,28 +262,105 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
 	}
 
-	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
-
-	if l < 1 {
-		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
-	} else {
-		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
-
-		if err != nil {
-			return managed.ExternalUpdate{}, err
-		}
-
-		t, ok := resp[meta.GetExternalName(cr)]
-		if !ok {
-			return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
-		}
-		if t.Err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
-		}
-
-		cr.Status.AtProvider.ID = p.ID.String()
-		return managed.ExternalUpdate{}, nil
+	tc, err := c.kafkaClient.DescribeTopicConfigs(ctx, meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
 	}
+	rc, err := tc.On(meta.GetExternalName(cr), nil)
+	if err == errMissing(meta.GetExternalName(cr)) {
+		return managed.ExternalUpdate{}, err
+	}
+	if errors.Is(rc.Err, kerr.UnknownTopicOrPartition) {
+		return managed.ExternalUpdate{}, err
+	}
+	if rc.Err != nil {
+		return managed.ExternalUpdate{}, errors.Wrapf(rc.Err, "cannot get topic")
+	}
+
+	provided := cr.Spec.ForProvider.Config
+	if provided != nil {
+		for k, v := range provided {
+			for _, y := range rc.Configs {
+				if k == y.Key {
+					// if provided value is != to set value set the value
+					if v != *y.Value {
+						s := kadm.AlterConfig{
+							Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
+							Name:  y.Key,          // Name is the name of the config to alter.
+							Value: &v,             // Value is the value to use when altering, if any.
+						}
+
+						r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
+						if err != nil {
+							return managed.ExternalUpdate{}, err
+						}
+						if r[0].Err != nil {
+							return managed.ExternalUpdate{}, r[0].Err
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, y := range rc.Configs {
+		// if the set value is not default (has been altered before)
+		if y.Source.String() == "DYNAMIC_TOPIC_CONFIG" {
+			if provided != nil {
+				// check to see if the key is present in the provided configs
+				if _, ok := provided[y.Key]; !ok {
+					s := kadm.AlterConfig{
+						Op:   kadm.DeleteConfig, // Op is the incremental alter operation to perform.
+						Name: y.Key,             // Name is the name of the config to alter.
+					}
+
+					r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
+					if err != nil {
+						return managed.ExternalUpdate{}, err
+					}
+					if r[0].Err != nil {
+						return managed.ExternalUpdate{}, r[0].Err
+					}
+				}
+			} else {
+				s := kadm.AlterConfig{
+					Op:   kadm.DeleteConfig, // Op is the incremental alter operation to perform.
+					Name: y.Key,             // Name is the name of the config to alter.
+				}
+
+				r, err := c.kafkaClient.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, meta.GetExternalName(cr))
+				if err != nil {
+					return managed.ExternalUpdate{}, err
+				}
+				if r[0].Err != nil {
+					return managed.ExternalUpdate{}, r[0].Err
+				}
+		}
+	}
+}
+l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
+
+if l < 0 {
+return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
+} else if l == 0 {
+return managed.ExternalUpdate{}, nil
+} else {
+resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+
+if err != nil {
+return managed.ExternalUpdate{}, err
+}
+
+t, ok := resp[meta.GetExternalName(cr)]
+if !ok {
+return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
+}
+if t.Err != nil {
+return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
+}
+
+cr.Status.AtProvider.ID = p.ID.String()
+return managed.ExternalUpdate{}, nil
+}
 
 }
 
