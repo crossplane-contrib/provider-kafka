@@ -334,33 +334,33 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				if r[0].Err != nil {
 					return managed.ExternalUpdate{}, r[0].Err
 				}
+			}
 		}
 	}
-}
-l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
+	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
 
-if l < 0 {
-return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
-} else if l == 0 {
-return managed.ExternalUpdate{}, nil
-} else {
-resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+	if l < 0 {
+		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
+	} else if l == 0 {
+		return managed.ExternalUpdate{}, nil
+	} else {
+		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
 
-if err != nil {
-return managed.ExternalUpdate{}, err
-}
+		if err != nil {
+			return managed.ExternalUpdate{}, err
+		}
 
-t, ok := resp[meta.GetExternalName(cr)]
-if !ok {
-return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
-}
-if t.Err != nil {
-return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
-}
+		t, ok := resp[meta.GetExternalName(cr)]
+		if !ok {
+			return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
+		}
+		if t.Err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
+		}
 
-cr.Status.AtProvider.ID = p.ID.String()
-return managed.ExternalUpdate{}, nil
-}
+		cr.Status.AtProvider.ID = p.ID.String()
+		return managed.ExternalUpdate{}, nil
+	}
 
 }
 
