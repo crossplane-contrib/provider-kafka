@@ -2,6 +2,9 @@ package topic
 
 import (
 	"context"
+	//"github.com/crossplane/crossplane-runtime/pkg/meta"
+	//"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	//"github.com/twmb/franz-go/pkg/kerr"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -24,11 +27,53 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	// TODO: We first need to get the topic (via ListTopics) to fill the ID,
 	//  ReplicationFactor and Partitions fields. Then call DescribeTopicConfigs
 	//  to fill Topic.Config.
-	return &Topic{}, nil
+
+	td, err := client.ListTopics(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot list topics")
+	}
+	if td[name].Err != nil {
+		return nil, errors.Wrap(td[name].Err, "topic does not exist in kafka cluster")
+	}
+
+	t, ok := td[name]
+	if !ok {
+		return nil, errors.New("no create response for topic")
+	}
+
+	tc, err := client.DescribeTopicConfigs(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot describe topics")
+	}
+
+	ts := Topic{}
+	ts.Name = name
+	ts.ReplicationFactor = int16(t.Partitions[0].Replicas[0])
+	ts.Partitions = t.Partitions[0].Partition
+	ts.ID = name
+	ts.Config = make(map[string]string)
+
+	for _, value := range tc[0].Configs {
+		ts.Config[value.Key] = *value.Value
+	}
+	return &ts, nil
+
 }
 
 func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 	// TODO: Call client.CreateTopics using provided Topic
+	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, nil, topic.Name)
+	if err != nil {
+		return err
+	}
+
+	t, ok := resp[topic.Name]
+	if !ok {
+		return errors.New("no create response for topic")
+	}
+	if t.Err != nil {
+		return errors.Wrap(t.Err, "cannot create topic")
+	}
 
 	// TODO: Could we pass topic configs in Create call? Otherwise, also call
 	//  AlterConfig for each config provided.
@@ -37,7 +82,20 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 
 // Delete deletes the topic from Kafka side
 func Delete(ctx context.Context, client *kadm.Client, name string) error {
-	// TODO: Call client.DeleteTopics
+
+	td, err := client.DeleteTopics(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	t, ok := td[name]
+	if !ok {
+		return errors.New("no delete response for topic")
+	}
+	if t.Err != nil {
+		return errors.Wrap(t.Err, "cannot delete topic")
+	}
+
 	return nil
 }
 
@@ -58,6 +116,7 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	return nil
 }
 
+// topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider)
 // Generate is used to convert Crossplane TopicParameters to Kafka's Topic.
 func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	tpc := &Topic{
@@ -65,9 +124,14 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 		ReplicationFactor: int16(params.ReplicationFactor),
 		Partitions:        int32(params.Partitions),
 	}
-	tpc.Config = make(map[string]string, len(params.Config))
-	for k, v := range params.Config {
-		tpc.Config[k] = v
+
+	if len(params.Config) > 0 {
+		tpc.Config = make(map[string]string, len(params.Config))
+		for k, v := range params.Config {
+			tpc.Config[k] = v
+		}
+	} else {
+		tpc.Config = nil
 	}
 
 	return tpc

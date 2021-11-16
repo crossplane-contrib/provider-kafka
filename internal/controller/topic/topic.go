@@ -131,11 +131,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	tpc, err := topic.Get(ctx, c.kafkaClient, meta.GetExternalName(cr))
-	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrapf(err, "cannot get topic spec")
-	}
 	if tpc == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrapf(err, "cannot get topic spec from topic client")
 	}
 
 	cr.Status.AtProvider.ID = tpc.ID

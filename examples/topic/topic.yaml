@@ -1,10 +1,10 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: sample-topic
+  name: topicnew
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 3
+    partitions: 1
   providerConfigRef:
     name: example

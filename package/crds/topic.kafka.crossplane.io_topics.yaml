@@ -63,9 +63,15 @@ spec:
               forProvider:
                 description: TopicParameters are the configurable fields of a Topic.
                 properties:
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
                   partitions:
+                    minimum: 1
                     type: integer
                   replicationFactor:
+                    minimum: 1
                     type: integer
                 required:
                 - partitions
