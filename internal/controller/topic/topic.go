@@ -32,6 +32,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
+	"github.com/twmb/franz-go/pkg/kmsg"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -188,7 +189,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	for _, y := range rc.Configs {
 		// if the set value is not default (has been altered before)
-		if y.Source.String() == "DYNAMIC_TOPIC_CONFIG" {
+		if y.Source == kmsg.ConfigSourceDynamicTopicConfig {
 			// check to see if the key is present in the provided configs
 			if _, ok := provided[y.Key]; !ok {
 				upToDate = false

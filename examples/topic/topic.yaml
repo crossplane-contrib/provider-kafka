@@ -1,10 +1,14 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: topic2
+  name: sample-topic
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 1
+    partitions: 3
+## Optional Admin Configuration overrides
+#    config:
+#      compression.type: snappy
+#      flush.ms: "1000"
   providerConfigRef:
     name: example
