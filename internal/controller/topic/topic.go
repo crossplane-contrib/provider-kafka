@@ -305,7 +305,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 	for _, y := range rc.Configs {
 		// if the set value is not default (has been altered before)
-		if y.Source.String() == "DYNAMIC_TOPIC_CONFIG" {
+		if y.Source == kmsg.ConfigSourceDynamicTopicConfig {
 			if provided != nil {
 				// check to see if the key is present in the provided configs
 				if _, ok := provided[y.Key]; !ok {
