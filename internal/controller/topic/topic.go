@@ -18,6 +18,7 @@ package topic
 
 import (
 	"context"
+
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/pkg/errors"
@@ -207,24 +208,25 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	if l < 1 {
 		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
-	} else {
-		resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
-
-		if err != nil {
-			return managed.ExternalUpdate{}, err
-		}
-
-		t, ok := resp[meta.GetExternalName(cr)]
-		if !ok {
-			return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
-		}
-		if t.Err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
-		}
-
-		cr.Status.AtProvider.ID = p.ID.String()
-		return managed.ExternalUpdate{}, nil
 	}
+
+	resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
+
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	t, ok := resp[meta.GetExternalName(cr)]
+	if !ok {
+		return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
+	}
+	if t.Err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
+	}
+
+	cr.Status.AtProvider.ID = p.ID.String()
+	return managed.ExternalUpdate{}, nil
+
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {

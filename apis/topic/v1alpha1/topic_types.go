@@ -28,7 +28,7 @@ import (
 // TopicParameters are the configurable fields of a Topic.
 type TopicParameters struct {
 	ReplicationFactor int `json:"replicationFactor"`
-	Partitions int `json:"partitions"`
+	Partitions        int `json:"partitions"`
 }
 
 // TopicObservation are the observable fields of a Topic.
