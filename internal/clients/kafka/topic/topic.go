@@ -19,14 +19,11 @@ type Topic struct {
 	ReplicationFactor int16
 	Partitions        int32
 	ID                string
-	Config            map[string]string
+	Config            map[string]*string
 }
 
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
-	// TODO: We first need to get the topic (via ListTopics) to fill the ID,
-	//  ReplicationFactor and Partitions fields. Then call DescribeTopicConfigs
-	//  to fill Topic.Config.
 
 	td, err := client.ListTopics(ctx, name)
 	if err != nil {
@@ -51,18 +48,18 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	ts.ReplicationFactor = int16(t.Partitions[0].Replicas[0])
 	ts.Partitions = t.Partitions[0].Partition
 	ts.ID = name
-	ts.Config = make(map[string]string)
+	ts.Config = make(map[string]*string)
 
 	for _, value := range tc[0].Configs {
-		ts.Config[value.Key] = *value.Value
+		ts.Config[value.Key] = value.Value
 	}
 	return &ts, nil
 
 }
 
 func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
-	// TODO: Call client.CreateTopics using provided Topic
-	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, nil, topic.Name)
+
+	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, topic.Config, topic.Name)
 	if err != nil {
 		return err
 	}
@@ -75,8 +72,6 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 		return errors.Wrap(t.Err, "cannot create topic")
 	}
 
-	// TODO: Could we pass topic configs in Create call? Otherwise, also call
-	//  AlterConfig for each config provided.
 	return nil
 }
 
@@ -126,7 +121,7 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	}
 
 	if len(params.Config) > 0 {
-		tpc.Config = make(map[string]string, len(params.Config))
+		tpc.Config = make(map[string]*string, len(params.Config))
 		for k, v := range params.Config {
 			tpc.Config[k] = v
 		}
@@ -141,7 +136,7 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 func LateInitializeSpec(params *v1alpha1.TopicParameters, observed *Topic) bool {
 	lateInitialized := false
 	if params.Config == nil {
-		params.Config = make(map[string]string, len(observed.Config))
+		params.Config = make(map[string]*string, len(observed.Config))
 	}
 
 	for k, v := range observed.Config {
