@@ -47,7 +47,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	ts.Name = name
 	ts.ReplicationFactor = int16(t.Partitions[0].Replicas[0])
 	ts.Partitions = t.Partitions[0].Partition
-	ts.ID = name
+	ts.ID = t.ID.String()
 	ts.Config = make(map[string]*string)
 
 	for _, value := range tc[0].Configs {
@@ -103,11 +103,31 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	if existing == nil {
 		return errors.New("topic does not exist")
 	}
-	// TODO: Update if Partitions needs to be updated
 
-	// TODO: Update all configs as in the spec. Yes, we might call an Update
-	//  (i.e. Set), also for the ones didn't change, but this shouldn't be
-	//  a problem, given we do that only when something is not up to date.
+	_, err = client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
+	if err != nil {
+		return errors.Wrap(err, "cannot update topic partitions")
+	}
+
+	if desired.Config != nil {
+		configs := desired.Config
+		for key, value := range configs {
+			s := kadm.AlterConfig{
+				Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
+				Name:  key,            // Name is the name of the config to alter.
+				Value: value,         // Value is the value to use when altering, if any.
+			}
+
+			r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
+			if err != nil {
+				return errors.Wrap(err, "cannot update topic configs")
+			}
+			if r[0].Err != nil {
+				return errors.Wrap(r[0].Err, "cannot update topic configs")
+			}
+		}
+	}
+
 	return nil
 }
 
