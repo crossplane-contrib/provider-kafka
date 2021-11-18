@@ -131,7 +131,6 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	return nil
 }
 
-// topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider)
 // Generate is used to convert Crossplane TopicParameters to Kafka's Topic.
 func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	tpc := &Topic{
