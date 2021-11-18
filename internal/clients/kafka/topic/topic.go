@@ -128,6 +128,10 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		}
 	}
 
+	if desired.ReplicationFactor != existing.ReplicationFactor {
+		return errors.New("updating replication factor is not supported")
+	}
+
 	return nil
 }
 
