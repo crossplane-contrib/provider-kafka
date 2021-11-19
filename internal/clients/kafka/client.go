@@ -2,12 +2,14 @@ package kafka
 
 import (
 	"encoding/json"
+
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 )
 
+// NewAdminClient creates a new AdminClient with supplied credentials
 func NewAdminClient(data []byte) (*kadm.Client, error) {
 	kc := Config{}
 
@@ -21,7 +23,7 @@ func NewAdminClient(data []byte) (*kadm.Client, error) {
 
 	if kc.SASL != nil {
 		if kc.SASL.Mechanism != "PLAIN" {
-			return nil, errors.Errorf("SASL mechanims %q not supported, only %q supported for now.", kc.SASL.Username, "PLAIN")
+			return nil, errors.Errorf("SASL mechanisms %q not supported, only %q supported for now.", kc.SASL.Username, "PLAIN")
 		}
 		opts = append(opts, kgo.SASL(plain.Auth{
 			User: kc.SASL.Username,
