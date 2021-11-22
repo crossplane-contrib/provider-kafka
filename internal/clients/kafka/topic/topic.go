@@ -52,7 +52,14 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	ts.ID = t.ID.String()
 	ts.Config = make(map[string]*string)
 
-	for _, value := range tc[0].Configs {
+        rc, err := tc.On(name, nil)
+        if err != nil {
+                return nil, errors.Wrapf(err, "cannot find topic in describe result")
+        }
+        if rc.Err != nil {
+		return nil, errors.Wrapf(rc.Err, "error in topic describe result")
+	} 
+        for _, value := range rc.Configs {
 		ts.Config[value.Key] = value.Value
 	}
 	return &ts, nil
