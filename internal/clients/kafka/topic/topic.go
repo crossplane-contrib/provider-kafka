@@ -110,14 +110,24 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return errors.New("topic does not exist")
 	}
 
-	_, err = client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
-	if err != nil {
-		return errors.Wrap(err, "cannot update topic partitions")
+	if desired.Partitions != existing.Partitions {
+		resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
+		if err != nil {
+			return errors.Wrap(err, "cannot update topic partitions")
+		}
+		r, err := resp.On(desired.Name, nil)
+		if err != nil {
+			return errors.Wrap(err, "cannot find topic in update partitions result")
+		}
+		if r.Err != nil {
+			return errors.Wrap(r.Err, "error in update partitions result")
+		}
 	}
 
 	if desired.ReplicationFactor != existing.ReplicationFactor {
 		return errors.New("updating replication factor is not supported")
 	}
+
 
 	if desired.Config != nil {
 		configs := desired.Config
