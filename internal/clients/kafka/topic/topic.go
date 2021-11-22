@@ -47,7 +47,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
                 ts.ReplicationFactor = int16(len(t.Partitions[0].Replicas))
         }
 	ts.ID = t.ID.String()
-	ts.Config = make(map[string]*string, len(rc.Configs))
+	ts.Config = make(map[string]*string, len(ts.Config))
 
         rc, err := tc.On(name, nil)
         if err != nil {
@@ -154,10 +154,8 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 		for k, v := range params.Config {
 			tpc.Config[k] = v
 		}
-	} else {
-		tpc.Config = nil
 	}
-
+	
 	return tpc
 }
 
