@@ -115,6 +115,10 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return errors.Wrap(err, "cannot update topic partitions")
 	}
 
+	if desired.ReplicationFactor != existing.ReplicationFactor {
+		return errors.New("updating replication factor is not supported")
+	}
+
 	if desired.Config != nil {
 		configs := desired.Config
 		for key, value := range configs {
@@ -134,10 +138,6 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		}
 	}
 
-	if desired.ReplicationFactor != existing.ReplicationFactor {
-		return errors.New("updating replication factor is not supported")
-	}
-
 	return nil
 }
 
@@ -155,7 +155,7 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 			tpc.Config[k] = v
 		}
 	}
-	
+
 	return tpc
 }
 
