@@ -193,9 +193,16 @@ func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 		return false
 	}
 	for k, v := range observed.Config {
-		if iv, ok := in.Config[k]; !ok || iv != v {
-			return false
-		}
-	}
-	return true
+                if iv, ok := in.Config[k]; !ok || stringValue(iv) != stringValue(v) {
+                        return false
+                }
+        }
+        return true
+ }
+
+func stringValue(p *string) string {
+       if p == nil {
+               return ""
+       }
+       return *p
 }
