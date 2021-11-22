@@ -2,10 +2,7 @@ package topic
 
 import (
 	"context"
-	//"github.com/crossplane/crossplane-runtime/pkg/meta"
-	//"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	//"github.com/twmb/franz-go/pkg/kerr"
-
+	
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 
