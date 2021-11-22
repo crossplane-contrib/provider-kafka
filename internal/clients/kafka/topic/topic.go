@@ -45,8 +45,10 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 	ts := Topic{}
 	ts.Name = name
-	ts.ReplicationFactor = int16(t.Partitions[0].Replicas[0])
-	ts.Partitions = t.Partitions[0].Partition
+        ts.Partitions = int32(len(t.Partitions))
+        if len(t.Partitions) > 0 {
+                ts.ReplicationFactor = int16(len(t.Partitions[0].Replicas))
+        }
 	ts.ID = t.ID.String()
 	ts.Config = make(map[string]*string)
 
