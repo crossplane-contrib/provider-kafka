@@ -128,22 +128,24 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return errors.New("updating replication factor is not supported")
 	}
 
-
 	if desired.Config != nil {
 		configs := desired.Config
-		for key, value := range configs {
-			s := kadm.AlterConfig{
-				Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
-				Name:  key,            // Name is the name of the config to alter.
-				Value: value,         // Value is the value to use when altering, if any.
-			}
+		existing := existing.Config
 
-			r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
-			if err != nil {
-				return errors.Wrap(err, "cannot update topic configs")
-			}
-			if r[0].Err != nil {
-				return errors.Wrap(r[0].Err, "cannot update topic configs")
+		for key, value := range configs {
+			if value == existing[key]{
+				s := kadm.AlterConfig {
+					Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
+					Name:  key,            // Name is the name of the config to alter.
+					Value: value,         // Value is the value to use when altering, if any.
+				}
+				r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
+				if err != nil {
+					return errors.Wrap(err, "cannot update topic configs")
+				}
+				if r[0].Err != nil {
+					return errors.Wrap(r[0].Err, "cannot update topic configs")
+				}
 			}
 		}
 	}
