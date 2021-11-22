@@ -2,9 +2,9 @@ package topic
 
 import (
 	"context"
-	
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
+	"strings"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 )
@@ -133,7 +133,8 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		existing := existing.Config
 
 		for key, value := range configs {
-			if value == existing[key]{
+			ev := existing[key]
+			if strings.Compare(*value, *ev) != 0 {
 				s := kadm.AlterConfig {
 					Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
 					Name:  key,            // Name is the name of the config to alter.
