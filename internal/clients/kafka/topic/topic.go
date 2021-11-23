@@ -2,9 +2,11 @@ package topic
 
 import (
 	"context"
-	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
+
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 )
 
 // Topic is a holistic representation of a Kafka Topic with all configurable
@@ -61,6 +63,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 }
 
+// Create creates the topic from Kafka side
 func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 
 	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, topic.Config, topic.Name)
@@ -98,6 +101,7 @@ func Delete(ctx context.Context, client *kadm.Client, name string) error {
 	return nil
 }
 
+// Update updates a topic Partition count or Admin Config(s) in Kafka
 func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
