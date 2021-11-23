@@ -6,7 +6,7 @@ cover.out
 /vendor
 /.vendor-new
 .DS_Store
-
+kc.json
 # ignore IDE folders
 .vscode/
 .idea/

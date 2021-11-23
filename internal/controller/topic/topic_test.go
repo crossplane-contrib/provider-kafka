@@ -57,9 +57,7 @@ func TestObserve(t *testing.T) {
 		fields fields
 		args   args
 		want   want
-	}{
-		// TODO: Add test cases.
-	}
+	}{}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

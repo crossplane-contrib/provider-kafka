@@ -19,17 +19,6 @@ package topic
 import (
 	"context"
 
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-
-	"github.com/pkg/errors"
-	"github.com/twmb/franz-go/pkg/kadm"
-	"github.com/twmb/franz-go/pkg/kerr"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -37,9 +26,18 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/pkg/errors"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 )
 
 const (
@@ -132,33 +130,23 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotTopic)
 	}
 
-	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
-	if err != nil {
-		return managed.ExternalObservation{}, err
-	}
-
-	t, ok := td[meta.GetExternalName(cr)]
-	if !ok || errors.Is(t.Err, kerr.UnknownTopicOrPartition) {
+	tpc, err := topic.Get(ctx, c.kafkaClient, meta.GetExternalName(cr))
+	if tpc == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
-	if t.Err != nil {
-		return managed.ExternalObservation{}, errors.Wrapf(t.Err, "cannot get topic")
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrapf(err, "cannot get topic spec from topic client")
 	}
 
-	cr.Status.AtProvider.ID = t.ID.String()
+	cr.Status.AtProvider.ID = tpc.ID
 	cr.Status.SetConditions(v1.Available())
 
-	upToDate := true
-	if len(t.Partitions) != cr.Spec.ForProvider.Partitions {
-		upToDate = false
-	}
-	if len(t.Partitions) > 0 && len(t.Partitions[0].Replicas) != cr.Spec.ForProvider.ReplicationFactor {
-		upToDate = false
-	}
+	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)
 
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
+		ResourceExists:          true,
+		ResourceUpToDate:        topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
+		ResourceLateInitialized: lateInitialized,
 	}, nil
 }
 
@@ -167,22 +155,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotTopic)
 	}
-
-	resp, err := c.kafkaClient.CreateTopics(ctx, int32(cr.Spec.ForProvider.Partitions), int16(cr.Spec.ForProvider.ReplicationFactor), nil, meta.GetExternalName(cr))
-	if err != nil {
-		return managed.ExternalCreation{}, err
-	}
-
-	t, ok := resp[meta.GetExternalName(cr)]
-	if !ok {
-		return managed.ExternalCreation{}, errors.New("no create response for topic")
-	}
-	if t.Err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(t.Err, "cannot create")
-	}
-
-	cr.Status.AtProvider.ID = t.ID.String()
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{}, topic.Create(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -191,42 +164,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotTopic)
 	}
 
-	td, err := c.kafkaClient.ListTopics(ctx, meta.GetExternalName(cr))
-	if err != nil {
-		return managed.ExternalUpdate{}, err
-	}
-
-	p, ok := td[meta.GetExternalName(cr)]
-	if !ok || errors.Is(p.Err, kerr.UnknownTopicOrPartition) {
-		return managed.ExternalUpdate{}, nil
-	}
-	if p.Err != nil {
-		return managed.ExternalUpdate{}, errors.Wrapf(p.Err, "cannot get topic")
-	}
-
-	l := cr.Spec.ForProvider.Partitions - len(p.Partitions)
-
-	if l < 1 {
-		return managed.ExternalUpdate{}, errors.Errorf("cannot decrease partition count from %d to %d", len(p.Partitions), cr.Spec.ForProvider.Partitions)
-	}
-
-	resp, err := c.kafkaClient.UpdatePartitions(ctx, cr.Spec.ForProvider.Partitions, meta.GetExternalName(cr))
-
-	if err != nil {
-		return managed.ExternalUpdate{}, err
-	}
-
-	t, ok := resp[meta.GetExternalName(cr)]
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New("no create partitions response for topic")
-	}
-	if t.Err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(t.Err, "cannot create partitions")
-	}
-
-	cr.Status.AtProvider.ID = p.ID.String()
-	return managed.ExternalUpdate{}, nil
-
+	return managed.ExternalUpdate{}, topic.Update(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -234,19 +172,5 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if !ok {
 		return errors.New(errNotTopic)
 	}
-
-	resp, err := c.kafkaClient.DeleteTopics(ctx, meta.GetExternalName(cr))
-	if err != nil {
-		return err
-	}
-
-	t, ok := resp[meta.GetExternalName(cr)]
-	if !ok {
-		return errors.New("no delete response for topic")
-	}
-	if t.Err != nil {
-		return errors.Wrap(t.Err, "cannot delete")
-	}
-
-	return nil
+	return topic.Delete(ctx, c.kafkaClient, meta.GetExternalName(cr))
 }

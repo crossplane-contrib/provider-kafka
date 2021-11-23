@@ -5,6 +5,12 @@ metadata:
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 3
+    partitions: 1
+## Optional Admin Config Parameters
+## Full list of parameter overrides can be found here:
+## https://docs.confluent.io/platform/current/installation/configuration/topic-configs.html
+#    config:
+#      cleanup.policy: "delete"
+#      compression.type: "snappy"
   providerConfigRef:
     name: example

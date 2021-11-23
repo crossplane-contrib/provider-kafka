@@ -27,8 +27,12 @@ import (
 
 // TopicParameters are the configurable fields of a Topic.
 type TopicParameters struct {
+	// +kubebuilder:validation:Minimum:=1
 	ReplicationFactor int `json:"replicationFactor"`
-	Partitions        int `json:"partitions"`
+	// +kubebuilder:validation:Minimum:=1
+	Partitions int `json:"partitions"`
+	// +optional
+	Config map[string]*string `json:"config,omitempty"`
 }
 
 // TopicObservation are the observable fields of a Topic.
