@@ -101,8 +101,30 @@ func Delete(ctx context.Context, client *kadm.Client, name string) error {
 	return nil
 }
 
-// Update updates a topic Partition count or Admin Config(s) in Kafka
+// Update determines if a Topic Partition or a Topic Admin Config update needs to be called and routes properly
 func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
+	// First Get existing Topic
+	existing, err := Get(ctx, client, desired.Name)
+	if err != nil {
+		return errors.Wrap(err, "cannot get topic")
+	}
+	if existing == nil {
+		return errors.New("topic does not exist")
+	}
+
+	if desired.Partitions != existing.Partitions {
+		return UpdatePartitions(ctx, client, desired)
+	}
+
+	if desired.Config != nil {
+		return UpdateConfigs(ctx, client, desired)
+	}
+
+	return nil
+}
+
+// UpdatePartitions updates a topic Partition count in Kafka
+func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
@@ -128,6 +150,20 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 
 	if desired.ReplicationFactor != existing.ReplicationFactor {
 		return errors.New("updating replication factor is not supported")
+	}
+
+	return nil
+}
+
+// UpdateConfigs updates an optional topic Admin Configuration in Kafka
+func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) error {
+	// First Get existing Topic
+	existing, err := Get(ctx, client, desired.Name)
+	if err != nil {
+		return errors.Wrap(err, "cannot get topic")
+	}
+	if existing == nil {
+		return errors.New("topic does not exist")
 	}
 
 	if desired.Config != nil {
