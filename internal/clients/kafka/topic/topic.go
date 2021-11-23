@@ -42,21 +42,21 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 	ts := Topic{}
 	ts.Name = name
-        ts.Partitions = int32(len(t.Partitions))
-        if len(t.Partitions) > 0 {
-                ts.ReplicationFactor = int16(len(t.Partitions[0].Replicas))
-        }
+	ts.Partitions = int32(len(t.Partitions))
+	if len(t.Partitions) > 0 {
+		ts.ReplicationFactor = int16(len(t.Partitions[0].Replicas))
+	}
 	ts.ID = t.ID.String()
 	ts.Config = make(map[string]*string, len(ts.Config))
 
-        rc, err := tc.On(name, nil)
-        if err != nil {
-                return nil, errors.Wrapf(err, "cannot find topic in describe result")
-        }
-        if rc.Err != nil {
+	rc, err := tc.On(name, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot find topic in describe result")
+	}
+	if rc.Err != nil {
 		return nil, errors.Wrapf(rc.Err, "error in topic describe result")
-	} 
-        for _, value := range rc.Configs {
+	}
+	for _, value := range rc.Configs {
 		ts.Config[value.Key] = value.Value
 	}
 	return &ts, nil
@@ -137,10 +137,10 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		for key, value := range configs {
 			ev := existing[key]
 			if stringValue(value) != stringValue(ev) {
-				s := kadm.AlterConfig {
+				s := kadm.AlterConfig{
 					Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
 					Name:  key,            // Name is the name of the config to alter.
-					Value: value,         // Value is the value to use when altering, if any.
+					Value: value,          // Value is the value to use when altering, if any.
 				}
 				r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
 				if err != nil {
@@ -203,16 +203,16 @@ func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 		return false
 	}
 	for k, v := range observed.Config {
-                if iv, ok := in.Config[k]; !ok || stringValue(iv) != stringValue(v) {
-                        return false
-                }
-        }
-        return true
- }
+		if iv, ok := in.Config[k]; !ok || stringValue(iv) != stringValue(v) {
+			return false
+		}
+	}
+	return true
+}
 
 func stringValue(p *string) string {
-       if p == nil {
-               return ""
-       }
-       return *p
+	if p == nil {
+		return ""
+	}
+	return *p
 }
