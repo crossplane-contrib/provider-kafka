@@ -18,6 +18,8 @@ package topic
 
 import (
 	"context"
+	"github.com/crossplane/crossplane-runtime/pkg/resource/fake"
+	"github.com/pkg/errors"
 	"testing"
 
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -45,11 +47,13 @@ func TestObserve(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		mg  resource.Managed
+		input string
 	}
 
 	type want struct {
 		o   managed.ExternalObservation
 		err error
+		output string
 	}
 
 	cases := map[string]struct {
@@ -57,7 +61,42 @@ func TestObserve(t *testing.T) {
 		fields fields
 		args   args
 		want   want
-	}{}
+	}{
+		// testing that topic does not exist
+		"TopicDoesNotExist": {
+			reason: "Testing that a resource does not exist.",
+			args: args{
+				ctx: context.Background(),
+				mg: &fake.Managed{},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists: false,
+					ResourceUpToDate: false,
+					ResourceLateInitialized: false,
+				},
+				err: errors.New ("managed resource is not a Topic custom resource"),
+			},
+		},
+
+		"TopicExistsNotUpToDate": {
+			reason: "Testing that topic exists but is not up to date.",
+			args: args{
+				ctx: context.Background(),
+				mg: &fake.Managed{},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists: true,
+					ResourceUpToDate: false,
+					ResourceLateInitialized: false,
+				},
+			},
+		},
+
+
+
+	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
