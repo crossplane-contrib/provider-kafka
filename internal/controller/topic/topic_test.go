@@ -45,14 +45,14 @@ func TestObserve(t *testing.T) {
 	}
 
 	type args struct {
-		ctx context.Context
-		mg  resource.Managed
+		ctx   context.Context
+		mg    resource.Managed
 		input string
 	}
 
 	type want struct {
-		o   managed.ExternalObservation
-		err error
+		o      managed.ExternalObservation
+		err    error
 		output string
 	}
 
@@ -67,15 +67,15 @@ func TestObserve(t *testing.T) {
 			reason: "Testing that a resource does not exist.",
 			args: args{
 				ctx: context.Background(),
-				mg: &fake.Managed{},
+				mg:  &fake.Managed{},
 			},
 			want: want{
 				o: managed.ExternalObservation{
-					ResourceExists: false,
-					ResourceUpToDate: false,
+					ResourceExists:          false,
+					ResourceUpToDate:        false,
 					ResourceLateInitialized: false,
 				},
-				err: errors.New ("managed resource is not a Topic custom resource"),
+				err: errors.New("managed resource is not a Topic custom resource"),
 			},
 		},
 
@@ -83,19 +83,16 @@ func TestObserve(t *testing.T) {
 			reason: "Testing that topic exists but is not up to date.",
 			args: args{
 				ctx: context.Background(),
-				mg: &fake.Managed{},
+				mg:  &fake.Managed{},
 			},
 			want: want{
 				o: managed.ExternalObservation{
-					ResourceExists: true,
-					ResourceUpToDate: false,
+					ResourceExists:          true,
+					ResourceUpToDate:        false,
 					ResourceLateInitialized: false,
 				},
 			},
 		},
-
-
-
 	}
 
 	for name, tc := range cases {

@@ -1,7 +1,7 @@
 package kafka
 
 // Config is a Kafka client configuration
-type Config struct {
+type ConfigMap struct {
 	Brokers []string `json:"brokers"`
 	SASL    *SASL    `json:"sasl,omitempty"`
 }

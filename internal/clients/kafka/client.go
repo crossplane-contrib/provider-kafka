@@ -1,39 +1,19 @@
 package kafka
 
 import (
-	"encoding/json"
-
-	"github.com/pkg/errors"
-	"github.com/twmb/franz-go/pkg/kadm"
-	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-// NewAdminClient creates a new AdminClient with supplied credentials
-func NewAdminClient(data []byte) (*kadm.Client, error) {
-	kc := Config{}
+func NewAdminClient(creds []byte) (*kafka.AdminClient, error) {
+	// Create the new admin client using k8s secrets
+	// For now, client looks like:
 
-	if err := json.Unmarshal(data, &kc); err != nil {
-		return nil, errors.Wrap(err, "cannot parse credentials")
-	}
-
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(kc.Brokers...),
-	}
-
-	if kc.SASL != nil {
-		if kc.SASL.Mechanism != "PLAIN" {
-			return nil, errors.Errorf("SASL mechanisms %q not supported, only %q supported for now.", kc.SASL.Username, "PLAIN")
-		}
-		opts = append(opts, kgo.SASL(plain.Auth{
-			User: kc.SASL.Username,
-			Pass: kc.SASL.Password,
-		}.AsMechanism()))
-	}
-
-	c, err := kgo.NewClient(opts...)
-	if err != nil {
-		return nil, err
-	}
-	return kadm.NewClient(c), nil
+	// TODO: Remove hard coding!  Needs to use config.go
+	return kafka.NewAdminClient(&kafka.ConfigMap{
+		"bootstrap.servers": "kafka-dev-0.kafka-dev-headless:9092",
+		"sasl.username":     "user",
+		"sasl.password":     "PASSWORD",
+		"sasl.mechanism":    "PLAIN",
+		"security.protocol": "SASL_PLAINTEXT",
+	})
 }

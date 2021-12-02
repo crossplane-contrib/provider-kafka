@@ -18,7 +18,7 @@ package topic
 
 import (
 	"context"
-
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -27,7 +27,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
-	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,7 +35,7 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	local "github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 )
 
@@ -63,7 +62,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			log:          l,
-			newServiceFn: kafka.NewAdminClient}),
+			newServiceFn: local.NewAdminClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
@@ -80,7 +79,7 @@ type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
 	log          logging.Logger
-	newServiceFn func(creds []byte) (*kadm.Client, error)
+	newServiceFn func(creds []byte) (*kafka.AdminClient, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -120,7 +119,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kafkaClient *kadm.Client
+	kafkaClient *kafka.AdminClient
 	log         logging.Logger
 }
 
