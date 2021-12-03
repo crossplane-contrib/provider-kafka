@@ -8,16 +8,13 @@ manage [Kafka](https://kafka.apache.org/) resources.
 1. Create a provider secret containing a json like the following, see expected
    schema [here](internal/clients/kafka/config.go):
 
-    ```
+    ```json
     {
-      "brokers":[
-        "kafka-dev-0.kafka-dev-headless:9092"
-       ],
-       "sasl":{
-         "mechanism":"PLAIN",
-         "username":"user",
-         "password":"<your-password>"
-       }
+      "bootstrap.servers": "kafka-dev-0.kafka-dev-headless:9092",
+      "sasl.username": "user",
+      "sasl.password": "password",
+      "sasl.mechanism": "PLAIN",
+      "security.protocol": "SASL_PLAINTEXT"
     }
     ```
 

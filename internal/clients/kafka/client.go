@@ -1,19 +1,17 @@
 package kafka
 
 import (
+	"encoding/json"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/pkg/errors"
 )
 
-func NewAdminClient(creds []byte) (*kafka.AdminClient, error) {
-	// Create the new admin client using k8s secrets
-	// For now, client looks like:
+// NewAdminClient creates a new AdminClient with supplied credentials
+func NewAdminClient(data []byte) (*kafka.AdminClient, error) {
+	conf := &kafka.ConfigMap{}
+	if err := json.Unmarshal(data, conf); err != nil {
+		return nil, errors.Wrap(err, "cannot parse credentials")
+	}
 
-	// TODO: Remove hard coding!  Needs to use config.go
-	return kafka.NewAdminClient(&kafka.ConfigMap{
-		"bootstrap.servers": "kafka-dev-0.kafka-dev-headless:9092",
-		"sasl.username":     "user",
-		"sasl.password":     "PASSWORD",
-		"sasl.mechanism":    "PLAIN",
-		"security.protocol": "SASL_PLAINTEXT",
-	})
+	return kafka.NewAdminClient(conf)
 }
