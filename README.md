@@ -55,18 +55,15 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       kubectl -n kafka-cluster exec kafka-dev-0 -- cat /opt/bitnami/kafka/config/kafka_jaas.conf
       ```
    Create the Kubernetes secret by adding a JSON filed called kc.json with the following contents
-   ```json
-   {
-      "brokers": [
-         "kafka-dev-0.kafka-dev-headless:9092"
-      ],
-      "sasl": {
-         "mechanism": "PLAIN",
-         "username": "user",
-         "password": "<password-you-obtained-in-step-2>"
-      }
-   }
-   ```
+    ```json
+    {
+      "bootstrap.servers": "kafka-dev-0.kafka-dev-headless:9092",
+      "sasl.username": "user",
+      "sasl.password": "password",
+      "sasl.mechanism": "PLAIN",
+      "security.protocol": "SASL_PLAINTEXT"
+    }
+    ```
    Once this file is created, apply it by running the following command
     ```bash
     kubectl -n default create secret generic kafka-creds --from-file=credentials=kc.json
