@@ -32,7 +32,7 @@ type TopicParameters struct {
 	// +kubebuilder:validation:Minimum:=1
 	Partitions int `json:"partitions"`
 	// +optional
-	Config map[string]*string `json:"config,omitempty"`
+	Config map[string]string `json:"config,omitempty"`
 }
 
 // TopicObservation are the observable fields of a Topic.
