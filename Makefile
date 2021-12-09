@@ -44,9 +44,10 @@ HELM3_VERSION = v3.6.3
 # ====================================================================================
 # Setup Images
 
-DOCKER_REGISTRY = registry.upbound.io/borrelli-org
+# REGISTRY_ORGS = docker.io/crossplane registry.upbound.io/crossplane
+REGISTRY_ORGS = registry.upbound.io/borrelli-org
 IMAGES = provider-kafka provider-kafka-controller
--include build/makelib/image.mk
+-include build/makelib/imagelight.mk
 
 # ====================================================================================
 # Targets
