@@ -137,7 +137,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrapf(err, "cannot get topic spec from topic client")
 	}
 
-	cr.Status.AtProvider.ID = tpc.ID
+	//cr.Status.AtProvider.ID = tpc.ID
 	cr.Status.SetConditions(v1.Available())
 
 	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)

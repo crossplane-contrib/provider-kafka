@@ -33,8 +33,10 @@ func Get(ctx context.Context, client *kafka.AdminClient, name string) (*kafka.To
 
 // Create creates the topic from Kafka side
 func Create(ctx context.Context, client *kafka.AdminClient, topic *kafka.TopicSpecification) error {
-	ts := []kafka.TopicSpecification{}
-	ts[0] = *topic
+	topicD := *topic
+	ts := make([]kafka.TopicSpecification, 1)
+	ts[0] = topicD
+	//_ = append(ts, topicD[0])
 	_, err := client.CreateTopics(ctx, ts)
 	if err != nil {
 		return errors.Wrap(err, "cannot creat topic")
