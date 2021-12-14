@@ -4,4 +4,4 @@ metadata:
   name: provider-kafka
 spec:
   controller:
-    image: DOCKER_REGISTRY/provider-kafka-controller:VERSION
+    image: IMAGE:VERSION
