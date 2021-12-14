@@ -24,7 +24,6 @@ img.publish:
 img.build.shared:
 	@cp Dockerfile $(IMAGE_TEMP_DIR) || $(FAIL)
 	@cp -R ../../../package . $(IMAGE_TEMP_DIR) || $(FAIL)
-	@cd $(IMAGE_TEMP_DIR) || $(FAIL)
 	@cd $(IMAGE_TEMP_DIR) && $(SED_CMD) 's|VERSION|$(VERSION)|g' package/crossplane.yaml || $(FAIL)
 	@cd $(IMAGE_TEMP_DIR) && $(SED_CMD) 's|IMAGE|$(IMAGE)|g' package/crossplane.yaml || $(FAIL)
 	@cd $(IMAGE_TEMP_DIR) && find package -type f -name '*.yaml' -exec cat {} >> 'package.yaml' \; -exec printf '\n---\n' \; || $(FAIL)	
