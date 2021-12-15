@@ -6,5 +6,5 @@ ARG TARGETARCH
 ADD bin/$TARGETOS\_$TARGETARCH/provider /usr/local/bin/crossplane-kafka-provider
 
 EXPOSE 8080
-USER 1001
+USER 65532
 ENTRYPOINT ["crossplane-kafka-provider"]
