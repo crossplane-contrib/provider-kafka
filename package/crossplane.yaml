@@ -4,4 +4,4 @@ metadata:
   name: provider-kafka
 spec:
   controller:
-    image: IMAGE-controller:VERSION
+    image: crossplane/provider-kafka-controller:VERSION
