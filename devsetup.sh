@@ -1,5 +1,6 @@
 set -x
-echo "This script only installs the kafka development cluster via helm, and sets up the credentials.  You will need to follow the rest of the instructions to install helm, your kube cluster, etc.)"
+echo "PREREQUISITES TO INSTALL: helm, kubectl, a running kube cluster, kaf cli, crossplane, kubefwd"
+echo "See README for installation links and instructions."
 kubectl delete ns kafka-cluster;
 helm repo add bitnami https://charts.bitnami.com/bitnami;
 kubectl create ns kafka-cluster;
@@ -9,4 +10,7 @@ sed 's/<your-password>/'"$CREDS"'/g' devcreds.json > kc.json;
 sed 's/<your-password>/'"$CREDS"'/g' devkafcliconfig > ~/.kaf/config;
 kubectl -n crossplane-system delete secret kafka-creds;
 kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json;
-kaf config use-cluster local
+kaf config use-cluster local;
+echo "Next steps: run 'make dev' from your command line to generate your CRDS and apply them."
+echo "This will also run your provider and allow you to apply a topic."
+echo "Then run 'sudo -E kubefwd svc -n kafka-cluster' to appropriately forward your K8s traffic around."
