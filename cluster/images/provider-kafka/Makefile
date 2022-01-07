@@ -1,28 +1,39 @@
 # ====================================================================================
 # Setup Project
 
-PLATFORMS := linux_amd64 linux_arm64
 include ../../../build/makelib/common.mk
 
 # ====================================================================================
 #  Options
-IMAGE = $(BUILD_REGISTRY)/provider-kafka-$(ARCH)
-OSBASEIMAGE = scratch
-include ../../../build/makelib/image.mk
+
+include ../../../build/makelib/imagelight.mk
 
 # ====================================================================================
 # Targets
 
 img.build:
 	@$(INFO) docker build $(IMAGE)
+	@$(INFO) build registry $(BUILD_REGISRY)
+	@$(MAKE) BUILD_ARGS="--load" img.build.shared
+	@$(OK) docker build $(IMAGE)
+
+img.publish:
+	@$(INFO) docker publish $(IMAGE)
+	@$(INFO) build registry $(BUILD_REGISRY)
+	@$(MAKE) BUILD_ARGS="--push" img.build.shared
+	@$(OK) docker publish $(IMAGE)
+
+img.build.shared:
 	@cp Dockerfile $(IMAGE_TEMP_DIR) || $(FAIL)
-	@cp -R ../../../package $(IMAGE_TEMP_DIR) || $(FAIL)
-	@cd $(IMAGE_TEMP_DIR) && $(SED_CMD) 's|BASEIMAGE|$(OSBASEIMAGE)|g' Dockerfile || $(FAIL)
+	@cp -R ../../../package . $(IMAGE_TEMP_DIR) || $(FAIL)
 	@cd $(IMAGE_TEMP_DIR) && $(SED_CMD) 's|VERSION|$(VERSION)|g' package/crossplane.yaml || $(FAIL)
-	@cd $(IMAGE_TEMP_DIR) && find package -type f -name '*.yaml' -exec cat {} >> 'package.yaml' \; -exec printf '\n---\n' \; || $(FAIL)
-	@docker build $(BUILD_ARGS) \
-		--build-arg ARCH=$(ARCH) \
-		--build-arg TINI_VERSION=$(TINI_VERSION) \
+	@cd $(IMAGE_TEMP_DIR) && find package -type f -name '*.yaml' -exec cat {} >> 'package.yaml' \; -exec printf '\n---\n' \; || $(FAIL)	
+	@docker buildx build $(BUILD_ARGS) \
+		--platform $(IMAGE_PLATFORMS) \
 		-t $(IMAGE) \
 		$(IMAGE_TEMP_DIR) || $(FAIL)
-	@$(OK) docker build $(IMAGE)
+
+img.promote:
+	@$(INFO) docker promote $(FROM_IMAGE) to $(TO_IMAGE)
+	@docker buildx imagetools create -t $(TO_IMAGE) $(FROM_IMAGE)
+	@$(OK) docker promote $(FROM_IMAGE) to $(TO_IMAGE)
