@@ -1,11 +1,11 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: sample-topic
+  name: lunch-and-learn
 spec:
   forProvider:
     replicationFactor: 1
-    partitions: 1
+    partitions: 3
 ## Optional Admin Config Parameters
 ## Full list of parameter overrides can be found here:
 ## https://docs.confluent.io/platform/current/installation/configuration/topic-configs.html

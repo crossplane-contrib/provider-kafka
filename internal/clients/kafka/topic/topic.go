@@ -4,8 +4,9 @@ import (
 	"context"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-
 	"github.com/twmb/franz-go/pkg/kadm"
+
+	"fmt"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 )
@@ -23,31 +24,37 @@ import (
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kafka.AdminClient, name string) (*kafka.TopicSpecification, error) {
 
-	_, err := client.GetMetadata(&name, false, 1000)
+	tpc, err := client.GetMetadata(&name, true, 1000)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get the topic")
 	}
+	t := tpc.Topics
+	fmt.Println(t)
 	return nil, nil
 
 }
 
 // Create creates the topic from Kafka side
 func Create(ctx context.Context, client *kafka.AdminClient, topic *kafka.TopicSpecification) error {
-	topicD := *topic
+	tsp := kafka.TopicSpecification{
+		Topic:             topic.Topic,
+		NumPartitions:     topic.NumPartitions,
+		ReplicationFactor: topic.ReplicationFactor,
+	}
 	ts := make([]kafka.TopicSpecification, 1)
-	ts[0] = topicD
+	ts[0] = tsp
 	//_ = append(ts, topicD[0])
 	_, err := client.CreateTopics(ctx, ts)
 	if err != nil {
-		return errors.Wrap(err, "cannot creat topic")
+		return errors.Wrap(err, "cannot create topic")
 	}
 	return nil
 }
 
 // Delete deletes the topic from Kafka side
 func Delete(ctx context.Context, client *kafka.AdminClient, name string) error {
-	ts := []string{}
-	ts[0] = name
+	ts := []string{name}
+
 	_, err := client.DeleteTopics(ctx, ts)
 	if err != nil {
 		return errors.Wrap(err, "cannot delete topic")
