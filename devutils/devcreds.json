@@ -1,0 +1,10 @@
+{
+  "brokers":[
+    "kafka-dev-0.kafka-dev-headless:9092"
+  ],
+  "sasl":{
+    "mechanism":"PLAIN",
+    "username":"user",
+    "password":"<your-password>"
+  }
+}
