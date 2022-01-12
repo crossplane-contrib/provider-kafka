@@ -26,7 +26,6 @@ manage [Kafka](https://kafka.apache.org/) resources.
     ```
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
-
 3. Create a `ProviderConfig`, see [this](examples/provider/config.yaml) as an example.
 
 
