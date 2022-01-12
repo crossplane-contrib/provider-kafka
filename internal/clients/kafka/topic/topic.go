@@ -19,25 +19,40 @@ type Topic struct {
 	Config            map[string]*string
 }
 
+const (
+	errCannotListTopics           = "cannot list topics"
+	errNoCreateResponse           = "no create response for topic"
+	errCannotDescribeTopic        = "cannot describe topics"
+	errCannotFindTopicInDescribe  = "cannot find topic in describe result"
+	errErrorInTopicDescribeResult = "error in topic describe result"
+	errNoCreateResponseForTopic   = "no create response for topic"
+	errCannotCreateTopic          = "cannot create topic"
+	errNoDeleteResponseForTopic   = "no delete response for topic"
+	errCannotDeleteTopic          = "cannot delete topic"
+	errCannotGetTopic             = "cannot get topic"
+	errTopicDoesNotExist          = "topic does not exist"
+	errCannotUpdateTopicConfigs   = "cannot update topic configs"
+)
+
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
 
 	td, err := client.ListTopics(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot list topics")
+		return nil, errors.Wrap(err, errCannotListTopics)
 	}
 	if td[name].Err != nil {
-		return nil, errors.Wrap(td[name].Err, "topic does not exist in kafka cluster")
+		return nil, errors.Wrap(td[name].err, errTopicDoesNotExist)
 	}
 
 	t, ok := td[name]
 	if !ok {
-		return nil, errors.New("no create response for topic")
+		return nil, errors.New(errNoCreateResponse)
 	}
 
 	tc, err := client.DescribeTopicConfigs(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot describe topics")
+		return nil, errors.Wrap(err, errCannotDescribeTopic)
 	}
 
 	ts := Topic{}
@@ -51,10 +66,10 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 	rc, err := tc.On(name, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot find topic in describe result")
+		return nil, errors.Wrapf(err, errCannotFindTopicInDescribe)
 	}
 	if rc.Err != nil {
-		return nil, errors.Wrapf(rc.Err, "error in topic describe result")
+		return nil, errors.Wrapf(rc.Err, errErrorInTopicDescribeResult)
 	}
 	for _, value := range rc.Configs {
 		ts.Config[value.Key] = value.Value
@@ -73,10 +88,10 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 
 	t, ok := resp[topic.Name]
 	if !ok {
-		return errors.New("no create response for topic")
+		return errors.New(errNoCreateResponseForTopic)
 	}
 	if t.Err != nil {
-		return errors.Wrap(t.Err, "cannot create topic")
+		return errors.Wrap(t.Err, errCannotCreateTopic)
 	}
 
 	return nil
@@ -92,10 +107,10 @@ func Delete(ctx context.Context, client *kadm.Client, name string) error {
 
 	t, ok := td[name]
 	if !ok {
-		return errors.New("no delete response for topic")
+		return errors.New(errNoDeleteResponseForTopic)
 	}
 	if t.Err != nil {
-		return errors.Wrap(t.Err, "cannot delete topic")
+		return errors.Wrap(t.Err, errCannotDeleteTopic)
 	}
 
 	return nil
@@ -106,10 +121,10 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, "cannot get topic")
+		return errors.Wrap(err, errCannotGetTopic)
 	}
 	if existing == nil {
-		return errors.New("topic does not exist")
+		return errors.New(errTopicDoesNotExist)
 	}
 
 	if desired.Partitions != existing.Partitions {
@@ -128,10 +143,10 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, "cannot get topic")
+		return errors.Wrap(err, errCannotGetTopic)
 	}
 	if existing == nil {
-		return errors.New("topic does not exist")
+		return errors.New(errTopicDoesNotExist)
 	}
 
 	if desired.Partitions != existing.Partitions {
@@ -160,7 +175,7 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, "cannot get topic")
+		return errors.Wrap(err, errCannotGetTopic)
 	}
 	if existing == nil {
 		return errors.New("topic does not exist")
@@ -180,10 +195,10 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 				}
 				r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
 				if err != nil {
-					return errors.Wrap(err, "cannot update topic configs")
+					return errors.Wrap(err, errCannotUpdateTopicConfigs)
 				}
 				if r[0].Err != nil {
-					return errors.Wrap(r[0].Err, "cannot update topic configs")
+					return errors.Wrap(r[0].Err, errCannotUpdateTopicConfigs)
 				}
 			}
 		}
