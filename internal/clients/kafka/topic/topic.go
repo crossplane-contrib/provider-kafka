@@ -42,7 +42,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 		return nil, errors.Wrap(err, errCannotListTopics)
 	}
 	if td[name].Err != nil {
-		return nil, errors.Wrap(td[name].err, errTopicDoesNotExist)
+		return nil, errors.Wrap(td[name].Err, errTopicDoesNotExist)
 	}
 
 	t, ok := td[name]
