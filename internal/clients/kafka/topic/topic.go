@@ -112,7 +112,7 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return errors.New("topic does not exist")
 	}
 
-	if desired.Partitions != existing.Partitions {
+	if desired.Partitions != existing.Partitions || desired.ReplicationFactor != existing.ReplicationFactor {
 		return UpdatePartitions(ctx, client, desired)
 	}
 
