@@ -20,6 +20,7 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
+	aclv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	topicv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 	kafkav1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
@@ -29,6 +30,7 @@ func init() {
 	AddToSchemes = append(AddToSchemes,
 		kafkav1alpha1.SchemeBuilder.AddToScheme,
 		topicv1alpha1.SchemeBuilder.AddToScheme,
+		aclv1alpha1.SchemeBuilder.AddToScheme,
 	)
 }
 
