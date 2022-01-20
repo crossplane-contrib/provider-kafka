@@ -27,7 +27,7 @@ import (
 
 // Package type metadata.
 const (
-	Group   = "acl.template.crossplane.io"
+	Group   = "acl.crossplane.io"
 	Version = "v1alpha1"
 )
 
