@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: acls.acl.template.crossplane.io
+  name: acls.acl.kafka.crossplane.io
 spec:
-  group: acl.template.crossplane.io
+  group: acl.kafka.crossplane.io
   names:
     categories:
     - crossplane
