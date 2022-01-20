@@ -13,7 +13,7 @@ spec:
     categories:
     - crossplane
     - managed
-    - template
+    - kafka
     kind: Acl
     listKind: AclList
     plural: acls
@@ -53,85 +53,112 @@ spec:
           spec:
             description: An AclSpec defines the desired state of an Acl
             properties:
+              deletionPolicy:
+                default: Delete
+                description: DeletionPolicy specifies what will happen to the underlying
+                  external when this managed resource is deleted - either "Delete"
+                  or "Orphan" the external resource.
+                enum:
+                - Orphan
+                - Delete
+                type: string
               forProvider:
                 description: AclParameters are the configurable fields of a Acl.
                 properties:
                   aclHost:
                     type: string
                   aclOperation:
+                    enum:
+                    - Unknown
+                    - Any
+                    - All
+                    - Read
+                    - Write
+                    - Create
+                    - Delete
+                    - Alter
+                    - Describe
+                    - ClusterAction
+                    - DescribeConfigs
+                    - AlterConfigs
+                    - IdempotentWrite
                     type: string
                   aclPermissionType:
+                    enum:
+                    - Unknown
+                    - Any
+                    - Allow
+                    - Deny
                     type: string
                   aclPrinciple:
                     type: string
+                  resourcePatternTypeFilter:
+                    enum:
+                    - Prefixed
+                    - Any
+                    - Match
+                    - Literal
+                    type: string
                   resourceType:
+                    enum:
+                    - Unknown
+                    - Any
+                    - Topic
+                    - Group
+                    - Cluster
+                    - TransactionalID
                     type: string
                 required:
                 - aclHost
                 - aclOperation
                 - aclPermissionType
                 - aclPrinciple
+                - resourcePatternTypeFilter
                 - resourceType
                 type: object
-              inline:
-                description: A ResourceSpec defines the desired state of a managed
-                  resource.
+              providerConfigRef:
+                default:
+                  name: default
+                description: ProviderConfigReference specifies how the provider that
+                  will be used to create, observe, update, and delete this managed
+                  resource should be configured.
                 properties:
-                  deletionPolicy:
-                    default: Delete
-                    description: DeletionPolicy specifies what will happen to the
-                      underlying external when this managed resource is deleted -
-                      either "Delete" or "Orphan" the external resource.
-                    enum:
-                    - Orphan
-                    - Delete
+                  name:
+                    description: Name of the referenced object.
                     type: string
-                  providerConfigRef:
-                    default:
-                      name: default
-                    description: ProviderConfigReference specifies how the provider
-                      that will be used to create, observe, update, and delete this
-                      managed resource should be configured.
-                    properties:
-                      name:
-                        description: Name of the referenced object.
-                        type: string
-                    required:
-                    - name
-                    type: object
-                  providerRef:
-                    description: 'ProviderReference specifies the provider that will
-                      be used to create, observe, update, and delete this managed
-                      resource. Deprecated: Please use ProviderConfigReference, i.e.
-                      `providerConfigRef`'
-                    properties:
-                      name:
-                        description: Name of the referenced object.
-                        type: string
-                    required:
-                    - name
-                    type: object
-                  writeConnectionSecretToRef:
-                    description: WriteConnectionSecretToReference specifies the namespace
-                      and name of a Secret to which any connection details for this
-                      managed resource should be written. Connection details frequently
-                      include the endpoint, username, and password required to connect
-                      to the managed resource.
-                    properties:
-                      name:
-                        description: Name of the secret.
-                        type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - name
-                    - namespace
-                    type: object
+                required:
+                - name
+                type: object
+              providerRef:
+                description: 'ProviderReference specifies the provider that will be
+                  used to create, observe, update, and delete this managed resource.
+                  Deprecated: Please use ProviderConfigReference, i.e. `providerConfigRef`'
+                properties:
+                  name:
+                    description: Name of the referenced object.
+                    type: string
+                required:
+                - name
+                type: object
+              writeConnectionSecretToRef:
+                description: WriteConnectionSecretToReference specifies the namespace
+                  and name of a Secret to which any connection details for this managed
+                  resource should be written. Connection details frequently include
+                  the endpoint, username, and password required to connect to the
+                  managed resource.
+                properties:
+                  name:
+                    description: Name of the secret.
+                    type: string
+                  namespace:
+                    description: Namespace of the secret.
+                    type: string
+                required:
+                - name
+                - namespace
                 type: object
             required:
             - forProvider
-            - inline
             type: object
           status:
             description: A AclStatus represents the observed state of a Acl.

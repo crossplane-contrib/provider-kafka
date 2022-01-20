@@ -27,11 +27,16 @@ import (
 
 // AclParameters are the configurable fields of a Acl.
 type AclParameters struct {
+	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType      string `json:"resourceType"`
 	AclPrinciple      string `json:"aclPrinciple"`
 	AclHost           string `json:"aclHost"`
+	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
 	AclOperation      string `json:"aclOperation"`
+	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
 	AclPermissionType string `json:"aclPermissionType"`
+	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
+	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }
 
 // AclObservation are the observable fields of an Acl
@@ -41,7 +46,7 @@ type AclObservation struct {
 
 // An AclSpec defines the desired state of an Acl
 type AclSpec struct {
-	xpv1.ResourceSpec `json:"inline"`
+	xpv1.ResourceSpec `json:",inline"`
 	ForProvider       AclParameters `json:"forProvider"`
 }
 
@@ -59,7 +64,7 @@ type AclStatus struct {
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,template}
+// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,kafka}
 type Acl struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
