@@ -1,0 +1,13 @@
+apiVersion: acl.kafka.crossplane.io/v1alpha1
+kind: Acl
+metadata:
+  name: sample-acl
+spec:
+  forProvider:
+    resourceType: Any
+    aclPrinciple: Sample
+    aclHost: "*"
+    aclOperation: Any
+    aclPermissionType: Any
+  providerConfigRef:
+    name: example
