@@ -25,71 +25,71 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
-// AclParameters are the configurable fields of a Acl.
-type AclParameters struct {
+// AccessControlListParameters are the configurable fields of a AccessControlList.
+type AccessControlListParameters struct {
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
-	ResourceType string `json:"resourceType"`
-	AclPrinciple string `json:"aclPrinciple"`
-	AclHost      string `json:"aclHost"`
+	ResourceType               string `json:"resourceType"`
+	AccessControlListPrinciple string `json:"accessControlListPrinciple"`
+	AccessControlListHost      string `json:"accessControlListHost"`
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
-	AclOperation string `json:"aclOperation"`
+	AccessControlListOperation string `json:"accessControlListOperation"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
-	AclPermissionType string `json:"aclPermissionType"`
+	AccessControlListPermissionType string `json:"accessControlListPermissionType"`
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
 	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }
 
-// AclObservation are the observable fields of an Acl
-type AclObservation struct {
+// AccessControlListObservation are the observable fields of an AccessControlList
+type AccessControlListObservation struct {
 	ID string `json:"id,omitempty"`
 }
 
-// An AclSpec defines the desired state of an Acl
-type AclSpec struct {
+// An AccessControlListSpec defines the desired state of an AccessControlList
+type AccessControlListSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       AclParameters `json:"forProvider"`
+	ForProvider       AccessControlListParameters `json:"forProvider"`
 }
 
-// A AclStatus represents the observed state of a Acl.
-type AclStatus struct {
+// A AccessControlListStatus represents the observed state of a AccessControlList.
+type AccessControlListStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          AclObservation `json:"atProvider,omitempty"`
+	AtProvider          AccessControlListObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// A Acl is an example API type.
+// A AccessControlList is an example API type.
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,kafka}
-type Acl struct {
+type AccessControlList struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AclSpec   `json:"spec"`
-	Status AclStatus `json:"status,omitempty"`
+	Spec   AccessControlListSpec   `json:"spec"`
+	Status AccessControlListStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// AclList contains a list of Acl
-type AclList struct {
+// AccessControlListList contains a list of AccessControlList
+type AccessControlListList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Acl `json:"items"`
+	Items           []AccessControlList `json:"items"`
 }
 
-// Acl type metadata.
+// AccessControlList type metadata.
 var (
-	AclKind             = reflect.TypeOf(Acl{}).Name()
-	AclGroupKind        = schema.GroupKind{Group: Group, Kind: AclKind}.String()
-	AclKindAPIVersion   = AclKind + "." + SchemeGroupVersion.String()
-	AclGroupVersionKind = SchemeGroupVersion.WithKind(AclKind)
+	AccessControlListKind             = reflect.TypeOf(AccessControlList{}).Name()
+	AccessControlListGroupKind        = schema.GroupKind{Group: Group, Kind: AccessControlListKind}.String()
+	AccessControlListKindAPIVersion   = AccessControlListKind + "." + SchemeGroupVersion.String()
+	AccessControlListGroupVersionKind = SchemeGroupVersion.WithKind(AccessControlListKind)
 )
 
 func init() {
-	SchemeBuilder.Register(&Acl{}, &AclList{})
+	SchemeBuilder.Register(&AccessControlList{}, &AccessControlListList{})
 }

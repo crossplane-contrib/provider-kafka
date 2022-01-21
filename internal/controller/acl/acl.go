@@ -38,10 +38,10 @@ import (
 )
 
 const (
-	errNotAcl       = "managed resource is not a Acl custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
-	errGetPC        = "cannot get ProviderConfig"
-	errGetCreds     = "cannot get credentials"
+	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
+	errTrackPCUsage         = "cannot track ProviderConfig usage"
+	errGetPC                = "cannot get ProviderConfig"
+	errGetCreds             = "cannot get credentials"
 
 	errNewClient = "cannot create new Service"
 )
@@ -53,16 +53,16 @@ var (
 	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
 
-// Setup adds a controller that reconciles Acl managed resources.
+// Setup adds a controller that reconciles AccessControlList managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
-	name := managed.ControllerName(v1alpha1.AclGroupKind)
+	name := managed.ControllerName(v1alpha1.AccessControlListGroupKind)
 
 	o := controller.Options{
 		RateLimiter: ratelimiter.NewDefaultManagedRateLimiter(rl),
 	}
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.AclGroupVersionKind),
+		resource.ManagedKind(v1alpha1.AccessControlListGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
@@ -73,7 +73,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		For(&v1alpha1.Acl{}).
+		For(&v1alpha1.AccessControlList{}).
 		Complete(r)
 }
 
@@ -91,9 +91,9 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.Acl)
+	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return nil, errors.New(errNotAcl)
+		return nil, errors.New(errNotAccessControlList)
 	}
 
 	if err := c.usage.Track(ctx, mg); err != nil {
@@ -128,9 +128,9 @@ type external struct {
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.Acl)
+	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotAcl)
+		return managed.ExternalObservation{}, errors.New(errNotAccessControlList)
 	}
 
 	// These fmt statements should be removed in the real implementation.
@@ -154,9 +154,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Acl)
+	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotAcl)
+		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
 	}
 
 	fmt.Printf("Creating: %+v", cr)
@@ -169,9 +169,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Acl)
+	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotAcl)
+		return managed.ExternalUpdate{}, errors.New(errNotAccessControlList)
 	}
 
 	fmt.Printf("Updating: %+v", cr)
@@ -184,9 +184,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
-	cr, ok := mg.(*v1alpha1.Acl)
+	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return errors.New(errNotAcl)
+		return errors.New(errNotAccessControlList)
 	}
 
 	fmt.Printf("Deleting: %+v", cr)

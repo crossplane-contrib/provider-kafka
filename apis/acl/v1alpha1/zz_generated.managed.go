@@ -19,58 +19,58 @@ package v1alpha1
 
 import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
-// GetCondition of this Acl.
-func (mg *Acl) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+// GetCondition of this AccessControlList.
+func (mg *AccessControlList) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)
 }
 
-// GetDeletionPolicy of this Acl.
-func (mg *Acl) GetDeletionPolicy() xpv1.DeletionPolicy {
+// GetDeletionPolicy of this AccessControlList.
+func (mg *AccessControlList) GetDeletionPolicy() xpv1.DeletionPolicy {
 	return mg.Spec.DeletionPolicy
 }
 
-// GetProviderConfigReference of this Acl.
-func (mg *Acl) GetProviderConfigReference() *xpv1.Reference {
+// GetProviderConfigReference of this AccessControlList.
+func (mg *AccessControlList) GetProviderConfigReference() *xpv1.Reference {
 	return mg.Spec.ProviderConfigReference
 }
 
 /*
-GetProviderReference of this Acl.
+GetProviderReference of this AccessControlList.
 Deprecated: Use GetProviderConfigReference.
 */
-func (mg *Acl) GetProviderReference() *xpv1.Reference {
+func (mg *AccessControlList) GetProviderReference() *xpv1.Reference {
 	return mg.Spec.ProviderReference
 }
 
-// GetWriteConnectionSecretToReference of this Acl.
-func (mg *Acl) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+// GetWriteConnectionSecretToReference of this AccessControlList.
+func (mg *AccessControlList) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
-// SetConditions of this Acl.
-func (mg *Acl) SetConditions(c ...xpv1.Condition) {
+// SetConditions of this AccessControlList.
+func (mg *AccessControlList) SetConditions(c ...xpv1.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetDeletionPolicy of this Acl.
-func (mg *Acl) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+// SetDeletionPolicy of this AccessControlList.
+func (mg *AccessControlList) SetDeletionPolicy(r xpv1.DeletionPolicy) {
 	mg.Spec.DeletionPolicy = r
 }
 
-// SetProviderConfigReference of this Acl.
-func (mg *Acl) SetProviderConfigReference(r *xpv1.Reference) {
+// SetProviderConfigReference of this AccessControlList.
+func (mg *AccessControlList) SetProviderConfigReference(r *xpv1.Reference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
 /*
-SetProviderReference of this Acl.
+SetProviderReference of this AccessControlList.
 Deprecated: Use SetProviderConfigReference.
 */
-func (mg *Acl) SetProviderReference(r *xpv1.Reference) {
+func (mg *AccessControlList) SetProviderReference(r *xpv1.Reference) {
 	mg.Spec.ProviderReference = r
 }
 
-// SetWriteConnectionSecretToReference of this Acl.
-func (mg *Acl) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+// SetWriteConnectionSecretToReference of this AccessControlList.
+func (mg *AccessControlList) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
