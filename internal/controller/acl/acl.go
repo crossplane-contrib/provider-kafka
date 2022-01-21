@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	errNotAcl    = "managed resource is not a Acl custom resource"
+	errNotAcl       = "managed resource is not a Acl custom resource"
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"

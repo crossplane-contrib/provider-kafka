@@ -28,11 +28,11 @@ import (
 // AclParameters are the configurable fields of a Acl.
 type AclParameters struct {
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
-	ResourceType      string `json:"resourceType"`
-	AclPrinciple      string `json:"aclPrinciple"`
-	AclHost           string `json:"aclHost"`
+	ResourceType string `json:"resourceType"`
+	AclPrinciple string `json:"aclPrinciple"`
+	AclHost      string `json:"aclHost"`
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
-	AclOperation      string `json:"aclOperation"`
+	AclOperation string `json:"aclOperation"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
 	AclPermissionType string `json:"aclPermissionType"`
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
