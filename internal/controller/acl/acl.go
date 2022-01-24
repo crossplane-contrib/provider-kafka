@@ -19,6 +19,8 @@ package acl
 import (
 	"context"
 	"fmt"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
+	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,13 +37,14 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
 const (
-	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
-	errTrackPCUsage         = "cannot track ProviderConfig usage"
-	errGetPC                = "cannot get ProviderConfig"
-	errGetCreds             = "cannot get credentials"
+	errNotAccessControlList       = "managed resource is not a AccessControlList custom resource"
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	errGetPC        = "cannot get ProviderConfig"
+	errGetCreds     = "cannot get credentials"
 
 	errNewClient = "cannot create new Service"
 )
@@ -122,8 +125,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	// A 'client' used to connect to the external resource API. In practice this
-	// would be something like an AWS SDK client.
+	kafkaClient *kadm.Client
 	service interface{}
 }
 
@@ -136,20 +138,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// These fmt statements should be removed in the real implementation.
 	fmt.Printf("Observing: %+v", cr)
 
+	acl, _ := acl.List(ctx, c.kafkaClient, meta.GetExternalName(cr))
+
+	fmt.Println(acl)
+
 	return managed.ExternalObservation{
-		// Return false when the external resource does not exist. This lets
-		// the managed resource reconciler know that it needs to call Create to
-		// (re)create the resource, or that it has successfully been deleted.
-		ResourceExists: true,
-
-		// Return false when the external resource exists, but it not up to date
-		// with the desired managed resource state. This lets the managed
-		// resource reconciler know that it needs to call Update.
-		ResourceUpToDate: true,
-
-		// Return any details that may be required to connect to the external
-		// resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
+		ResourceExists:          true,
+		ResourceUpToDate:        true,
+		ResourceLateInitialized: true,
 	}, nil
 }
 
