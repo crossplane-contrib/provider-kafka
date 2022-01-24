@@ -3,7 +3,6 @@ package acl
 import (
 	"context"
 	"fmt"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
@@ -30,19 +29,23 @@ type Topic struct {
 }
 
 // List lists all the ACLs in Kafka
-func List(ctx context.Context, cl *kadm.Client, name string) (*kadm.DescribeACLsResults, error) {
-//	b := *kadm.NewACLs().Topics("sample_topic")
-	b := (*kadm.ACLBuilder).AllowHosts("*")
-	resp, _ := cl.DescribeACLs(ctx, b)
+func List() {
 
-	fmt.Println("*** LIST RESPONSE ***", resp)
-
-	return &resp, nil
 }
 
 // Create creates an ACL from the Kafka side
-func Create() {
+func Create(ctx context.Context, cl *kadm.Client, name string) (*kadm.CreateACLsResults, error) {
 
+	b := kadm.ACLBuilder{}
+	ab := b.Topics("sample_topic").Allow("Jon").AllowHosts("localhost").Operations(2).ResourcePatternType(3)
+
+	c, err := cl.CreateACLs(ctx, ab)
+
+	fmt.Println("*** CREATING ACL ***", c)
+
+	fmt.Println("ERROR: ", err)
+
+	return &c, err
 }
 
 // Delete deletes an ACL from the Kafka side

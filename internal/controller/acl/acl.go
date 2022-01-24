@@ -19,6 +19,7 @@ package acl
 import (
 	"context"
 	"fmt"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/twmb/franz-go/pkg/kadm"
 
@@ -37,14 +38,13 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
 const (
-	errNotAccessControlList       = "managed resource is not a AccessControlList custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
-	errGetPC        = "cannot get ProviderConfig"
-	errGetCreds     = "cannot get credentials"
+	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
+	errTrackPCUsage         = "cannot track ProviderConfig usage"
+	errGetPC                = "cannot get ProviderConfig"
+	errGetCreds             = "cannot get credentials"
 
 	errNewClient = "cannot create new Service"
 )
@@ -126,7 +126,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kafkaClient *kadm.Client
-	service interface{}
+	service     interface{}
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -138,12 +138,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// These fmt statements should be removed in the real implementation.
 	fmt.Printf("Observing: %+v", cr)
 
-	acl, _ := acl.List(ctx, c.kafkaClient, meta.GetExternalName(cr))
-
-	fmt.Println(acl)
-
 	return managed.ExternalObservation{
-		ResourceExists:          true,
+		ResourceExists:          false,
 		ResourceUpToDate:        true,
 		ResourceLateInitialized: true,
 	}, nil
@@ -155,7 +151,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
 	}
 
-	fmt.Printf("Creating: %+v", cr)
+	acl, _ := acl.Create(ctx, c.kafkaClient, meta.GetExternalName(cr))
+
+	fmt.Println(acl)
 
 	return managed.ExternalCreation{
 		// Optionally return any details that may be required to connect to the
