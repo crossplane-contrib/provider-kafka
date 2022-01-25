@@ -3,6 +3,7 @@ package acl
 import (
 	"context"
 	"fmt"
+
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
@@ -37,13 +38,15 @@ func List() {
 func Create(ctx context.Context, cl *kadm.Client, name string) (*kadm.CreateACLsResults, error) {
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics("sample_topic").Allow("Jon").AllowHosts("localhost").Operations(2).ResourcePatternType(3)
+	ab := b.Topics("sample_topic").Allow("User:Jon").AllowHosts("*").Operations(kadm.OpWrite).ResourcePatternType(kadm.ACLPatternLiteral)
 
 	c, err := cl.CreateACLs(ctx, ab)
 
 	fmt.Println("*** CREATING ACL ***", c)
 
 	fmt.Println("ERROR: ", err)
+
+	fmt.Println("Underlying ERROR: ", c[0].Err)
 
 	return &c, err
 }
