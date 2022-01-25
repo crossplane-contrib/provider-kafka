@@ -4,4 +4,4 @@ timeout_ms = 10000
 [sasl]
 method = "plain"
 user = "user"
-pass = "<your-password>
+pass = "<your-password>"
