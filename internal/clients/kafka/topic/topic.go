@@ -131,6 +131,10 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return UpdatePartitions(ctx, client, desired)
 	}
 
+	if desired.ReplicationFactor != existing.ReplicationFactor {
+		return UpdateReplicationFactor()
+	}
+
 	if desired.Config != nil {
 		return UpdateConfigs(ctx, client, desired)
 	}
@@ -163,11 +167,13 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 		}
 	}
 
-	if desired.ReplicationFactor != existing.ReplicationFactor {
-		return errors.New("updating replication factor is not supported")
-	}
-
 	return nil
+}
+
+// UpdateReplicationFactor is not supported in Kafka. A user is given an error message
+func UpdateReplicationFactor() error {
+
+	return errors.New("updating replication factor is not supported")
 }
 
 // UpdateConfigs updates an optional topic Admin Configuration in Kafka
