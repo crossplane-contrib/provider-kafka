@@ -155,15 +155,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
 	}
 
-	acl, _ := acl.Create(ctx, c.kafkaClient, meta.GetExternalName(cr))
-
-	fmt.Println(acl)
-
-	return managed.ExternalCreation{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {

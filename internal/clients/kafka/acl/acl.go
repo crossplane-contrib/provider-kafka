@@ -2,9 +2,12 @@ package acl
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/pkg/errors"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	"github.com/twmb/franz-go/pkg/kadm"
+	// "github.com/twmb/franz-go/pkg/kmsg"
 )
 
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
@@ -35,25 +38,46 @@ func List() {
 }
 
 // Create creates an ACL from the Kafka side
-func Create(ctx context.Context, cl *kadm.Client, name string) (*kadm.CreateACLsResults, error) {
+func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics("sample_topic").Allow("User:Jon").AllowHosts("*").Operations(kadm.OpWrite).ResourcePatternType(kadm.ACLPatternLiteral)
+	// ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(accessControlList.AccessControlListOperation).ResourcePatternType(accessControlList.ResourcePatternTypeFilter)
+	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(3).ResourcePatternType(1)
 
-	c, err := cl.CreateACLs(ctx, ab)
+	resp, err := cl.CreateACLs(ctx, ab)
+	if err != nil {
+		return err
+	}
 
-	fmt.Println("*** CREATING ACL ***", c)
+	a, ok := resp[accessControlList.Name]
+	if !ok {
+		return errors.New("no create response for acl")
+	}
+	if a.Err != nil {
+		return errors.Wrap(a.Err, "cannot create acl")
+	}
 
-	fmt.Println("ERROR: ", err)
-
-	fmt.Println("Underlying ERROR: ", c[0].Err)
-
-	return &c, err
+	return nil
 }
 
 // Delete deletes an ACL from the Kafka side
 func Delete() {
 
+}
+
+// Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.
+func Generate(name string, params *v1alpha1.AccessControlListParameters) *AccessControlList {
+	acl := &AccessControlList{
+		Name:                            name,
+		ResourceType:                    params.ResourceType,
+		AccessControlListPrinciple:      params.AccessControlListPrinciple,
+		AccessControlListHost:           params.AccessControlListHost,
+		AccessControlListOperation:      params.AccessControlListOperation,
+		AccessControlListPermissionType: params.AccessControlListPermissionType,
+		ResourcePatternTypeFilter:       params.ResourcePatternTypeFilter,
+	}
+
+	return acl
 }
 
 // LateInitializeSpec fills empty ACL spec fields with the data retrieved from Kafka.
