@@ -1,76 +1,129 @@
 package topic
 
 import (
-	"context"
-	"testing"
-
-	"github.com/twmb/franz-go/pkg/kadm"
-
-	"github.com/crossplane/crossplane-runtime/pkg/test"
+	"fmt"
+	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
 	"github.com/google/go-cmp/cmp"
+	"testing"
 )
 
-type kdmClient struct {
-	client *kadm.Client
-}
-
-func Test_Get(t *testing.T) {
-
+func TestGenerate(t *testing.T) {
 	type args struct {
-		ctx  context.Context
-		name string
+		name   string
+		params *v1alpha1.TopicParameters
+	}
+
+	type want struct {
+		topic *Topic
 	}
 
 	cases := map[string]struct {
-		args              args
-		Name              string
-		ReplicationFactor int16
-		Partitions        int32
-		ID                string
-		Config            map[string]*string
-	}{}
+		args args
+		want want
+	}{
+		"ValidComparison": {
+			args: args{
+				name: "k23",
+				params: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+			want: want{
+				&Topic{
+					Name:              "k23",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+		},
+		"NameDifference": {
+			args: args{
+				name: "Notk23",
+				params: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+			want: want{
+				&Topic{
+					Name:              "k23",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+		},
+	}
 
-	for name, tc := range cases {
+	for name, tt := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := tc.kdmClient.client
-			got, err := e.Observe(tc.args.ctx, tc.args.mg)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
+			topic := Generate(tt.args.name, tt.args.params)
+			fmt.Println(topic)
+			if diff := cmp.Diff(tt.want.topic, topic); diff != "" {
+				t.Errorf("Generate() =  -want, +got:\n%s", diff)
 			}
 		})
 	}
 }
 
-func Test_Create(t *testing.T) {
-
+func TestIsUpToDate(t *testing.T) {
 	type args struct {
-		ctx  context.Context
-		name string
+		in       *v1alpha1.TopicParameters
+		observed *Topic
 	}
 
 	cases := map[string]struct {
-		args              args
-		Name              string
-		ReplicationFactor int16
-		Partitions        int32
-		ID                string
-		Config            map[string]*string
-	}{}
-
-	for name, tc := range cases {
+		name string
+		args args
+		want bool
+	}{
+		"IsUpToDate": {
+			name: "k25",
+			args: args{
+				in: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+				observed: &Topic{
+					Name:              "k24",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+			want: true,
+		},
+		"DiffReplicationFactor": {
+			name: "k25",
+			args: args{
+				in: &v1alpha1.TopicParameters{
+					ReplicationFactor: 2,
+					Partitions:        1,
+					Config:            nil,
+				},
+				observed: &Topic{
+					Name:              "k25",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+			want: false,
+		},
+	}
+	for name, tt := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := tc.kdmClient.client
-			got, err := e.Observe(tc.args.ctx, tc.args.mg)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
+			isUpToDate := IsUpToDate(tt.args.in, tt.args.observed)
+			fmt.Println(isUpToDate)
+			if diff := cmp.Diff(tt.want, isUpToDate); diff != "" {
+				t.Errorf("IsUpToDate() = -want +got")
 			}
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
+
 		})
 	}
-
 }
