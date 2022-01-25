@@ -1,0 +1,7 @@
+seed_brokers = ["kafka-dev-0.kafka-dev-headless:9092"]
+timeout_ms = 10000
+
+[sasl]
+method = "plain"
+user = "user"
+pass = "<your-password>
