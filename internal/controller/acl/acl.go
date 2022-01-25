@@ -19,6 +19,9 @@ package acl
 import (
 	"context"
 	"fmt"
+
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -69,7 +72,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newNoOpService}),
+			newServiceFn: kafka.NewAdminClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
@@ -85,7 +88,8 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
+	log          logging.Logger
+	newServiceFn func(creds []byte) (*kadm.Client, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -119,14 +123,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kafkaClient *kadm.Client
-	service     interface{}
+	log         logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -136,7 +140,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	// These fmt statements should be removed in the real implementation.
-	fmt.Printf("Observing: %+v", cr)
+	fmt.Printf("Observing ACL resource: %s", cr.Name)
 
 	return managed.ExternalObservation{
 		ResourceExists:          false,
