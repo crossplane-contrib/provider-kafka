@@ -23,7 +23,7 @@ func TestGenerate(t *testing.T) {
 	}{
 		"ValidComparison": {
 			args: args{
-				name: "k23",
+				name: "validComparison",
 				params: &v1alpha1.TopicParameters{
 					ReplicationFactor: 1,
 					Partitions:        1,
@@ -32,7 +32,7 @@ func TestGenerate(t *testing.T) {
 			},
 			want: want{
 				&Topic{
-					Name:              "k23",
+					Name:              "validComparison",
 					ReplicationFactor: 1,
 					Partitions:        1,
 					Config:            nil,
@@ -41,7 +41,7 @@ func TestGenerate(t *testing.T) {
 		},
 		"NameDifference": {
 			args: args{
-				name: "Notk23",
+				name: "nameDiff",
 				params: &v1alpha1.TopicParameters{
 					ReplicationFactor: 1,
 					Partitions:        1,
@@ -50,7 +50,43 @@ func TestGenerate(t *testing.T) {
 			},
 			want: want{
 				&Topic{
-					Name:              "k23",
+					Name:              "nameDifferent",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+		},
+		"ReplicationFactorDifference": {
+			args: args{
+				name: "repFactorDiff",
+				params: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+			want: want{
+				&Topic{
+					Name:              "repFactorDiff",
+					ReplicationFactor: 3,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+		},
+		"PartitionsDifference": {
+			args: args{
+				name: "partitionsDiff",
+				params: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        3,
+					Config:            nil,
+				},
+			},
+			want: want{
+				&Topic{
+					Name:              "partitionsDiff",
 					ReplicationFactor: 1,
 					Partitions:        1,
 					Config:            nil,
@@ -82,7 +118,7 @@ func TestIsUpToDate(t *testing.T) {
 		want bool
 	}{
 		"IsUpToDate": {
-			name: "k25",
+			name: "upToDate",
 			args: args{
 				in: &v1alpha1.TopicParameters{
 					ReplicationFactor: 1,
@@ -90,7 +126,7 @@ func TestIsUpToDate(t *testing.T) {
 					Config:            nil,
 				},
 				observed: &Topic{
-					Name:              "k24",
+					Name:              "upToDate",
 					ReplicationFactor: 1,
 					Partitions:        1,
 					Config:            nil,
@@ -99,7 +135,7 @@ func TestIsUpToDate(t *testing.T) {
 			want: true,
 		},
 		"DiffReplicationFactor": {
-			name: "k25",
+			name: "repFactorDiff",
 			args: args{
 				in: &v1alpha1.TopicParameters{
 					ReplicationFactor: 2,
