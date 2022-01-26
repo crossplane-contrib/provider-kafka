@@ -2,11 +2,12 @@ package acl
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
-
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kmsg"
+	"strings"
+
 	// "github.com/twmb/franz-go/pkg/kmsg"
 )
 
@@ -40,21 +41,20 @@ func List() {
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
+	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
+	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
+
 	b := kadm.ACLBuilder{}
-	// ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(accessControlList.AccessControlListOperation).ResourcePatternType(accessControlList.ResourcePatternTypeFilter)
-	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(3).ResourcePatternType(1)
+	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(o).ResourcePatternType(rpt)
 
 	resp, err := cl.CreateACLs(ctx, ab)
 	if err != nil {
 		return err
 	}
 
-	a, ok := resp[accessControlList.Name]
-	if !ok {
+	a := resp[0].Principal
+	if len(a) == 0 {
 		return errors.New("no create response for acl")
-	}
-	if a.Err != nil {
-		return errors.Wrap(a.Err, "cannot create acl")
 	}
 
 	return nil
