@@ -42,10 +42,12 @@ func List() {
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
+	ao := []kadm.ACLOperation{o}
+
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(o).ResourcePatternType(rpt)
+	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.CreateACLs(ctx, ab)
 	if err != nil {

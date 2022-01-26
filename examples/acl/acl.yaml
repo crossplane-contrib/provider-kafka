@@ -1,18 +1,20 @@
 apiVersion: acl.kafka.crossplane.io/v1alpha1
 kind: AccessControlList
 metadata:
-  name: new-topic
+  name: new-topic-6
 spec:
   forProvider:
+    # Valid values are: Any, Topic, Group,
+    # Cluster, TransactionalID
     resourceType: "Topic"
     accessControlListPrinciple: "User:Ed"
     accessControlListHost: "*"
     # Valid values are: Unknown, Any, All, Read, Write,
     # Create, Delete, Alter, Describe, ClusterAction,
     # DescribeConfigs, AlterConfigs, IdempotentWrite
-    accessControlListOperation: "Write"
+    accessControlListOperation: "AlterConfigs"
     accessControlListPermissionType: "Allow"
     # Valid values are: Prefixed, Any, Match, Literal
-    resourcePatternTypeFilter: "Any"
+    resourcePatternTypeFilter: "Literal"
   providerConfigRef:
     name: example
