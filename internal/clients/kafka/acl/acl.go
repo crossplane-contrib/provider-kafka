@@ -46,17 +46,53 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
-	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+	switch accessControlList.ResourceType {
 
-	resp, err := cl.CreateACLs(ctx, ab)
-	if err != nil {
-		return err
-	}
+	case "Topic":
 
-	a := resp[0].Principal
-	if len(a) == 0 {
-		return errors.New("no create response for acl")
+		b := kadm.ACLBuilder{}
+		ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+		resp, err := cl.CreateACLs(ctx, ab)
+		if err != nil {
+			return err
+		}
+
+		a := resp[0].Principal
+		if len(a) == 0 {
+			return errors.New("no create response for acl")
+		}
+
+	case "Group":
+
+		b := kadm.ACLBuilder{}
+		ab := b.Groups(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+		resp, err := cl.CreateACLs(ctx, ab)
+		if err != nil {
+			return err
+		}
+
+		a := resp[0].Principal
+		if len(a) == 0 {
+			return errors.New("no create response for acl")
+		}
+
+	case "TransactionalID":
+
+		b := kadm.ACLBuilder{}
+		ab := b.TransactionalIDs(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+		resp, err := cl.CreateACLs(ctx, ab)
+		if err != nil {
+			return err
+		}
+
+		a := resp[0].Principal
+		if len(a) == 0 {
+			return errors.New("no create response for acl")
+		}
+
 	}
 
 	return nil
