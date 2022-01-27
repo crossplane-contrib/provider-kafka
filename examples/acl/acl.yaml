@@ -1,7 +1,7 @@
 apiVersion: acl.kafka.crossplane.io/v1alpha1
 kind: AccessControlList
 metadata:
-  name: new-topic-6
+  name: robert-topic-g
 spec:
   forProvider:
     # Valid values are: Any, Topic, Group,

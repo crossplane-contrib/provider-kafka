@@ -2,6 +2,7 @@ package acl
 
 import (
 	"context"
+	"fmt"
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -34,12 +35,30 @@ type Topic struct {
 }
 
 // List lists all the ACLs in Kafka
-func List() {
+func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (kadm.DescribeACLsResults, error) {
 
+	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
+	ao := []kadm.ACLOperation{o}
+
+	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
+
+	b := kadm.ACLBuilder{}
+	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+	resp, err := cl.DescribeACLs(ctx, ab)
+	if err != nil {
+		return nil, errors.Wrap(err,"cannot describe ACL")
+	}
+
+	fmt.Println(" *** ACL List Response ***", resp)
+
+	return resp, nil
 }
 
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
+
+	fmt.Printf("** HIT CREATE ** ")
 
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
@@ -98,9 +117,27 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	return nil
 }
 
-// Delete deletes an ACL from the Kafka side
-func Delete() {
+// Delete creates an ACL from the Kafka side
+func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
+	fmt.Println("*** HIT DELETE FUNCTION ***")
+
+	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
+	ao := []kadm.ACLOperation{o}
+
+	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
+
+	b := kadm.ACLBuilder{}
+	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+	resp, err := cl.DeleteACLs(ctx, ab)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Delete Response:", resp)
+
+	return nil
 }
 
 // Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.

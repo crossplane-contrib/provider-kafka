@@ -142,6 +142,19 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// These fmt statements should be removed in the real implementation.
 	fmt.Printf("Observing ACL resource: %s", cr.Name)
 
+	ae, _ := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
+
+	fmt.Println("*** AE VALUE: ", ae)
+
+	if ae != nil {
+
+		fmt.Printf("*** RESOURCE EXISTS INSIDE LOOP? ***", managed.ExternalObservation{})
+
+		return managed.ExternalObservation{ResourceExists: true}, nil
+	}
+
+	fmt.Printf("*** RESOURCE EXISTS? ***", managed.ExternalObservation{})
+
 	return managed.ExternalObservation{
 		ResourceExists:          false,
 		ResourceUpToDate:        true,
@@ -174,12 +187,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
+
+	fmt.Println("*** HIT DELETE FUNCTION IN CONTROLLER***")
+
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return errors.New(errNotAccessControlList)
 	}
-
-	fmt.Printf("Deleting: %+v", cr)
-
-	return nil
+	return acl.Delete(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
