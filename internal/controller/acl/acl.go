@@ -144,20 +144,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ae, _ := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 
-	fmt.Println("*** AE VALUE: ", ae)
-
 	if ae != nil {
 
-		fmt.Printf("*** RESOURCE EXISTS INSIDE LOOP? ***", managed.ExternalObservation{})
-
-		return managed.ExternalObservation{ResourceExists: true}, nil
+		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	fmt.Printf("*** RESOURCE EXISTS? ***", managed.ExternalObservation{})
-
 	return managed.ExternalObservation{
-		ResourceExists:          false,
-		ResourceUpToDate:        true,
+		ResourceExists:          true,
+		ResourceUpToDate:        acl.IsUpToDate(&cr.Spec.ForProvider, ae),
 		ResourceLateInitialized: true,
 	}, nil
 }
@@ -187,8 +181,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
-
-	fmt.Println("*** HIT DELETE FUNCTION IN CONTROLLER***")
 
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {

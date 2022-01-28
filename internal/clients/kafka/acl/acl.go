@@ -35,7 +35,7 @@ type Topic struct {
 }
 
 // List lists all the ACLs in Kafka
-func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (kadm.DescribeACLsResults, error) {
+func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
 
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
@@ -46,19 +46,26 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.DescribeACLs(ctx, ab)
+
+	fmt.Println("DescribeACL Response: ", resp)
+
+	acl := AccessControlList{}
+	acl.ResourceType = accessControlList.ResourceType
+	acl.AccessControlListPrinciple = accessControlList.AccessControlListPrinciple
+	acl.AccessControlListHost = accessControlList.AccessControlListHost
+	acl.AccessControlListOperation = accessControlList.AccessControlListOperation
+	acl.AccessControlListPermissionType = accessControlList.AccessControlListPermissionType
+	acl.ResourcePatternTypeFilter = accessControlList.ResourcePatternTypeFilter
+
 	if err != nil {
 		return nil, errors.Wrap(err,"cannot describe ACL")
 	}
 
-	fmt.Println(" *** ACL List Response ***", resp)
-
-	return resp, nil
+	return &acl, nil
 }
 
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-
-	fmt.Printf("** HIT CREATE ** ")
 
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
@@ -112,6 +119,8 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 			return errors.New("no create response for acl")
 		}
 
+		return nil
+
 	}
 
 	return nil
@@ -119,8 +128,6 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 // Delete creates an ACL from the Kafka side
 func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-
-	fmt.Println("*** HIT DELETE FUNCTION ***")
 
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
@@ -164,8 +171,26 @@ func LateInitializeSpec() bool {
 
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
 // supplied Kafka ACLs.
-func IsUpToDate() {
-
+func IsUpToDate(in *v1alpha1.AccessControlListParameters , observed *AccessControlList) bool {
+	if in.ResourceType  != observed.ResourceType {
+		return false
+	}
+	if in.AccessControlListPrinciple  != observed.AccessControlListPrinciple {
+		return false
+	}
+	if in.AccessControlListPrinciple  != observed.AccessControlListPrinciple {
+		return false
+	}
+	if in.AccessControlListOperation  != observed.AccessControlListOperation {
+		return false
+	}
+	if in.AccessControlListPermissionType  != observed.AccessControlListPermissionType {
+		return false
+	}
+	if in.ResourcePatternTypeFilter  != observed.ResourcePatternTypeFilter {
+		return false
+	}
+	return true
 }
 
 func stringValue(p *string) string {
