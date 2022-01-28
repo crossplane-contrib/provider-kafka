@@ -6,6 +6,6 @@ spec:
   credentials:
     source: Secret
     secretRef:
-      namespace: default
+      namespace: crossplane-system
       name: kafka-creds
       key: credentials

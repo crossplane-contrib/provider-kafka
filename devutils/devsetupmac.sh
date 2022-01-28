@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 # Usage
 function usage {
   prereqs
@@ -19,9 +18,9 @@ crossplane(){
   echo "Installing crossplane.  Did you already install k8s and is it running?"
   kubectl delete namespace crossplane-system
   kubectl create namespace crossplane-system
-  helm repo add crossplane-stable https://charts.crossplane.io/stable
+  helm repo add crossplane-stable https://charts.crossplane.io/
   helm repo update
-  helm install crossplane --namespace crossplane-system crossplane-stable/crossplane
+  helm install crossplane --namespace crossplane-system crossplane-stable/crossplane --version 1.6.1
 }
 
 prereqs(){
