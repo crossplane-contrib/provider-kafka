@@ -127,7 +127,7 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 // Delete creates an ACL from the Kafka side
 func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-	fmt.Println("***DELETING***")
+
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
 
@@ -171,6 +171,7 @@ func LateInitializeSpec() bool {
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
 // supplied Kafka ACLs.
 func IsUpToDate(in *v1alpha1.AccessControlListParameters , observed *AccessControlList) bool {
+
 	if in.ResourceType  != observed.ResourceType {
 		return false
 	}

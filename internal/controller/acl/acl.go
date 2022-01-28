@@ -19,8 +19,8 @@ package acl
 import (
 	"context"
 	"fmt"
-
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -139,24 +139,24 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotAccessControlList)
 	}
 
-	// These fmt statements should be removed in the real implementation.
-	fmt.Printf("Observing ACL resource: %s", cr.Name)
-
 	ae, _ := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 
 	if ae == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	cr.Status.AtProvider.ID = ae.Name
+	cr.Status.SetConditions(v1.Available())
+
 	return managed.ExternalObservation{
 		ResourceExists:          true,
 		ResourceUpToDate:        acl.IsUpToDate(&cr.Spec.ForProvider, ae),
-		ResourceLateInitialized: true,
+		ResourceLateInitialized: false,
 	}, nil
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	fmt.Println("CREATING THE ACL NOW")
+
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
