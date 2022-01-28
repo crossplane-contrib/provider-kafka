@@ -24,7 +24,7 @@ crossplane(){
 }
 
 prereqs(){
-  echo "Did you already install helm, kubectl, a running kube cluster, kcl cli or kaf cli, crossplane, kubefwd?"
+  echo "Did you already install helm, kubectl, and minikube?  Is mini"
   echo "If not, hit up that README first!"
 }
 endout(){
