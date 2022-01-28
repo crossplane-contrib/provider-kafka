@@ -24,7 +24,7 @@ crossplane(){
 }
 
 prereqs(){
-  echo "Did you already install helm, kubectl, and minikube?  Is mini"
+  echo "Did you already install helm, kubectl, and minikube?  Is minikube running?"
   echo "If not, hit up that README first!"
 }
 endout(){
