@@ -97,6 +97,7 @@ while getopts ":xkch" optKey; do
       crossplane
       kafka
       config
+      ;;
 		h|*)
 			usage
 			;;
