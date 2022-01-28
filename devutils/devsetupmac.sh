@@ -82,7 +82,7 @@ config(){
 }
 
 # Set up the options
-while getopts ":xkch" optKey; do
+while getopts ":xkcha" optKey; do
 	case "$optKey" in
     x)
       crossplane
