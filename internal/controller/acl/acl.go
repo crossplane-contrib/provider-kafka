@@ -144,8 +144,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ae, _ := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 
-	if ae != nil {
-
+	if ae == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -157,6 +156,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+	fmt.Println("CREATING THE ACL NOW")
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)

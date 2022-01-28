@@ -46,8 +46,11 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	ab := b.Topics(accessControlList.Name).Allow(accessControlList.AccessControlListPrinciple).AllowHosts(accessControlList.AccessControlListHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.DescribeACLs(ctx, ab)
+	exists := resp[0].Described
 
-	fmt.Println("DescribeACL Response: ", resp)
+	if exists == nil {
+		return nil, errors.Wrap(err,"cannot describe ACL, it does not exist")
+	}
 
 	acl := AccessControlList{}
 	acl.ResourceType = accessControlList.ResourceType
@@ -56,10 +59,6 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	acl.AccessControlListOperation = accessControlList.AccessControlListOperation
 	acl.AccessControlListPermissionType = accessControlList.AccessControlListPermissionType
 	acl.ResourcePatternTypeFilter = accessControlList.ResourcePatternTypeFilter
-
-	if err != nil {
-		return nil, errors.Wrap(err,"cannot describe ACL")
-	}
 
 	return &acl, nil
 }
@@ -128,7 +127,7 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 // Delete creates an ACL from the Kafka side
 func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-
+	fmt.Println("***DELETING***")
 	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.AccessControlListOperation))
 	ao := []kadm.ACLOperation{o}
 
