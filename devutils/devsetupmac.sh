@@ -8,6 +8,7 @@ Usage: $(basename "$0") [OPTION]...
   -x          Install or reinstall crossplane
   -k          Install or reinstall kafka
   -c          Configure credentials
+  -a          Run all three -xkc flags
   -h          Display help
 EOM
 
@@ -92,6 +93,10 @@ while getopts ":xkch" optKey; do
 		c)
 			config
 			;;
+    a)
+      crossplane
+      kafka
+      config
 		h|*)
 			usage
 			;;
