@@ -19,10 +19,13 @@ package acl
 import (
 	"context"
 	"fmt"
+
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
+
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/twmb/franz-go/pkg/kadm"
 
@@ -50,13 +53,6 @@ const (
 	errGetCreds             = "cannot get credentials"
 
 	errNewClient = "cannot create new Service"
-)
-
-// A NoOpService does nothing.
-type NoOpService struct{}
-
-var (
-	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
 
 // Setup adds a controller that reconciles AccessControlList managed resources.

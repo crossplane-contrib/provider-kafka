@@ -3,13 +3,13 @@ package acl
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kmsg"
-	"strings"
-
-	// "github.com/twmb/franz-go/pkg/kmsg"
 )
 
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
@@ -49,7 +49,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	exists := resp[0].Described
 
 	if exists == nil {
-		return nil, errors.Wrap(err,"cannot describe ACL, it does not exist")
+		return nil, errors.Wrap(err, "cannot describe ACL, it does not exist")
 	}
 
 	acl := AccessControlList{}
@@ -170,32 +170,25 @@ func LateInitializeSpec() bool {
 
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
 // supplied Kafka ACLs.
-func IsUpToDate(in *v1alpha1.AccessControlListParameters , observed *AccessControlList) bool {
+func IsUpToDate(in *v1alpha1.AccessControlListParameters, observed *AccessControlList) bool {
 
-	if in.ResourceType  != observed.ResourceType {
+	if in.ResourceType != observed.ResourceType {
 		return false
 	}
-	if in.AccessControlListPrinciple  != observed.AccessControlListPrinciple {
+	if in.AccessControlListPrinciple != observed.AccessControlListPrinciple {
 		return false
 	}
-	if in.AccessControlListPrinciple  != observed.AccessControlListPrinciple {
+	if in.AccessControlListPrinciple != observed.AccessControlListPrinciple {
 		return false
 	}
-	if in.AccessControlListOperation  != observed.AccessControlListOperation {
+	if in.AccessControlListOperation != observed.AccessControlListOperation {
 		return false
 	}
-	if in.AccessControlListPermissionType  != observed.AccessControlListPermissionType {
+	if in.AccessControlListPermissionType != observed.AccessControlListPermissionType {
 		return false
 	}
-	if in.ResourcePatternTypeFilter  != observed.ResourcePatternTypeFilter {
+	if in.ResourcePatternTypeFilter != observed.ResourcePatternTypeFilter {
 		return false
 	}
 	return true
-}
-
-func stringValue(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }
