@@ -15,13 +15,13 @@ import (
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
 // fields
 type AccessControlList struct {
-	Name                            string
-	ResourceType                    string
-	Principle      string
-	Host           string
-	Operation      string
-	PermissionType string
-	ResourcePatternTypeFilter       string
+	Name                      string
+	ResourceType              string
+	Principle                 string
+	Host                      string
+	Operation                 string
+	PermissionType            string
+	ResourcePatternTypeFilter string
 }
 
 // Topic is a holistic representation of a Kafka Topic with all configurable
@@ -46,7 +46,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	rpt, err := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 	if err != nil {
-		return nil, errors.Wrap(err,"did not return parsing of ACL pattern")
+		return nil, errors.Wrap(err, "did not return parsing of ACL pattern")
 	}
 
 	b := kadm.ACLBuilder{}
@@ -127,13 +127,13 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 // Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.
 func Generate(name string, params *v1alpha1.AccessControlListParameters) *AccessControlList {
 	acl := &AccessControlList{
-		Name:                            name,
-		ResourceType:                    params.ResourceType,
-		Principle:      params.Principle,
-		Host:           params.Host,
-		Operation:      params.Operation,
-		PermissionType: params.PermissionType,
-		ResourcePatternTypeFilter:       params.ResourcePatternTypeFilter,
+		Name:                      name,
+		ResourceType:              params.ResourceType,
+		Principle:                 params.Principle,
+		Host:                      params.Host,
+		Operation:                 params.Operation,
+		PermissionType:            params.PermissionType,
+		ResourcePatternTypeFilter: params.ResourcePatternTypeFilter,
 	}
 
 	return acl
