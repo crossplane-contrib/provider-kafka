@@ -7,13 +7,13 @@ spec:
     # Valid values are: Any, Topic, Group,
     # Cluster, TransactionalID
     resourceType: "Topic"
-    accessControlListPrinciple: "User:Ed"
-    accessControlListHost: "*"
+    principle: "User:Ed"
+    host: "*"
     # Valid values are: Unknown, Any, All, Read, Write,
     # Create, Delete, Alter, Describe, ClusterAction,
     # DescribeConfigs, AlterConfigs, IdempotentWrite
-    accessControlListOperation: "AlterConfigs"
-    accessControlListPermissionType: "Allow"
+    operation: "AlterConfigs"
+    permissionType: "Allow"
     # Valid values are: Prefixed, Any, Match, Literal
     resourcePatternTypeFilter: "Literal"
   providerConfigRef:
