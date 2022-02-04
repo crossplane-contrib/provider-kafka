@@ -67,9 +67,9 @@ spec:
                 description: AccessControlListParameters are the configurable fields
                   of a AccessControlList.
                 properties:
-                  accessControlListHost:
+                  host:
                     type: string
-                  accessControlListOperation:
+                  operation:
                     enum:
                     - Unknown
                     - Any
@@ -85,14 +85,14 @@ spec:
                     - AlterConfigs
                     - IdempotentWrite
                     type: string
-                  accessControlListPermissionType:
+                  permissionType:
                     enum:
                     - Unknown
                     - Any
                     - Allow
                     - Deny
                     type: string
-                  accessControlListPrinciple:
+                  principle:
                     type: string
                   resourcePatternTypeFilter:
                     enum:
@@ -111,10 +111,10 @@ spec:
                     - TransactionalID
                     type: string
                 required:
-                - accessControlListHost
-                - accessControlListOperation
-                - accessControlListPermissionType
-                - accessControlListPrinciple
+                - host
+                - operation
+                - permissionType
+                - principle
                 - resourcePatternTypeFilter
                 - resourceType
                 type: object
