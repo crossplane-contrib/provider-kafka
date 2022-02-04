@@ -24,16 +24,6 @@ type AccessControlList struct {
 	ResourcePatternTypeFilter string
 }
 
-// Topic is a holistic representation of a Kafka Topic with all configurable
-// fields
-type Topic struct {
-	Name              string
-	ReplicationFactor int16
-	Partitions        int32
-	ID                string
-	Config            map[string]*string
-}
-
 // List lists all the ACLs in Kafka
 func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
 
@@ -53,6 +43,11 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	ab := b.Topics(accessControlList.Name).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.DescribeACLs(ctx, ab)
+
+	if resp == nil {
+		return nil, errors.Wrap(err, "describe ACLs response is empty")
+	}
+
 	exists := resp[0].Described
 
 	if exists == nil {
