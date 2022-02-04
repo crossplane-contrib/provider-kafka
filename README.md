@@ -50,9 +50,10 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       helm repo add bitnami https://charts.bitnami.com/bitnami
       kubectl create ns kafka-cluster
       helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
+        --version 15.0.1 \
         --set auth.clientProtocol=sasl \
         --set deleteTopicEnable=true \
-        --set authorizerClassName="kafka.security.auth.SimpleAclAuthorizer" \
+        --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
         --wait
       ```
 
