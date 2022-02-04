@@ -44,7 +44,6 @@ kafka(){
   kubectl create ns kafka-cluster;
   echo "--- Installing kafka-dev via helm"
   helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
-    --version 15.0.1 \
     --set auth.clientProtocol=sasl \
     --set deleteTopicEnable=true \
     --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
