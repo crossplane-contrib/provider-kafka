@@ -37,10 +37,17 @@ type Topic struct {
 // List lists all the ACLs in Kafka
 func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
 
-	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.Operation))
+	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.Operation))
+	if err != nil {
+		return nil, errors.Wrap(err, "did not return ACL Operation")
+	}
+
 	ao := []kadm.ACLOperation{o}
 
-	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
+	rpt, err := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
+	if err != nil {
+		return nil, errors.Wrap(err,"did not return parsing of ACL pattern")
+	}
 
 	b := kadm.ACLBuilder{}
 	ab := b.Topics(accessControlList.Name).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)

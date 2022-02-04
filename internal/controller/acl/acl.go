@@ -51,8 +51,8 @@ const (
 	errTrackPCUsage         = "cannot track ProviderConfig usage"
 	errGetPC                = "cannot get ProviderConfig"
 	errGetCreds             = "cannot get credentials"
-
-	errNewClient = "cannot create new Service"
+	errListACL              = "cannot List ACLs"
+	errNewClient            = "cannot create new Service"
 )
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
@@ -135,7 +135,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotAccessControlList)
 	}
 
-	ae, _ := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
+	ae, err := acl.List(ctx, c.kafkaClient, acl.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errListACL)
+	}
 
 	if ae == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
