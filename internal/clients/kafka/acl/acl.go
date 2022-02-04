@@ -17,10 +17,10 @@ import (
 type AccessControlList struct {
 	Name                            string
 	ResourceType                    string
-	AccessControlListPrinciple      string
-	AccessControlListHost           string
-	AccessControlListOperation      string
-	AccessControlListPermissionType string
+	Principle      string
+	Host           string
+	Operation      string
+	PermissionType string
 	ResourcePatternTypeFilter       string
 }
 
