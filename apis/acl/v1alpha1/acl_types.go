@@ -29,12 +29,12 @@ import (
 type AccessControlListParameters struct {
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType               string `json:"resourceType"`
-	AccessControlListPrinciple string `json:"accessControlListPrinciple"`
-	AccessControlListHost      string `json:"accessControlListHost"`
+	Principle string `json:"principle"`
+	Host      string `json:"host"`
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
-	AccessControlListOperation string `json:"accessControlListOperation"`
+	Operation string `json:"operation"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
-	AccessControlListPermissionType string `json:"accessControlListPermissionType"`
+	PermissionType string `json:"permissionType"`
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
 	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }
