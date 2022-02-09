@@ -71,7 +71,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
    ```
    Once this file is created, apply it by running the following command
     ```bash
-    kubectl -n default create secret generic kafka-creds --from-file=credentials=kc.json
+    kubectl -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
     ```
 
 3. Install [kubefwd](https://github.com/txn2/kubefwd#os).

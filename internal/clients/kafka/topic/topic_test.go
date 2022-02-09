@@ -10,80 +10,7 @@ import (
 	"testing"
 )
 
-func TestDelete(t *testing.T) {
-
-	var dataTesting = []byte(`{
-  "brokers": [
-    "kafka-dev-0.kafka-dev-headless:9092"
-  ],
-  "sasl": {
-    "mechanism": "PLAIN",
-    "username": "user",
-    "password": ""
-  }
-}`)
-
-	newAc, _ := kafka.NewAdminClient(dataTesting)
-
-	type args struct {
-		ctx    context.Context
-		client *kadm.Client
-		name   string
-	}
-	cases := map[string]struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		"DeleteTopicZero": {
-			name: "DeleteTopicZero",
-			args: args{
-				ctx:    context.Background(),
-				client: newAc,
-				name:   "create0",
-			},
-			wantErr: true,
-		},
-		"DeleteTopicOne": {
-			name: "DeleteTopicOne",
-			args: args{
-				ctx:    context.Background(),
-				client: newAc,
-				name:   "create1",
-			},
-			wantErr: false,
-		},
-		"DeleteTopicTwo": {
-			name: "DeleteTopicTwo",
-			args: args{
-				ctx:    context.Background(),
-				client: newAc,
-				name:   "create2",
-			},
-			wantErr: false,
-		},
-		"DeleteTopicThree": {
-			name: "DeleteTopicThree",
-			args: args{
-				ctx:    context.Background(),
-				client: newAc,
-				name:   "create3",
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Delete(tt.args.ctx, tt.args.client, tt.args.name); (err != nil) != tt.wantErr {
-				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestCreate(t *testing.T) {
-
-	var dataTesting = []byte(`{
+var dataTesting = []byte(`{
 		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
 	"sasl": {
 	"mechanism": "PLAIN",
@@ -91,6 +18,8 @@ func TestCreate(t *testing.T) {
 	"password": ""
 	}
 	}`)
+
+func TestCreate(t *testing.T) {
 
 	newAc, _ := kafka.NewAdminClient(dataTesting)
 
@@ -165,15 +94,6 @@ func TestCreate(t *testing.T) {
 
 func TestGet(t *testing.T) {
 
-	var dataTesting = []byte(`{
-		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
-	"sasl": {
-	"mechanism": "PLAIN",
-	"username": "user",
-	"password": ""
-	}
-	}`)
-
 	newAc, _ := kafka.NewAdminClient(dataTesting)
 
 	type args struct {
@@ -192,10 +112,25 @@ func TestGet(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				client: newAc,
-				name:   "create1",
+				name:   "testTopic-1",
 			},
 			want: &Topic{
-				Name:              "create1",
+				Name:              "testTopic-1",
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            nil,
+			},
+			wantErr: false,
+		},
+		"GetTopicDoesNotExist": {
+			name: "GetTopicDoesNotExist",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "testTopic-00",
+			},
+			want: &Topic{
+				Name:              "testTopic-1",
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            nil,
@@ -375,15 +310,6 @@ func TestIsUpToDate(t *testing.T) {
 
 func TestCreateDuplicateTopic(t *testing.T) {
 
-	var dataTesting = []byte(`{
-		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
-	"sasl": {
-	"mechanism": "PLAIN",
-	"username": "user",
-	"password": ""
-	}
-	}`)
-
 	newAc, _ := kafka.NewAdminClient(dataTesting)
 
 	fmt.Printf("------Checking duplicate topic creation logic------")
@@ -405,7 +331,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "create1",
+						Name:              "testTopic-1",
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -420,7 +346,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "create2",
+						Name:              "testTopic-2",
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -435,13 +361,27 @@ func TestCreateDuplicateTopic(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "create3",
+						Name:              "testTopic-3",
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
 					},
 				},
 				wantErr: true,
+			},
+			"CreateTopicDoesNotExist": {
+				name: "CreateTopicDoesNotExist",
+				args: args{
+					ctx:    context.Background(),
+					client: newAc,
+					topic: &Topic{
+						Name:              "createTopic-doesNot-exist",
+						ReplicationFactor: 1,
+						Partitions:        1,
+						Config:            nil,
+					},
+				},
+				wantErr: false,
 			},
 		}
 
@@ -454,5 +394,74 @@ func TestCreateDuplicateTopic(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestDelete(t *testing.T) {
+
+	newAc, _ := kafka.NewAdminClient(dataTesting)
+
+	type args struct {
+		ctx    context.Context
+		client *kadm.Client
+		name   string
+	}
+	cases := map[string]struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		"DeleteTopicOne": {
+			name: "DeleteTopicOne",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "testTopic-1",
+			},
+			wantErr: false,
+		},
+		"DeleteTopicTwo": {
+			name: "DeleteTopicTwo",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "testTopic-2",
+			},
+			wantErr: false,
+		},
+		"DeleteTopicThree": {
+			name: "DeleteTopicThree",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "testTopic-3",
+			},
+			wantErr: false,
+		},
+		"DeleteTopicThreeDoesNotExist": {
+			name: "DeleteTopicThreeDoesNotExist",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "create3",
+			},
+			wantErr: true,
+		},
+		"DeleteTopicThatDoesNotExist": {
+			name: "DeleteTopicThatDoesNotExist",
+			args: args{
+				ctx:    context.Background(),
+				client: newAc,
+				name:   "createTopic-doesNot-exist",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := Delete(tt.args.ctx, tt.args.client, tt.args.name); (err != nil) != tt.wantErr {
+				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
