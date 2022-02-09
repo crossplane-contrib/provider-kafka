@@ -11,3 +11,4 @@ kc.json
 .vscode/
 .idea/
 kaf.yaml
+local-test-scripts/*
