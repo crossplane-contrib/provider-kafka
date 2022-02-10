@@ -183,60 +183,6 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 		},
-		"NameDifference": {
-			args: args{
-				name: "nameDiff",
-				params: &v1alpha1.TopicParameters{
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
-			},
-			want: want{
-				&Topic{
-					Name:              "nameDifferent",
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
-			},
-		},
-		"ReplicationFactorDifference": {
-			args: args{
-				name: "repFactorDiff",
-				params: &v1alpha1.TopicParameters{
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
-			},
-			want: want{
-				&Topic{
-					Name:              "repFactorDiff",
-					ReplicationFactor: 3,
-					Partitions:        1,
-					Config:            nil,
-				},
-			},
-		},
-		"PartitionsDifference": {
-			args: args{
-				name: "partitionsDiff",
-				params: &v1alpha1.TopicParameters{
-					ReplicationFactor: 1,
-					Partitions:        3,
-					Config:            nil,
-				},
-			},
-			want: want{
-				&Topic{
-					Name:              "partitionsDiff",
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
-			},
-		},
 	}
 
 	for name, tt := range cases {
