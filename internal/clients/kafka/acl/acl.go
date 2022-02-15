@@ -25,7 +25,6 @@ type AccessControlList struct {
 	ResourcePatternTypeFilter string `json:"ResourcePatternTypeFilter"`
 }
 
-
 // List lists all the ACLs in Kafka
 func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
 
@@ -123,7 +122,7 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 func ConvertToJson(acl *AccessControlList) (string, error) {
 	j, err := json.Marshal(acl)
-	if err != nil{
+	if err != nil {
 		return "", errors.Wrap(err, "describe ACLs response is empty")
 	}
 	name := string(j)
@@ -134,7 +133,7 @@ func ConvertToJson(acl *AccessControlList) (string, error) {
 func ConvertFromJson(extname string) (*AccessControlList, error) {
 	acl := AccessControlList{}
 	err := json.Unmarshal([]byte(extname), &acl)
-	if err != nil{
+	if err != nil {
 		return nil, errors.Wrap(err, "describe ACLs response is empty")
 	}
 	return &acl, nil

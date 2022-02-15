@@ -18,7 +18,7 @@ package acl
 
 import (
 	"context"
-	fmt "fmt"
+	"fmt"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
@@ -130,8 +130,6 @@ type external struct {
 	log         logging.Logger
 }
 
-
-
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
@@ -149,8 +147,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	if !compare {
 		return managed.ExternalObservation{
-			ResourceExists: true,
-			ResourceUpToDate: true,
+			ResourceExists:          true,
+			ResourceUpToDate:        true,
 			ResourceLateInitialized: true,
 		}, errors.Wrap(err, "Updating not allowed")
 	}
@@ -190,7 +188,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)
 	}
-	fmt.Println("External Name: ", meta.GetExternalName(cr))
 
 	return managed.ExternalCreation{ExternalNameAssigned: true}, acl.Create(ctx, c.kafkaClient, generated)
 }
