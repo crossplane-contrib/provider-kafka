@@ -2,6 +2,7 @@ package acl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,14 +16,15 @@ import (
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
 // fields
 type AccessControlList struct {
-	Name                      string
-	ResourceType              string
-	Principle                 string
-	Host                      string
-	Operation                 string
-	PermissionType            string
-	ResourcePatternTypeFilter string
+	Name                      string `json:"Name"`
+	ResourceType              string `json:"ResourceType"`
+	Principle                 string `json:"Principle"`
+	Host                      string `json:"Host"`
+	Operation                 string `json:"Operation"`
+	PermissionType            string `json:"PermissionType"`
+	ResourcePatternTypeFilter string `json:"ResourcePatternTypeFilter"`
 }
+
 
 // List lists all the ACLs in Kafka
 func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
@@ -117,6 +119,32 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	fmt.Println("Delete Response:", resp)
 
 	return nil
+}
+
+func ConvertToJson(acl *AccessControlList) (string, error) {
+	j, err := json.Marshal(acl)
+	if err != nil{
+		return "", errors.Wrap(err, "describe ACLs response is empty")
+	}
+	name := string(j)
+
+	return name, nil
+}
+
+func ConvertFromJson(extname string) (*AccessControlList, error) {
+	acl := AccessControlList{}
+	err := json.Unmarshal([]byte(extname), &acl)
+	if err != nil{
+		return nil, errors.Wrap(err, "describe ACLs response is empty")
+	}
+	return &acl, nil
+}
+
+func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
+	if extname == observed {
+		return true
+	}
+	return false
 }
 
 // Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.

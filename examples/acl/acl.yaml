@@ -1,13 +1,13 @@
 apiVersion: acl.kafka.crossplane.io/v1alpha1
 kind: AccessControlList
 metadata:
-  name: marshmallory2
+  name: marshmallory
 spec:
   forProvider:
     # Valid values are: Any, Topic, Group,
     # Cluster, TransactionalID
     resourceType: "Topic"
-    principle: "User:Ed"
+    principle: "User:Mal"
     host: "*"
     # Valid values are: Unknown, Any, All, Read, Write,
     # Create, Delete, Alter, Describe, ClusterAction,
