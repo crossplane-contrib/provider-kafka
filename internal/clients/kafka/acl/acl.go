@@ -141,10 +141,6 @@ func ConvertFromJson(extname string) (*AccessControlList, error) {
 }
 
 func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
-
-	fmt.Println("Extname: ", extname)
-	fmt.Println("Observed: ", observed)
-
 	if extname == observed {
 		return true
 	}

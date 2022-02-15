@@ -140,19 +140,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Check if the external name is set, to determine if ACL has been created or not
 	ext := meta.GetExternalName(cr)
-	fmt.Println("Hit Observe function")
 	if ext == "" {
-		fmt.Println("External name is not set.  Creating the ACL.")
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	extname, err := acl.ConvertFromJson(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
 
-	fmt.Println("Compare Value: ", compare)
-
 	if !compare {
-		fmt.Println("Hit !Compare")
 		return managed.ExternalObservation{
 			ResourceExists: true,
 			ResourceUpToDate: true,
@@ -181,8 +176,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-
-	fmt.Println("Hit Create function")
 
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
