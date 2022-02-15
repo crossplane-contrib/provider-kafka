@@ -140,6 +140,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Check if the external name is set, to determine if ACL has been created or not
 	ext := meta.GetExternalName(cr)
+	fmt.Println("Hit Observe function")
 	if ext == "" {
 		fmt.Println("External name is not set.  Creating the ACL.")
 		return managed.ExternalObservation{ResourceExists: false}, nil
@@ -147,8 +148,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	extname, err := acl.ConvertFromJson(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
+
+	fmt.Println("Compare Value: ", compare)
+
 	if !compare {
-		return managed.ExternalObservation{}, errors.Wrap(err, "Updating not allowed")
+		fmt.Println("Hit !Compare")
+		return managed.ExternalObservation{
+			ResourceExists: true,
+			ResourceUpToDate: true,
+			ResourceLateInitialized: true,
+		}, errors.Wrap(err, "Updating not allowed")
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
@@ -173,6 +182,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 
+	fmt.Println("Hit Create function")
+
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
@@ -183,9 +194,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.New("Could not convert external name to JSON.")
 	}
-	meta.SetExternalName(cr, extname)
+	if meta.GetExternalName(cr) == "" {
+		meta.SetExternalName(cr, extname)
+	}
+	fmt.Println("External Name: ", meta.GetExternalName(cr))
 
-	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
+	return managed.ExternalCreation{ExternalNameAssigned: true}, acl.Create(ctx, c.kafkaClient, generated)
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
