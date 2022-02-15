@@ -142,7 +142,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, err := acl.ConvertFromJson(meta.GetExternalName(cr))
+	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
 
 	if !compare {
@@ -181,9 +181,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	generated := acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider)
-	extname, err := acl.ConvertToJson(generated)
+	extname, err := acl.ConvertToJSON(generated)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.New("Could not convert external name to JSON.")
+		return managed.ExternalCreation{}, errors.New("could not convert external name to JSON")
 	}
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)

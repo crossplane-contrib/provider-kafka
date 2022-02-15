@@ -120,7 +120,8 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	return nil
 }
 
-func ConvertToJson(acl *AccessControlList) (string, error) {
+// ConvertToJSON performs a json marshalling for ACLs
+func ConvertToJSON(acl *AccessControlList) (string, error) {
 	j, err := json.Marshal(acl)
 	if err != nil {
 		return "", errors.Wrap(err, "describe ACLs response is empty")
@@ -130,7 +131,8 @@ func ConvertToJson(acl *AccessControlList) (string, error) {
 	return name, nil
 }
 
-func ConvertFromJson(extname string) (*AccessControlList, error) {
+// ConvertFromJSON performs a json unmarshalling for ACLs
+func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	acl := AccessControlList{}
 	err := json.Unmarshal([]byte(extname), &acl)
 	if err != nil {
@@ -139,11 +141,9 @@ func ConvertFromJson(extname string) (*AccessControlList, error) {
 	return &acl, nil
 }
 
+// CompareAcls performs an observed to incoming ACL comparison
 func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
-	if extname == observed {
-		return true
-	}
-	return false
+	return extname == observed
 }
 
 // Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.
