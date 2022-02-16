@@ -18,8 +18,6 @@ package acl
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -145,11 +143,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
 
+	lateInitialized := acl.LateInitializeSpec(&cr.Spec.ForProvider, extname)
+
 	if !compare {
 		return managed.ExternalObservation{
 			ResourceExists:          true,
-			ResourceUpToDate:        true,
-			ResourceLateInitialized: true,
+			ResourceUpToDate:        true, // acl.IsUpToDate(&cr.Spec.ForProvider, extname),
+			ResourceLateInitialized: lateInitialized,
 		}, errors.Wrap(err, "Updating not allowed")
 	}
 
@@ -193,18 +193,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.AccessControlList)
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotAccessControlList)
-	}
 
-	fmt.Printf("Updating: %+v", cr)
-
-	return managed.ExternalUpdate{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+	return managed.ExternalUpdate{}, errors.New("Updates are not supported")
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -213,5 +203,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if !ok {
 		return errors.New(errNotAccessControlList)
 	}
+
 	return acl.Delete(ctx, c.kafkaClient, acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider))
 }

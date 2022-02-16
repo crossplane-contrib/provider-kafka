@@ -162,8 +162,16 @@ func Generate(name string, params *v1alpha1.AccessControlListParameters) *Access
 }
 
 // LateInitializeSpec fills empty ACL spec fields with the data retrieved from Kafka.
-func LateInitializeSpec() bool {
-	lateInitialized := true
+func LateInitializeSpec(in *v1alpha1.AccessControlListParameters, observed *AccessControlList) bool {
+	lateInitialized := false
+
+	in.Principle = observed.Principle
+	in.Operation = observed.Operation
+	in.ResourceType = observed.ResourceType
+	in.PermissionType = observed.PermissionType
+	in.ResourcePatternTypeFilter = observed.ResourcePatternTypeFilter
+
+	lateInitialized = true
 
 	return lateInitialized
 }
