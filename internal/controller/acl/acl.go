@@ -51,6 +51,7 @@ const (
 	errGetCreds             = "cannot get credentials"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
+	errUpdateNotSupported	= "upadtes are not supported"
 )
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
@@ -142,14 +143,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
-
-	lateInitialized := acl.LateInitializeSpec(&cr.Spec.ForProvider, extname)
-
+	
 	if !compare {
 		return managed.ExternalObservation{
 			ResourceExists:          true,
-			ResourceUpToDate:        true, // acl.IsUpToDate(&cr.Spec.ForProvider, extname),
-			ResourceLateInitialized: lateInitialized,
+			ResourceUpToDate:        false,
 		}, errors.Wrap(err, "Updating not allowed")
 	}
 
@@ -194,7 +192,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 
-	return managed.ExternalUpdate{}, errors.New("Updates are not supported")
+	return managed.ExternalUpdate{}, errors.New(errUpdateNotSupported)
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
