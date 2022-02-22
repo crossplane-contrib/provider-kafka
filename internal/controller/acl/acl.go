@@ -18,6 +18,7 @@ package acl
 
 import (
 	"context"
+
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -51,7 +52,7 @@ const (
 	errGetCreds             = "cannot get credentials"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
-	errUpdateNotSupported	= "upadtes are not supported"
+	errUpdateNotSupported   = "updates are not supported"
 )
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
@@ -143,11 +144,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
-	
+
 	if !compare {
 		return managed.ExternalObservation{
-			ResourceExists:          true,
-			ResourceUpToDate:        false,
+			ResourceExists:   true,
+			ResourceUpToDate: false,
 		}, errors.Wrap(err, "Updating not allowed")
 	}
 
