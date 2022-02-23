@@ -1,0 +1,20 @@
+apiVersion: acl.kafka.crossplane.io/v1alpha1
+kind: AccessControlList
+metadata:
+  name: marshmallory
+spec:
+  forProvider:
+    # Valid values are: Any, Topic, Group,
+    # Cluster, TransactionalID
+    resourceType: "Topic"
+    principle: "User:Mal"
+    host: "*"
+    # Valid values are: Unknown, Any, All, Read, Write,
+    # Create, Delete, Alter, Describe, ClusterAction,
+    # DescribeConfigs, AlterConfigs, IdempotentWrite
+    operation: "AlterConfigs"
+    permissionType: "Allow"
+    # Valid values are: Prefixed, Any, Match, Literal
+    resourcePatternTypeFilter: "Literal"
+  providerConfigRef:
+    name: example
