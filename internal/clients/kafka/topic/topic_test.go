@@ -272,7 +272,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 			wantErr bool
 		}{
 			"CreateTopicOneExists": {
-				name: "CreateTopicOneExists \n",
+				name: "CreateTopicOneExists",
 				args: args{
 					ctx:    context.Background(),
 					client: newAc,
@@ -330,8 +330,6 @@ func TestCreateDuplicateTopic(t *testing.T) {
 				wantErr: false,
 			},
 		}
-
-		// TODO: Add test cases.
 
 		for _, tt := range cases {
 			t.Run(tt.name, func(t *testing.T) {
