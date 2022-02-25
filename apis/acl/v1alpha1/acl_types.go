@@ -31,12 +31,12 @@ type AccessControlListParameters struct {
 	ResourceName	string `json:"resourceName"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType string `json:"resourceType"`
-	Principle    string `json:"principle"`
-	Host         string `json:"host"`
+	ResourcePrinciple    string `json:"resourcePrinciple"`
+	ResourceHost         string `json:"resourceHost"`
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
-	Operation string `json:"operation"`
+	ResourceOperation string `json:"resourceOperation"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
-	PermissionType string `json:"permissionType"`
+	ResourcePermissionType string `json:"resourcePermissionType"`
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
 	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }

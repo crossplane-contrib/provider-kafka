@@ -18,17 +18,17 @@ import (
 type AccessControlList struct {
 	ResourceName                      string
 	ResourceType              string `json:"ResourceType"`
-	Principle                 string `json:"Principle"`
-	Host                      string `json:"Host"`
-	Operation                 string `json:"Operation"`
-	PermissionType            string `json:"PermissionType"`
+	ResourcePrinciple                 string `json:"ResourcePrinciple"`
+	ResourceHost                      string `json:"ResourceHost"`
+	ResourceOperation                 string `json:"ResourceOperation"`
+	ResourcePermissionType            string `json:"ResourcePermissionType"`
 	ResourcePatternTypeFilter string `json:"ResourcePatternTypeFilter"`
 }
 
 // List lists all the ACLs in Kafka
 func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
 
-	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.Operation))
+	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	if err != nil {
 		return nil, errors.Wrap(err, "did not return ACL Operation")
 	}
@@ -41,7 +41,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	}
 
 	b := kadm.ACLBuilder{}
-	ab := b.Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Allow(accessControlList.ResourcePrinciple).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	switch accessControlList.ResourceType {
 	case "Topic":
@@ -66,10 +66,10 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	acl := AccessControlList{}
 	acl.ResourceType = accessControlList.ResourceType
-	acl.Principle = accessControlList.Principle
-	acl.Host = accessControlList.Host
-	acl.Operation = accessControlList.Operation
-	acl.PermissionType = accessControlList.PermissionType
+	acl.ResourcePrinciple = accessControlList.ResourcePrinciple
+	acl.ResourceHost = accessControlList.ResourceHost
+	acl.ResourceOperation = accessControlList.ResourceOperation
+	acl.ResourcePermissionType = accessControlList.ResourcePermissionType
 	acl.ResourcePatternTypeFilter = accessControlList.ResourcePatternTypeFilter
 
 	return &acl, nil
@@ -78,13 +78,13 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
-	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.Operation))
+	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	ao := []kadm.ACLOperation{o}
 
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
 	b := kadm.ACLBuilder{}
-	ab := b.Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Allow(accessControlList.ResourcePrinciple).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	switch accessControlList.ResourceType {
 	case "Topic":
@@ -111,13 +111,13 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 // Delete creates an ACL from the Kafka side
 func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 
-	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.Operation))
+	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	ao := []kadm.ACLOperation{o}
 
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.ResourceName).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Topics(accessControlList.ResourceName).Allow(accessControlList.ResourcePrinciple).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.DeleteACLs(ctx, ab)
 	if err != nil {
@@ -160,10 +160,10 @@ func Generate(params *v1alpha1.AccessControlListParameters) *AccessControlList {
 	acl := &AccessControlList{
 		ResourceName:              params.ResourceName,
 		ResourceType:              params.ResourceType,
-		Principle:                 params.Principle,
-		Host:                      params.Host,
-		Operation:                 params.Operation,
-		PermissionType:            params.PermissionType,
+		ResourcePrinciple:         params.ResourcePrinciple,
+		ResourceHost:              params.ResourceHost,
+		ResourceOperation:         params.ResourceOperation,
+		ResourcePermissionType:    params.ResourcePermissionType,
 		ResourcePatternTypeFilter: params.ResourcePatternTypeFilter,
 	}
 
@@ -177,16 +177,16 @@ func IsUpToDate(in *v1alpha1.AccessControlListParameters, observed *AccessContro
 	if in.ResourceType != observed.ResourceType {
 		return false
 	}
-	if in.Principle != observed.Principle {
+	if in.ResourcePrinciple != observed.ResourcePrinciple {
 		return false
 	}
-	if in.Host != observed.Host {
+	if in.ResourceHost != observed.ResourceHost {
 		return false
 	}
-	if in.Operation != observed.Operation {
+	if in.ResourceOperation != observed.ResourceOperation {
 		return false
 	}
-	if in.PermissionType != observed.PermissionType {
+	if in.ResourcePermissionType != observed.ResourcePermissionType {
 		return false
 	}
 	if in.ResourcePatternTypeFilter != observed.ResourcePatternTypeFilter {
