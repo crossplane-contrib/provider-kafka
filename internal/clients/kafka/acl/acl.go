@@ -50,6 +50,10 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 		ab = ab.Groups(accessControlList.ResourceName)
 	case "TransactionalID":
 		ab = ab.TransactionalIDs(accessControlList.ResourceName)
+	case "Cluster":
+		ab = ab.Clusters()
+	case "Any":
+		ab = ab.AnyResource(accessControlList.ResourceName)
 	}
 
 	resp, err := cl.DescribeACLs(ctx, ab)
@@ -93,6 +97,10 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 		ab = ab.Groups(accessControlList.ResourceName)
 	case "TransactionalID":
 		ab = ab.TransactionalIDs(accessControlList.ResourceName)
+	case "Cluster":
+		ab = ab.Clusters()
+	case "Any":
+		ab = ab.AnyResource(accessControlList.ResourceName)
 	}
 
 	resp, err := cl.CreateACLs(ctx, ab)
