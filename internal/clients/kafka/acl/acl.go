@@ -16,7 +16,7 @@ import (
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
 // fields
 type AccessControlList struct {
-	Name                      string `json:"Name"`
+	ResourceName                      string
 	ResourceType              string `json:"ResourceType"`
 	Principle                 string `json:"Principle"`
 	Host                      string `json:"Host"`
