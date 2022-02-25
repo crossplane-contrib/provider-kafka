@@ -162,7 +162,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.Status.AtProvider.ID = ae.Name
 	cr.Status.SetConditions(v1.Available())
 
 	return managed.ExternalObservation{
