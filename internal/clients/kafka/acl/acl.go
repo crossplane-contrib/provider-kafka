@@ -45,11 +45,11 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	switch accessControlList.ResourceType {
 	case "Topic":
-		ab = ab.Topics(accessControlList.Name)
+		ab = ab.Topics(accessControlList.ResourceName)
 	case "Group":
-		ab = ab.Groups(accessControlList.Name)
+		ab = ab.Groups(accessControlList.ResourceName)
 	case "TransactionalID":
-		ab = ab.TransactionalIDs(accessControlList.Name)
+		ab = ab.TransactionalIDs(accessControlList.ResourceName)
 	}
 
 	resp, err := cl.DescribeACLs(ctx, ab)
@@ -88,11 +88,11 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 
 	switch accessControlList.ResourceType {
 	case "Topic":
-		ab = ab.Topics(accessControlList.Name)
+		ab = ab.Topics(accessControlList.ResourceName)
 	case "Group":
-		ab = ab.Groups(accessControlList.Name)
+		ab = ab.Groups(accessControlList.ResourceName)
 	case "TransactionalID":
-		ab = ab.TransactionalIDs(accessControlList.Name)
+		ab = ab.TransactionalIDs(accessControlList.ResourceName)
 	}
 
 	resp, err := cl.CreateACLs(ctx, ab)
@@ -117,7 +117,7 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.Name).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Topics(accessControlList.ResourceName).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
 
 	resp, err := cl.DeleteACLs(ctx, ab)
 	if err != nil {
@@ -156,9 +156,9 @@ func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
 }
 
 // Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.
-func Generate(name string, params *v1alpha1.AccessControlListParameters) *AccessControlList {
+func Generate(params *v1alpha1.AccessControlListParameters) *AccessControlList {
 	acl := &AccessControlList{
-		Name:                      name,
+		ResourceName:              params.ResourceName,
 		ResourceType:              params.ResourceType,
 		Principle:                 params.Principle,
 		Host:                      params.Host,

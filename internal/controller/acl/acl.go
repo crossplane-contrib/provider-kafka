@@ -143,7 +143,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
+	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
 
 	if !compare {
 		return managed.ExternalObservation{
@@ -178,7 +178,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
 	}
 
-	generated := acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider)
+	generated := acl.Generate(&cr.Spec.ForProvider)
 	extname, err := acl.ConvertToJSON(generated)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, "could not convert external name to JSON")
@@ -203,5 +203,5 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotAccessControlList)
 	}
 
-	return acl.Delete(ctx, c.kafkaClient, acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider))
+	return acl.Delete(ctx, c.kafkaClient, acl.Generate(&cr.Spec.ForProvider))
 }

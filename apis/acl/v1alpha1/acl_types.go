@@ -27,6 +27,8 @@ import (
 
 // AccessControlListParameters are the configurable fields of a AccessControlList.
 type AccessControlListParameters struct {
+	// +kubebuilder
+	ResourceName	string `json:"resourceName"`
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType string `json:"resourceType"`
 	Principle    string `json:"principle"`

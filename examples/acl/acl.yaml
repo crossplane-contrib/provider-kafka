@@ -4,6 +4,7 @@ metadata:
   name: marshmallory
 spec:
   forProvider:
+    resourceName: marshmallory
     # Valid values are: Any, Topic, Group,
     # Cluster, TransactionalID
     resourceType: "Topic"

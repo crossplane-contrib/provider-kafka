@@ -94,6 +94,8 @@ spec:
                     type: string
                   principle:
                     type: string
+                  resourceName:
+                    type: string
                   resourcePatternTypeFilter:
                     enum:
                     - Prefixed
@@ -115,6 +117,7 @@ spec:
                 - operation
                 - permissionType
                 - principle
+                - resourceName
                 - resourcePatternTypeFilter
                 - resourceType
                 type: object
