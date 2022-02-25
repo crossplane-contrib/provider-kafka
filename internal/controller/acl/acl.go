@@ -182,7 +182,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	generated := acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider)
 	extname, err := acl.ConvertToJSON(generated)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.New("could not convert external name to JSON")
+		return managed.ExternalCreation{}, errors.Wrap(err, "could not convert external name to JSON")
 	}
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)
