@@ -41,7 +41,16 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	}
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.Name).Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Allow(accessControlList.Principle).AllowHosts(accessControlList.Host).Operations(ao[0]).ResourcePatternType(rpt)
+
+	switch accessControlList.ResourceType {
+	case "Topic":
+		ab = ab.Topics(accessControlList.Name)
+	case "Group":
+		ab = ab.Groups(accessControlList.Name)
+	case "TransactionalID":
+		ab = ab.TransactionalIDs(accessControlList.Name)
+	}
 
 	resp, err := cl.DescribeACLs(ctx, ab)
 
