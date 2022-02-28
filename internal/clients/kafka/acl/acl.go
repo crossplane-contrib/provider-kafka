@@ -158,6 +158,35 @@ func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	return &acl, nil
 }
 
+func Diff(existing AccessControlList, observed AccessControlList) []string{
+	diff := make([]string, 0)
+	if existing.ResourceType != observed.ResourceType {
+		str := "Resource Type has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	if existing.ResourcePrinciple != observed.ResourcePrinciple {
+		str := "Resource Principle has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	if existing.ResourceHost != observed.ResourceHost {
+		str := "Resource Host has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	if existing.ResourceOperation != observed.ResourceOperation {
+		str := "Resource Operation has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	if existing.ResourcePermissionType != observed.ResourcePermissionType {
+		str := "Resource Permission Type has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	if existing.ResourcePatternTypeFilter != observed.ResourcePatternTypeFilter {
+		str := "Resource Pattern Type Filter has been updated, which is not allowed."
+		diff = append(diff, str)
+	}
+	return diff
+}
+
 // CompareAcls performs an observed to incoming ACL comparison
 func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
 	return extname == observed

@@ -18,6 +18,7 @@ package acl
 
 import (
 	"context"
+	"strings"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
@@ -144,12 +145,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
+	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
 
 	if !compare {
+		err := strings.Join(diff, " ")
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
-		}, errors.Wrap(err, "Updating not allowed")
+		}, errors.New(err)
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
