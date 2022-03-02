@@ -107,10 +107,11 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	if err != nil {
 		return err
 	}
-
-	a := resp[0].Principal
-	if len(a) == 0 {
-		return errors.New("no create response for acl")
+	if resp != nil {
+		a := resp[0].Principal
+		if len(a) == 0 {
+			return errors.New("no create response for acl")
+		}
 	}
 
 	return nil
