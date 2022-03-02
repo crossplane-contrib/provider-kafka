@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	"github.com/twmb/franz-go/pkg/kadm"
+	"k8s.io/apimachinery/pkg/util/json"
 	"reflect"
 	"testing"
 )
 
-var aclTesting1 = AccessControlList{
+var baseAcl = AccessControlList{
 	Name:                      "acl1",
 	ResourceType:              "Topic",
 	Principle:                 "User:Ken",
@@ -18,13 +19,23 @@ var aclTesting1 = AccessControlList{
 	ResourcePatternTypeFilter: "Literal",
 }
 
+var baseJsonAcl = `{	"Name": "acl",
+		"ResourceType": "Topic",
+		"Principle": "User:Ken",
+		"Host": "*", "Operation":
+		"AlterConfigs",
+		"PermissionType": "Allow",
+		"ResourcePatternTypeFilter": "Literal"
+
+		}`
+
 func TestCompareAcls(t *testing.T) {
 	type args struct {
 		extname  AccessControlList
 		observed AccessControlList
 	}
 
-	aclTesting := aclTesting1
+	aclTesting := baseAcl
 
 	cases := []struct {
 		name string
@@ -158,15 +169,28 @@ func TestConvertFromJSON(t *testing.T) {
 	type args struct {
 		extname string
 	}
+
+	baseAcl := baseAcl
+	//baseJsonAcl := baseJsonAcl
+
+	//
+
 	cases := []struct {
 		name    string
 		args    args
 		want    *AccessControlList
 		wantErr bool
 	}{
-		// TODO: Add test cases.
-
+		{
+			name: "Hello",
+			args: args{
+				extname: "acl1",
+			},
+			want:    &baseAcl,
+			wantErr: true,
+		},
 	}
+
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ConvertFromJSON(tt.args.extname)
@@ -185,15 +209,28 @@ func TestConvertToJSON(t *testing.T) {
 	type args struct {
 		acl *AccessControlList
 	}
-	tests := []struct {
+
+	//aclJsonConvert := baseAcl
+	aclJsonMarshal, _ := json.Marshal(baseAcl)
+	aclJsonString := string(aclJsonMarshal)
+
+	cases := map[string]struct {
 		name    string
 		args    args
 		want    string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		"PassJsonMarshal": {
+			name: "SuccessfulMarshal",
+			args: args{
+				acl: &baseAcl,
+			},
+			want:    aclJsonString,
+			wantErr: false,
+		},
 	}
-	for _, tt := range tests {
+
+	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ConvertToJSON(tt.args.acl)
 			if (err != nil) != tt.wantErr {
