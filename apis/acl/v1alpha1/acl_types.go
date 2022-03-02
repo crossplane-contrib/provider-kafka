@@ -32,11 +32,11 @@ type AccessControlListParameters struct {
 	// ResourceType is the type of resource.
 	// Valid values are Unknown, Any, Topic, Group, Cluster, TransactionalID
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
-	ResourceType      string `json:"resourceType"`
+	ResourceType string `json:"resourceType"`
 	// ResourcePrincipal is the Principal that is being allowed or denied.
 	ResourcePrincipal string `json:"resourcePrincipal"`
 	// ResourceHost is the Host from which principal listed in ResourcePrinciple will have access.
-	ResourceHost      string `json:"resourceHost"`
+	ResourceHost string `json:"resourceHost"`
 	// ResourceOperation is the Operation that is being allowed or denied.
 	// Valid values are Unknown, Any, All, Read, Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs, AlterConfigs, IdempotentWrite.
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
