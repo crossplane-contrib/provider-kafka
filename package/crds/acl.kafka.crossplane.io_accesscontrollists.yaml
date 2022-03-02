@@ -68,10 +68,17 @@ spec:
                   of a AccessControlList.
                 properties:
                   resourceHost:
+                    description: ResourceHost is the Host from which principal listed
+                      in ResourcePrinciple will have access.
                     type: string
                   resourceName:
+                    description: ResourceName is the name of the resource.
                     type: string
                   resourceOperation:
+                    description: ResourceOperation is the Operation that is being
+                      allowed or denied. Valid values are Unknown, Any, All, Read,
+                      Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs,
+                      AlterConfigs, IdempotentWrite.
                     enum:
                     - Unknown
                     - Any
@@ -88,6 +95,8 @@ spec:
                     - IdempotentWrite
                     type: string
                   resourcePatternTypeFilter:
+                    description: ResourcePatternTypeFilter is the pattern filter.
+                      Valid values are Prefixed, Any, Match, Literal.
                     enum:
                     - Prefixed
                     - Any
@@ -95,6 +104,8 @@ spec:
                     - Literal
                     type: string
                   resourcePermissionType:
+                    description: ResourcePermissionType is the Type of permission.
+                      Valid values are Unknown, Any, Allow, Deny.
                     enum:
                     - Unknown
                     - Any
@@ -102,8 +113,12 @@ spec:
                     - Deny
                     type: string
                   resourcePrinciple:
+                    description: ResourcePrinciple is the Principal that is being
+                      allowed or denied.
                     type: string
                   resourceType:
+                    description: ResourceType is the type of resource. Valid values
+                      are Unknown, Any, Topic, Group, Cluster, TransactionalID
                     enum:
                     - Unknown
                     - Any

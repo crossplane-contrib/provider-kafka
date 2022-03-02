@@ -27,16 +27,26 @@ import (
 
 // AccessControlListParameters are the configurable fields of a AccessControlList.
 type AccessControlListParameters struct {
-	// +kubebuilder
+	// ResourceName is the name of the resource.
 	ResourceName string `json:"resourceName"`
+	// ResourceType is the type of resource.
+	// Valid values are Unknown, Any, Topic, Group, Cluster, TransactionalID
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType      string `json:"resourceType"`
+	// ResourcePrinciple is the Principal that is being allowed or denied.
 	ResourcePrinciple string `json:"resourcePrinciple"`
+	// ResourceHost is the Host from which principal listed in ResourcePrinciple will have access.
 	ResourceHost      string `json:"resourceHost"`
+	// ResourceOperation is the Operation that is being allowed or denied.
+	// Valid values are Unknown, Any, All, Read, Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs, AlterConfigs, IdempotentWrite.
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
 	ResourceOperation string `json:"resourceOperation"`
+	// ResourcePermissionType is the Type of permission.
+	// Valid values are Unknown, Any, Allow, Deny.
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
 	ResourcePermissionType string `json:"resourcePermissionType"`
+	// ResourcePatternTypeFilter is the pattern filter.
+	// Valid values are Prefixed, Any, Match, Literal.
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
 	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }
