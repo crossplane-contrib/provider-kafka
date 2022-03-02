@@ -143,7 +143,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	extname, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
 	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
 	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
 
