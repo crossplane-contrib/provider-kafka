@@ -16,12 +16,12 @@ import (
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
 // fields
 type AccessControlList struct {
-	ResourceName                      string
+	ResourceName              string
 	ResourceType              string `json:"ResourceType"`
-	ResourcePrinciple                 string `json:"ResourcePrinciple"`
-	ResourceHost                      string `json:"ResourceHost"`
-	ResourceOperation                 string `json:"ResourceOperation"`
-	ResourcePermissionType            string `json:"ResourcePermissionType"`
+	ResourcePrinciple         string `json:"ResourcePrinciple"`
+	ResourceHost              string `json:"ResourceHost"`
+	ResourceOperation         string `json:"ResourceOperation"`
+	ResourcePermissionType    string `json:"ResourcePermissionType"`
 	ResourcePatternTypeFilter string `json:"ResourcePatternTypeFilter"`
 }
 
@@ -158,7 +158,9 @@ func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	return &acl, nil
 }
 
-func Diff(existing AccessControlList, observed AccessControlList) []string{
+// Diff performs a Diff of and existing and observed ACL and provides
+// the User with an error string and the difference if one is found
+func Diff(existing AccessControlList, observed AccessControlList) []string {
 	diff := make([]string, 0)
 	if existing.ResourceType != observed.ResourceType {
 		str := "Resource Type has been updated, which is not allowed."
