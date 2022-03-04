@@ -2,11 +2,13 @@ package acl
 
 import (
 	"context"
-	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
-	"github.com/twmb/franz-go/pkg/kadm"
-	"k8s.io/apimachinery/pkg/util/json"
 	"reflect"
 	"testing"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+	"github.com/google/go-cmp/cmp"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 var baseAcl = AccessControlList{
@@ -19,7 +21,7 @@ var baseAcl = AccessControlList{
 	ResourcePatternTypeFilter: "Literal",
 }
 
-var baseJsonAcl = `{	"Name": "acl",
+var baseJsonAcl = `{	"Name": "acl1",
 		"ResourceType": "Topic",
 		"Principle": "User:Ken",
 		"Host": "*", "Operation":
@@ -158,8 +160,9 @@ func TestCompareAcls(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CompareAcls(tt.args.extname, tt.args.observed); got != tt.want {
-				t.Errorf("CompareAcls() = %v, want %v", got, tt.want)
+			got := CompareAcls(tt.args.extname, tt.args.observed)
+			if diff := cmp.Diff(got, tt.want); diff != "" {
+				t.Errorf("CompareAcls() = -want, +got:\n%s", diff)
 			}
 		})
 	}
@@ -182,12 +185,20 @@ func TestConvertFromJSON(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Hello",
+			name: "InvalidACL",
 			args: args{
 				extname: "acl1",
 			},
-			want:    &baseAcl,
+			want:    nil,
 			wantErr: true,
+		},
+		{
+			name: "ValidACL",
+			args: args{
+				extname: baseJsonAcl,
+			},
+			want:    &baseAcl,
+			wantErr: false,
 		},
 	}
 
@@ -198,8 +209,8 @@ func TestConvertFromJSON(t *testing.T) {
 				t.Errorf("ConvertFromJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ConvertFromJSON() got = %v, want %v", got, tt.want)
+			if diff := cmp.Diff(got, tt.want); diff != "" {
+				t.Errorf("ConvertFromJSON() -want, +got:\n%s", diff)
 			}
 		})
 	}
