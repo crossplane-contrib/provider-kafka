@@ -6,18 +6,18 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: topics.topic.kafka.crossplane.io
+  name: accesscontrollists.acl.kafka.crossplane.io
 spec:
-  group: topic.kafka.crossplane.io
+  group: acl.kafka.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - kafka
-    kind: Topic
-    listKind: TopicList
-    plural: topics
-    singular: topic
+    kind: AccessControlList
+    listKind: AccessControlListList
+    plural: accesscontrollists
+    singular: accesscontrollist
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -36,7 +36,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A Topic is an example API type.
+        description: A AccessControlList is an example API type.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -51,7 +51,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: A TopicSpec defines the desired state of a Topic.
+            description: An AccessControlListSpec defines the desired state of an
+              AccessControlList
             properties:
               deletionPolicy:
                 default: Delete
@@ -63,26 +64,77 @@ spec:
                 - Delete
                 type: string
               forProvider:
-                description: TopicParameters are the configurable fields of a Topic.
+                description: AccessControlListParameters are the configurable fields
+                  of a AccessControlList.
                 properties:
-                  config:
-                    additionalProperties:
-                      type: string
-                    description: Config is an optional map of string key/ value pairs.
-                    type: object
-                  partitions:
-                    description: Partitions defines the number of partitions the topic
-                      should have.
-                    minimum: 1
-                    type: integer
-                  replicationFactor:
-                    description: ReplicationFactor defines the number of replicas
-                      the topic should have.
-                    minimum: 1
-                    type: integer
+                  resourceHost:
+                    description: ResourceHost is the Host from which principal listed
+                      in ResourcePrinciple will have access.
+                    type: string
+                  resourceName:
+                    description: ResourceName is the name of the resource.
+                    type: string
+                  resourceOperation:
+                    description: ResourceOperation is the Operation that is being
+                      allowed or denied. Valid values are Unknown, Any, All, Read,
+                      Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs,
+                      AlterConfigs, IdempotentWrite.
+                    enum:
+                    - Unknown
+                    - Any
+                    - All
+                    - Read
+                    - Write
+                    - Create
+                    - Delete
+                    - Alter
+                    - Describe
+                    - ClusterAction
+                    - DescribeConfigs
+                    - AlterConfigs
+                    - IdempotentWrite
+                    type: string
+                  resourcePatternTypeFilter:
+                    description: ResourcePatternTypeFilter is the pattern filter.
+                      Valid values are Prefixed, Any, Match, Literal.
+                    enum:
+                    - Prefixed
+                    - Any
+                    - Match
+                    - Literal
+                    type: string
+                  resourcePermissionType:
+                    description: ResourcePermissionType is the Type of permission.
+                      Valid values are Unknown, Any, Allow, Deny.
+                    enum:
+                    - Unknown
+                    - Any
+                    - Allow
+                    - Deny
+                    type: string
+                  resourcePrincipal:
+                    description: ResourcePrincipal is the Principal that is being
+                      allowed or denied.
+                    type: string
+                  resourceType:
+                    description: ResourceType is the type of resource. Valid values
+                      are Unknown, Any, Topic, Group, Cluster, TransactionalID
+                    enum:
+                    - Unknown
+                    - Any
+                    - Topic
+                    - Group
+                    - Cluster
+                    - TransactionalID
+                    type: string
                 required:
-                - partitions
-                - replicationFactor
+                - resourceHost
+                - resourceName
+                - resourceOperation
+                - resourcePatternTypeFilter
+                - resourcePermissionType
+                - resourcePrincipal
+                - resourceType
                 type: object
               providerConfigRef:
                 default:
@@ -129,10 +181,12 @@ spec:
             - forProvider
             type: object
           status:
-            description: A TopicStatus represents the observed state of a Topic.
+            description: A AccessControlListStatus represents the observed state of
+              a AccessControlList.
             properties:
               atProvider:
-                description: TopicObservation are the observable fields of a Topic.
+                description: AccessControlListObservation are the observable fields
+                  of an AccessControlList
                 properties:
                   id:
                     type: string
