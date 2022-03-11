@@ -26,7 +26,7 @@ type AccessControlList struct {
 }
 
 // List lists all the ACLs in Kafka
-func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
+func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) { //nolint:gocyclo
 
 	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	if err != nil {
