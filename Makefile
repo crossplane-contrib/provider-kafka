@@ -44,7 +44,7 @@ HELM3_VERSION = v3.6.3
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS = docker.io/crossplane registry.upbound.io/crossplane
+REGISTRY_ORGS = docker.io/crossplane
 IMAGES = provider-kafka provider-kafka-controller
 -include build/makelib/imagelight.mk
 
