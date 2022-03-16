@@ -48,7 +48,12 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       ```
       helm repo add bitnami https://charts.bitnami.com/bitnami
       kubectl create ns kafka-cluster
-      helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka --set auth.clientProtocol=sasl --set deleteTopicEnable=true --wait
+      helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
+        --version 15.0.1 \
+        --set auth.clientProtocol=sasl \
+        --set deleteTopicEnable=true \
+        --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
+        --wait
       ```
 
    Username is "user", obtain password using the following
@@ -83,34 +88,29 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       sudo kubefwd svc -n kafka-cluster
       ```
 
-5. (optional) Install [kafka cli](https://github.com/birdayz/kaf).
+5. (optional) Install the [kafka cli](https://github.com/twmb/kcl).
 
 
 6. (optional) Configure the kafka cli to talk against local Kafka installation:
 
-    1. Create a config file for the client with the following content at `~/.kaf/config`:
+    1. Create a config file for the client with the following content at `~/.kcl/config.toml`:
 
        ```
-       current-cluster: local
-       clusteroverride: ""
-       clusters:
-       - name: local
-         version: ""
-         brokers:
-         - kafka-dev-0.kafka-dev-headless:9092
-         SASL:
-           mechanism: PLAIN
-           username: user
-           password: <password-you-obtained-in-step-2>
-         TLS: null
-         security-protocol: ""
-         schema-registry-url: ""
+       seed_brokers = ["kafka-dev-0.kafka-dev-headless:9092"]
+       timeout_ms = 10000
+
+       [sasl]
+       method = "plain"
+       user = "user"
+       pass = "<password-you-obtained-in-step-2>"
        ```
 
         1. Verify that cli could talk to the Kafka cluster:
 
        ```
-       kaf nodes
+       export  KCL_CONFIG_DIR=~/.kcl
+       
+       kcl metadata --all
        ```
 
 ### Building and Running the provider locally
