@@ -92,7 +92,7 @@ spec:
                     - Allow
                     - Deny
                     type: string
-                  principle:
+                  principal:
                     type: string
                   resourcePatternTypeFilter:
                     enum:
@@ -114,7 +114,7 @@ spec:
                 - host
                 - operation
                 - permissionType
-                - principle
+                - principal
                 - resourcePatternTypeFilter
                 - resourceType
                 type: object

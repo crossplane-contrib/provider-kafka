@@ -14,7 +14,7 @@ import (
 var baseAcl = AccessControlList{
 	Name:                      "acl1",
 	ResourceType:              "Topic",
-	Principle:                 "User:Ken",
+	Principal:                 "User:Ken",
 	Host:                      "*",
 	Operation:                 "AlterConfigs",
 	PermissionType:            "Allow",
@@ -23,7 +23,7 @@ var baseAcl = AccessControlList{
 
 var baseJsonAcl = `{	"Name": "acl1",
 		"ResourceType": "Topic",
-		"Principle": "User:Ken",
+		"Principal": "User:Ken",
 		"Host": "*", "Operation":
 		"AlterConfigs",
 		"PermissionType": "Allow",
@@ -52,7 +52,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topic",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "*",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Allow",
@@ -68,7 +68,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl10",
 					ResourceType:              "Topic",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "*",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Allow",
@@ -84,7 +84,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topical",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "*",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Allow",
@@ -100,7 +100,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topic",
-					Principle:                 "User:NotKen",
+					Principal:                 "User:NotKen",
 					Host:                      "*",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Allow",
@@ -116,7 +116,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topic",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "acme.com",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Allow",
@@ -132,7 +132,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topic",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "*",
 					Operation:                 "Read",
 					PermissionType:            "Allow",
@@ -148,7 +148,7 @@ func TestCompareAcls(t *testing.T) {
 				observed: AccessControlList{
 					Name:                      "acl1",
 					ResourceType:              "Topic",
-					Principle:                 "User:Ken",
+					Principal:                 "User:Ken",
 					Host:                      "*",
 					Operation:                 "AlterConfigs",
 					PermissionType:            "Write",

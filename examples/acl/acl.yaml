@@ -7,7 +7,7 @@ spec:
     # Valid values are: Any, Topic, Group,
     # Cluster, TransactionalID
     resourceType: "Topic"
-    principle: "User:Mal"
+    principal: "User:Mal"
     host: "*"
     # Valid values are: Unknown, Any, All, Read, Write,
     # Create, Delete, Alter, Describe, ClusterAction,

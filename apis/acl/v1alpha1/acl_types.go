@@ -29,7 +29,7 @@ import (
 type AccessControlListParameters struct {
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType string `json:"resourceType"`
-	Principle    string `json:"principle"`
+	Principal    string `json:"principal"`
 	Host         string `json:"host"`
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
 	Operation string `json:"operation"`
