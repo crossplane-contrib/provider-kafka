@@ -67,9 +67,18 @@ spec:
                 description: AccessControlListParameters are the configurable fields
                   of a AccessControlList.
                 properties:
-                  host:
+                  resourceHost:
+                    description: ResourceHost is the Host from which principal listed
+                      in ResourcePrinciple will have access.
                     type: string
-                  operation:
+                  resourceName:
+                    description: ResourceName is the name of the resource.
+                    type: string
+                  resourceOperation:
+                    description: ResourceOperation is the Operation that is being
+                      allowed or denied. Valid values are Unknown, Any, All, Read,
+                      Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs,
+                      AlterConfigs, IdempotentWrite.
                     enum:
                     - Unknown
                     - Any
@@ -85,23 +94,31 @@ spec:
                     - AlterConfigs
                     - IdempotentWrite
                     type: string
-                  permissionType:
-                    enum:
-                    - Unknown
-                    - Any
-                    - Allow
-                    - Deny
-                    type: string
-                  principal:
-                    type: string
                   resourcePatternTypeFilter:
+                    description: ResourcePatternTypeFilter is the pattern filter.
+                      Valid values are Prefixed, Any, Match, Literal.
                     enum:
                     - Prefixed
                     - Any
                     - Match
                     - Literal
                     type: string
+                  resourcePermissionType:
+                    description: ResourcePermissionType is the Type of permission.
+                      Valid values are Unknown, Any, Allow, Deny.
+                    enum:
+                    - Unknown
+                    - Any
+                    - Allow
+                    - Deny
+                    type: string
+                  resourcePrincipal:
+                    description: ResourcePrincipal is the Principal that is being
+                      allowed or denied.
+                    type: string
                   resourceType:
+                    description: ResourceType is the type of resource. Valid values
+                      are Unknown, Any, Topic, Group, Cluster, TransactionalID
                     enum:
                     - Unknown
                     - Any
@@ -111,11 +128,12 @@ spec:
                     - TransactionalID
                     type: string
                 required:
-                - host
-                - operation
-                - permissionType
-                - principal
+                - resourceHost
+                - resourceName
+                - resourceOperation
                 - resourcePatternTypeFilter
+                - resourcePermissionType
+                - resourcePrincipal
                 - resourceType
                 type: object
               providerConfigRef:

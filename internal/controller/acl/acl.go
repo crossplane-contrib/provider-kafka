@@ -18,6 +18,7 @@ package acl
 
 import (
 	"context"
+	"strings"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
@@ -142,14 +143,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	compare := acl.CompareAcls(*extname, *acl.Generate(cr.Name, &cr.Spec.ForProvider))
+	extname, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
+	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
 
 	if !compare {
+		err := strings.Join(diff, " ")
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
-		}, errors.Wrap(err, "Updating not allowed")
+		}, errors.New(err)
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
@@ -162,12 +165,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.Status.AtProvider.ID = ae.Name
 	cr.Status.SetConditions(v1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:          true,
-		ResourceUpToDate:        acl.IsUpToDate(&cr.Spec.ForProvider, ae),
+		ResourceUpToDate:        true,
 		ResourceLateInitialized: false,
 	}, nil
 }
@@ -179,16 +181,17 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
 	}
 
-	generated := acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider)
+	generated := acl.Generate(&cr.Spec.ForProvider)
 	extname, err := acl.ConvertToJSON(generated)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.New("could not convert external name to JSON")
+		return managed.ExternalCreation{}, errors.Wrap(err, "could not convert external name to JSON")
 	}
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)
+		return managed.ExternalCreation{ExternalNameAssigned: true}, acl.Create(ctx, c.kafkaClient, generated)
 	}
 
-	return managed.ExternalCreation{ExternalNameAssigned: true}, acl.Create(ctx, c.kafkaClient, generated)
+	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -203,5 +206,5 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotAccessControlList)
 	}
 
-	return acl.Delete(ctx, c.kafkaClient, acl.Generate(cr.ObjectMeta.Name, &cr.Spec.ForProvider))
+	return acl.Delete(ctx, c.kafkaClient, acl.Generate(&cr.Spec.ForProvider))
 }

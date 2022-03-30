@@ -27,14 +27,26 @@ import (
 
 // AccessControlListParameters are the configurable fields of a AccessControlList.
 type AccessControlListParameters struct {
+	// ResourceName is the name of the resource.
+	ResourceName string `json:"resourceName"`
+	// ResourceType is the type of resource.
+	// Valid values are Unknown, Any, Topic, Group, Cluster, TransactionalID
 	// +kubebuilder:validation:Enum=Unknown;Any;Topic;Group;Cluster;TransactionalID
 	ResourceType string `json:"resourceType"`
-	Principal    string `json:"principal"`
-	Host         string `json:"host"`
+	// ResourcePrincipal is the Principal that is being allowed or denied.
+	ResourcePrincipal string `json:"resourcePrincipal"`
+	// ResourceHost is the Host from which principal listed in ResourcePrinciple will have access.
+	ResourceHost string `json:"resourceHost"`
+	// ResourceOperation is the Operation that is being allowed or denied.
+	// Valid values are Unknown, Any, All, Read, Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs, AlterConfigs, IdempotentWrite.
 	// +kubebuilder:validation:Enum=Unknown;Any;All;Read;Write;Create;Delete;Alter;Describe;ClusterAction;DescribeConfigs;AlterConfigs;IdempotentWrite
-	Operation string `json:"operation"`
+	ResourceOperation string `json:"resourceOperation"`
+	// ResourcePermissionType is the Type of permission.
+	// Valid values are Unknown, Any, Allow, Deny.
 	// +kubebuilder:validation:Enum=Unknown;Any;Allow;Deny
-	PermissionType string `json:"permissionType"`
+	ResourcePermissionType string `json:"resourcePermissionType"`
+	// ResourcePatternTypeFilter is the pattern filter.
+	// Valid values are Prefixed, Any, Match, Literal.
 	// +kubebuilder:validation:Enum=Prefixed;Any;Match;Literal
 	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter"`
 }

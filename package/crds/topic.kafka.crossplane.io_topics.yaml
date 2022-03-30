@@ -68,11 +68,16 @@ spec:
                   config:
                     additionalProperties:
                       type: string
+                    description: Config is an optional map of string key/ value pairs.
                     type: object
                   partitions:
+                    description: Partitions defines the number of partitions the topic
+                      should have.
                     minimum: 1
                     type: integer
                   replicationFactor:
+                    description: ReplicationFactor defines the number of replicas
+                      the topic should have.
                     minimum: 1
                     type: integer
                 required:

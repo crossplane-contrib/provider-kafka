@@ -5,6 +5,11 @@ PROJECT_NAME := provider-kafka
 PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
+
+# kind-related versions
+KIND_VERSION ?= v0.11.1
+KIND_NODE_IMAGE_TAG ?= v1.19.11
+
 # -include will silently skip missing files, which allows us
 # to load those files with a target in the Makefile. If only
 # "include" was used, the make command would fail and refuse
@@ -44,7 +49,7 @@ HELM3_VERSION = v3.6.3
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS = docker.io/crossplane registry.upbound.io/crossplane
+REGISTRY_ORGS = docker.io/crossplane
 IMAGES = provider-kafka provider-kafka-controller
 -include build/makelib/imagelight.mk
 
@@ -84,13 +89,22 @@ e2e.run: test-integration
 # Run integration tests.
 test-integration: $(KIND) $(KUBECTL) $(HELM3)
 	@$(INFO) running integration tests using kind $(KIND_VERSION)
-	@$(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
+	@KIND_NODE_IMAGE_TAG=${KIND_NODE_IMAGE_TAG} $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
 	@$(OK) integration tests passed
 
 # Update the submodules, such as the common build scripts.
 submodules:
 	@git submodule sync
 	@git submodule update --init --recursive
+
+# NOTE(hasheddan): the build submodule currently overrides XDG_CACHE_HOME in
+# order to force the Helm 3 to use the .work/helm directory. This causes Go on
+# Linux machines to use that directory as the build cache as well. We should
+# adjust this behavior in the build submodule because it is also causing Linux
+# users to duplicate their build cache, but for now we just make it easier to
+# identify its location in CI so that we cache between builds.
+go.cachedir:
+	@go env GOCACHE
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
