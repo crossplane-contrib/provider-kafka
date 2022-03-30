@@ -2,12 +2,13 @@ package topic
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/twmb/franz-go/pkg/kadm"
-	"reflect"
-	"testing"
 )
 
 func Test_external_Observe(t *testing.T) {
