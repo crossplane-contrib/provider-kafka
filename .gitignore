@@ -10,3 +10,5 @@ kc.json
 # ignore IDE folders
 .vscode/
 .idea/
+kaf.yaml
+local-test-scripts/*

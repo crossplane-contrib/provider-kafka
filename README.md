@@ -26,7 +26,6 @@ manage [Kafka](https://kafka.apache.org/) resources.
     ```
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
-
 3. Create a `ProviderConfig`, see [this](examples/provider/config.yaml) as an example.
 
 
@@ -77,7 +76,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
    ```
    Once this file is created, apply it by running the following command
     ```bash
-    kubectl -n default create secret generic kafka-creds --from-file=credentials=kc.json
+    kubectl -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
     ```
 
 3. Install [kubefwd](https://github.com/txn2/kubefwd#os).
