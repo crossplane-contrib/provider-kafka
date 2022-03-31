@@ -6,27 +6,30 @@ import (
 	"testing"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/twmb/franz-go/pkg/kadm"
+
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
-var baseAcl = AccessControlList{
-	Name:                      "acl1",
+var baseACL = AccessControlList{
+	ResourceName:              "acl1",
 	ResourceType:              "Topic",
-	Principal:                 "User:Ken",
-	Host:                      "*",
-	Operation:                 "AlterConfigs",
-	PermissionType:            "Allow",
+	ResourcePrincipal:         "User:Ken",
+	ResourceHost:              "*",
+	ResourceOperation:         "AlterConfigs",
+	ResourcePermissionType:    "Allow",
 	ResourcePatternTypeFilter: "Literal",
 }
 
-var baseJsonAcl = `{	"Name": "acl1",
+var baseJSONACL = `{	
+		"ResourceName": "acl1",
 		"ResourceType": "Topic",
-		"Principal": "User:Ken",
-		"Host": "*", "Operation":
-		"AlterConfigs",
-		"PermissionType": "Allow",
+		"ResourcePrincipal": "User:Ken",
+		"ResourceHost": "*", 
+		"ResourceOperation": "AlterConfigs",
+		"ResourcePermissionType": "Allow",
 		"ResourcePatternTypeFilter": "Literal"
 
 		}`
@@ -37,7 +40,7 @@ func TestCompareAcls(t *testing.T) {
 		observed AccessControlList
 	}
 
-	aclTesting := baseAcl
+	aclTesting := baseACL
 
 	cases := []struct {
 		name string
@@ -50,12 +53,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topic",
-					Principal:                 "User:Ken",
-					Host:                      "*",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "*",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -66,12 +69,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl10",
+					ResourceName:              "acl10",
 					ResourceType:              "Topic",
-					Principal:                 "User:Ken",
-					Host:                      "*",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "*",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -82,12 +85,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topical",
-					Principal:                 "User:Ken",
-					Host:                      "*",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "*",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -98,12 +101,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topic",
-					Principal:                 "User:NotKen",
-					Host:                      "*",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:NotKen",
+					ResourceHost:              "*",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -114,12 +117,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topic",
-					Principal:                 "User:Ken",
-					Host:                      "acme.com",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "acme.com",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -130,12 +133,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topic",
-					Principal:                 "User:Ken",
-					Host:                      "*",
-					Operation:                 "Read",
-					PermissionType:            "Allow",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "*",
+					ResourceOperation:         "Read",
+					ResourcePermissionType:    "Allow",
 					ResourcePatternTypeFilter: "Literal",
 				},
 			},
@@ -146,12 +149,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					Name:                      "acl1",
+					ResourceName:              "acl1",
 					ResourceType:              "Topic",
-					Principal:                 "User:Ken",
-					Host:                      "*",
-					Operation:                 "AlterConfigs",
-					PermissionType:            "Write",
+					ResourcePrincipal:         "User:Ken",
+					ResourceHost:              "*",
+					ResourceOperation:         "AlterConfigs",
+					ResourcePermissionType:    "Write",
 					ResourcePatternTypeFilter: "Any",
 				},
 			},
@@ -173,10 +176,7 @@ func TestConvertFromJSON(t *testing.T) {
 		extname string
 	}
 
-	baseAcl := baseAcl
-	//baseJsonAcl := baseJsonAcl
-
-	//
+	baseACL := baseACL
 
 	cases := []struct {
 		name    string
@@ -195,9 +195,9 @@ func TestConvertFromJSON(t *testing.T) {
 		{
 			name: "ValidACL",
 			args: args{
-				extname: baseJsonAcl,
+				extname: baseJSONACL,
 			},
-			want:    &baseAcl,
+			want:    &baseACL,
 			wantErr: false,
 		},
 	}
@@ -221,9 +221,8 @@ func TestConvertToJSON(t *testing.T) {
 		acl *AccessControlList
 	}
 
-	//aclJsonConvert := baseAcl
-	aclJsonMarshal, _ := json.Marshal(baseAcl)
-	aclJsonString := string(aclJsonMarshal)
+	aclJSONMarshal, _ := json.Marshal(baseACL)
+	aclJSONString := string(aclJSONMarshal)
 
 	cases := map[string]struct {
 		name    string
@@ -234,9 +233,9 @@ func TestConvertToJSON(t *testing.T) {
 		"PassJsonMarshal": {
 			name: "SuccessfulMarshal",
 			args: args{
-				acl: &baseAcl,
+				acl: &baseACL,
 			},
-			want:    aclJsonString,
+			want:    aclJSONString,
 			wantErr: false,
 		},
 	}
@@ -301,7 +300,6 @@ func TestDelete(t *testing.T) {
 
 func TestGenerate(t *testing.T) {
 	type args struct {
-		name   string
 		params *v1alpha1.AccessControlListParameters
 	}
 	tests := []struct {
@@ -313,7 +311,7 @@ func TestGenerate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Generate(tt.args.name, tt.args.params); !reflect.DeepEqual(got, tt.want) {
+			if got := Generate(tt.args.params); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Generate() = %v, want %v", got, tt.want)
 			}
 		})
