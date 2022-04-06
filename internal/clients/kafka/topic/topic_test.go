@@ -26,15 +26,6 @@ var dataTesting = []byte(
 		}`, kafkaPassword),
 )
 
-// var dataTesting = []byte(`{
-// 		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
-// 	"sasl": {
-// 	"mechanism": "PLAIN",
-// 	"username": "user",
-// 	"password": ""
-// 	}
-// 	}`)
-
 func TestCreate(t *testing.T) {
 
 	newAc, _ := kafka.NewAdminClient(dataTesting)
