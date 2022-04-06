@@ -13,6 +13,11 @@ env:
   GO_VERSION: '1.17'
   GOLANGCI_VERSION: 'v1.31'
   DOCKER_BUILDX_VERSION: 'v0.4.2'
+  KIND_VERSION: 'v0.12.0'
+  HELM_VERSION: 'v3.8.1'
+  CROSSPLANE_VERSION: 'stable'
+  KUBECTL_VERSION: 'v1.23.4'
+  KUBEFWD_VERSION: '1.22.0'
 
   # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
   # a step 'if env.AWS_USR' != ""', so we copy these to succinctly test whether
@@ -166,6 +171,75 @@ jobs:
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
+
+      - name: Set up Kind Cluster 
+        uses: helm/kind-action@v1.2.0
+        with:
+          version: ${{ env.KIND_VERSION }}
+          cluster_name: 'kafka'
+
+      - name: Homedir 
+        run: | 
+          pwd
+      
+      - name: Install Crossplane
+        run: |
+          kubectl create ns crossplane-system
+          helm repo add crossplane-stable https://charts.crossplane.io/stable
+          helm repo update
+          helm install crossplane --namespace crossplane-system crossplane-stable/crossplane
+          
+      - name: Install Provider-Kafka CRDs
+        run: kubectl apply -f package/crds
+         
+      - name: Install Kafka
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          kubectl create ns kafka-cluster
+          helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
+            --version 15.0.1 \
+            --set auth.clientProtocol=sasl \
+            --set deleteTopicEnable=true \
+            --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
+            --wait
+
+      - name: Get Kafka Client Password
+        id: kafka
+        run: echo "::set-output name=password::$(kubectl get secret kafka-dev-jaas --namespace kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 --decode | cut -d , -f 1)"
+
+      - name: Create Kafka Credentials File
+        env:
+          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
+        run: |
+          echo "{
+            "brokers": [
+              "kafka-dev-0.kafka-dev-headless:9092"
+            ],
+            "sasl": {
+              "mechanism": "PLAIN",
+              "username": "user",
+              "password": "${KAFKA_PASSWORD}"
+            }
+          }" > kc.json
+
+      - name: Show kc.json file
+        run: cat kc.json
+
+      - name: create Kafka K8s secret
+        run: kubectl -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
+      
+
+      - name: Test downloading external binary
+        uses: giantswarm/install-binary-action@v1.0.0
+        with:
+          binary: "kubefwd"
+          version: "${{ env.KUBEFWD_VERSION }}"
+          download_url: "https://github.com/txn2/kubefwd/releases/download/${version}/${binary}_Linux_x86_64.tar.gz"
+          tarball_binary_path: "${binary}"
+          smoke_test: "${binary} version"
+
+      - name: run Kubefwd
+        run: sudo -E /opt/hostedtoolcache/kubefwd/${{ env.KUBEFWD_VERSION }}/x64/kubefwd svc -n kafka-cluster &
 
       - name: Run Unit Tests
         run: make -j2 test
