@@ -177,10 +177,6 @@ jobs:
         with:
           version: ${{ env.KIND_VERSION }}
           cluster_name: 'kafka'
-
-      - name: Homedir 
-        run: | 
-          pwd
       
       - name: Install Crossplane
         run: |
@@ -242,6 +238,8 @@ jobs:
         run: sudo -E /opt/hostedtoolcache/kubefwd/${{ env.KUBEFWD_VERSION }}/x64/kubefwd svc -n kafka-cluster &
 
       - name: Run Unit Tests
+        env:
+          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
         run: make -j2 test
 
       - name: Publish Unit Test Coverage
@@ -309,8 +307,8 @@ jobs:
           # builds by default. Specifying --load does so.
           BUILD_ARGS: "--load"
 
-      - name: Run E2E Tests
-        run: make e2e USE_HELM3=true
+      # - name: Run E2E Tests
+      #   run: make e2e USE_HELM3=true
 
   publish-artifacts:
     runs-on: ubuntu-18.04

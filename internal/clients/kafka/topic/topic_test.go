@@ -3,6 +3,7 @@ package topic
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
@@ -12,14 +13,27 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-var dataTesting = []byte(`{
-		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
-	"sasl": {
-	"mechanism": "PLAIN",
-	"username": "user",
-	"password": ""
-	}
-	}`)
+var kafkaPassword = os.Getenv("KAFKA_PASSWORD")
+
+var dataTesting = []byte(
+	fmt.Sprintf(`{
+			"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
+			"sasl": {
+				"mechanism": "PLAIN",
+				"username": "user",
+				"password": "%s"
+			}
+		}`, kafkaPassword),
+)
+
+// var dataTesting = []byte(`{
+// 		"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
+// 	"sasl": {
+// 	"mechanism": "PLAIN",
+// 	"username": "user",
+// 	"password": ""
+// 	}
+// 	}`)
 
 func TestCreate(t *testing.T) {
 
