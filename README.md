@@ -5,21 +5,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
 
 ## Usage
 
-1. Create a provider secret containing a json like the following, see expected
-   schema [here](internal/clients/kafka/config.go):
-
-    ```
-    {
-      "brokers":[
-        "kafka-dev-0.kafka-dev-headless:9092"
-       ],
-       "sasl":{
-         "mechanism":"PLAIN",
-         "username":"user",
-         "password":"<your-password>"
-       }
-    }
-    ```
+1. Create a provider secret containing a json. See [here](AUTHENTICATION.md) for more information regardings supported authentication mechanisms.
 
 2. Create a k8s secret containing above config:
 
