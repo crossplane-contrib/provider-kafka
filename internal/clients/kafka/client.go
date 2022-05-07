@@ -3,6 +3,8 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
@@ -78,7 +80,7 @@ func awsMskIamAuthentication(sasl *SASL) (sasl.Mechanism, error) {
 	return a.AsManagedStreamingIAMMechanism(), nil
 }
 
-func assumeAwsRole(s *session.Session, roleArn string) (sasl.Mechanism, error) {
+func assumeAwsRole(s client.ConfigProvider, roleArn string) (sasl.Mechanism, error) {
 	sc := sts.New(s)
 	sn := "crossplane_provider_kafka_session"
 
