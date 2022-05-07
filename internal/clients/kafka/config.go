@@ -9,6 +9,8 @@ type Config struct {
 // SASL is an sasl option
 type SASL struct {
 	Mechanism string `json:"mechanism"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
+	// RoleArn can be used to assume another role then the one injected.
+	RoleArn  string `json:"roleArn"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
