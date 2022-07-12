@@ -14,4 +14,5 @@ type SASL struct {
 	Password  string `json:"password"`
 }
 
+// TLS is an option for enabling encryption in transit
 type TLS struct{}
