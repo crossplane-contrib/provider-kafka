@@ -63,23 +63,8 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	if kc.TLS != nil {
 		tc := new(tls.Config)
 		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
-
-		if sr := kc.TLS.ClientCertificateSecretRef; sr != nil {
-			if sr.Name == "" || sr.Namespace == "" {
-				return nil, errors.New(errMissingClientCertSecretRefKeys)
-			}
-			secret := &corev1.Secret{}
-			if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
-				return nil, errors.Wrap(err, errCannotReadClientCertSecret)
-			}
-			kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
-			cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
-			kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
-			if err != nil {
-				return nil, errors.Wrapf(err, "Invalid key pair, using fields %q/%q from secret %q in namespace %q",
-					cf, kf, sr.Name, sr.Namespace)
-			}
-			tc.Certificates = append(tc.Certificates, kp)
+		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
+			return nil, err
 		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
 	}
@@ -89,6 +74,34 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		return nil, err
 	}
 	return kadm.NewClient(c), nil
+}
+
+// Add options to TLS config for client certificate (if configured)
+func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
+	sr := kc.TLS.ClientCertificateSecretRef
+	if sr == nil {
+		return nil
+	}
+
+	if sr.Name == "" || sr.Namespace == "" {
+		return errors.New(errMissingClientCertSecretRefKeys)
+	}
+
+	secret := &corev1.Secret{}
+	if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
+		return errors.Wrap(err, errCannotReadClientCertSecret)
+	}
+
+	kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
+	cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
+	kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
+	if err != nil {
+		return errors.Wrapf(err, "Invalid key pair, using fields %q/%q from secret %q in namespace %q",
+			cf, kf, sr.Name, sr.Namespace)
+	}
+
+	tc.Certificates = append(tc.Certificates, kp)
+	return nil
 }
 
 // Helper method to return default if value string is empty.

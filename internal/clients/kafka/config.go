@@ -20,7 +20,7 @@ type TLS struct {
 	InsecureSkipVerify         bool                        `json:"insecureSkipVerify"`
 }
 
-// ClientCertificate is a TLS option for enable mTLS
+// ClientCertificateSecretRef is a TLS option for enable mTLS
 type ClientCertificateSecretRef struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
