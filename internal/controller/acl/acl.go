@@ -87,7 +87,7 @@ type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
 	log          logging.Logger
-	newServiceFn func(creds []byte) (*kadm.Client, error)
+	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -116,7 +116,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errGetCreds)
 	}
 
-	svc, err := c.newServiceFn(data)
+	svc, err := c.newServiceFn(ctx, data, c.kube)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}

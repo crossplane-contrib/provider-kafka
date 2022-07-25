@@ -28,7 +28,7 @@ var dataTesting = []byte(
 
 func TestCreate(t *testing.T) {
 
-	newAc, _ := kafka.NewAdminClient(dataTesting)
+	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {
 		ctx    context.Context
@@ -101,7 +101,7 @@ func TestCreate(t *testing.T) {
 
 func TestGet(t *testing.T) {
 
-	newAc, _ := kafka.NewAdminClient(dataTesting)
+	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {
 		ctx    context.Context
@@ -263,7 +263,7 @@ func TestIsUpToDate(t *testing.T) {
 
 func TestCreateDuplicateTopic(t *testing.T) {
 
-	newAc, _ := kafka.NewAdminClient(dataTesting)
+	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	fmt.Printf("------Checking duplicate topic creation logic------")
 
@@ -350,7 +350,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 
-	newAc, _ := kafka.NewAdminClient(dataTesting)
+	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {
 		ctx    context.Context

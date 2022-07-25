@@ -11,6 +11,7 @@ require (
 	github.com/twmb/franz-go/pkg/kadm v0.0.0-20211102021212-9a7f9860bbb6
 	github.com/twmb/franz-go/pkg/kmsg v0.0.0-20211104051938-70808186d5f7
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
 	sigs.k8s.io/controller-runtime v0.9.6
@@ -74,7 +75,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/api v0.21.3 // indirect
 	k8s.io/apiextensions-apiserver v0.21.3 // indirect
 	k8s.io/component-base v0.21.3 // indirect
 	k8s.io/klog/v2 v2.8.0 // indirect

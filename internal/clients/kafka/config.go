@@ -15,4 +15,15 @@ type SASL struct {
 }
 
 // TLS is an option for enabling encryption in transit
-type TLS struct{}
+type TLS struct {
+	ClientCertificateSecretRef *ClientCertificateSecretRef `json:"clientCertificateSecretRef,omitempty"`
+	InsecureSkipVerify         bool                        `json:"insecureSkipVerify"`
+}
+
+// ClientCertificateSecretRef is a TLS option for enable mTLS
+type ClientCertificateSecretRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	KeyField  string `json:"keyField,omitempty"`
+	CertField string `json:"certField,omitempty"`
+}
