@@ -4,13 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"net"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws/credentials"
+
+	"github.com/aws/aws-sdk-go/aws/session"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
+	kaws "github.com/twmb/franz-go/pkg/sasl/aws"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +36,7 @@ const (
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
-func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) {
+func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) { // nolint: gocyclo
 	kc := Config{}
 
 	if err := json.Unmarshal(data, &kc); err != nil {
@@ -49,13 +56,16 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 				User: kc.SASL.Username,
 				Pass: kc.SASL.Password,
 			}.AsMechanism()
+		case "aws-msk-iam":
+			mechanism = kaws.ManagedStreamingIAM(authenticateAwsIam)
+			opts = append(opts, kgo.Dialer((&tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}).DialContext))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
 				Pass: kc.SASL.Password,
 			}.AsSha512Mechanism()
 		default:
-			return nil, errors.Errorf("SASL mechanism %q not supported, only PLAIN / SCRAM-SHA-512 are supported for now.", kc.SASL.Mechanism)
+			return nil, errors.Errorf("SASL mechanism %q not supported, only PLAIN / SCRAM-SHA-512 / AWS-MSK-IAM are supported for now.", kc.SASL.Mechanism)
 		}
 		opts = append(opts, kgo.SASL(mechanism))
 	}
@@ -74,6 +84,29 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		return nil, err
 	}
 	return kadm.NewClient(c), nil
+}
+
+func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
+	var s *session.Session
+	s, err = session.NewSession()
+	if err != nil {
+		return kaws.Auth{}, err
+	}
+
+	var v credentials.Value
+	v, err = s.Config.Credentials.GetWithContext(ctx)
+	if err != nil {
+		return kaws.Auth{}, err
+	}
+
+	a = kaws.Auth{
+		AccessKey:    v.AccessKeyID,
+		SecretKey:    v.SecretAccessKey,
+		SessionToken: v.SessionToken,
+		UserAgent:    "crossplane-provider-kafka",
+	}
+
+	return a, nil
 }
 
 // Add options to TLS config for client certificate (if configured)
