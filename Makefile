@@ -24,6 +24,9 @@ KIND_NODE_IMAGE_TAG ?= v1.19.11
 # ====================================================================================
 # Setup Go
 
+# TODO(jastang): update Go version to be in-line with the build submodule.
+GO_REQUIRED_VERSION = 1.17
+
 # Set a sane default so that the nprocs calculation below is less noisy on the initial
 # loading of this file
 NPROCS ?= 1
@@ -42,6 +45,8 @@ GO111MODULE = on
 # ====================================================================================
 # Setup Kubernetes tools
 
+UP_VERSION = v0.13.0
+UP_CHANNEL = stable
 USE_HELM3 = true
 HELM3_VERSION = v3.6.3
 -include build/makelib/k8s_tools.mk
@@ -49,9 +54,22 @@ HELM3_VERSION = v3.6.3
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS ?= docker.io/crossplane
-IMAGES = provider-kafka provider-kafka-controller
+IMAGES = provider-kafka
 -include build/makelib/imagelight.mk
+
+# ====================================================================================
+# Setup XPKG
+
+XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib index.docker.io/crossplanecontrib
+# NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
+# inferred.
+XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
+XPKGS = provider-kafka
+-include build/makelib/xpkg.mk
+
+# NOTE(hasheddan): we force image building to happen prior to xpkg build so that
+# we ensure image is present in daemon.
+xpkg.build.provider-kafka: do.build.images
 
 # ====================================================================================
 # Targets
@@ -105,6 +123,11 @@ submodules:
 # identify its location in CI so that we cache between builds.
 go.cachedir:
 	@go env GOCACHE
+
+# NOTE(hasheddan): we must ensure up is installed in tool cache prior to build
+# as including the k8s_tools machinery prior to the xpkg machinery sets UP to
+# point to tool cache.
+build.init: $(UP)
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
