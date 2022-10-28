@@ -60,11 +60,8 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	if err != nil {
 		return nil, errors.Wrap(err, "describe ACLs response is empty")
 	}
-	if resp != nil {
-		exists := resp[0].Described
-		if len(exists) == 0 {
-			return nil, errors.New("no create response for acl")
-		}
+	if exists := resp[0].Described; len(exists) == 0 {
+		return nil, nil
 	}
 
 	acl := AccessControlList{}
