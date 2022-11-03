@@ -18,6 +18,7 @@ package topic
 
 import (
 	"context"
+	"strings"
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
@@ -45,6 +46,7 @@ const (
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"
+	errGetTopic     = "cannot get topic spec from topic client"
 
 	errNewClient = "cannot create new Kafka client"
 )
@@ -131,11 +133,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	tpc, err := topic.Get(ctx, c.kafkaClient, meta.GetExternalName(cr))
-	if tpc == nil {
-		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrapf(err, "cannot get topic spec from topic client")
+	if err != nil { // Discern whether the topic doesn't exist or something went wrong
+		if strings.HasPrefix(err.Error(), topic.ErrTopicDoesNotExist) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+		return managed.ExternalObservation{}, errors.Wrapf(err, errGetTopic)
 	}
 
 	cr.Status.AtProvider.ID = tpc.ID
