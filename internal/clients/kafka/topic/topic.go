@@ -30,7 +30,7 @@ const (
 	errNoDeleteResponseForTopic   = "no delete response for topic"
 	errCannotDeleteTopic          = "cannot delete topic"
 	errCannotGetTopic             = "cannot get topic"
-	errTopicDoesNotExist          = "topic does not exist"
+	ErrTopicDoesNotExist          = "topic does not exist"
 	errCannotUpdateTopicConfigs   = "cannot update topic configs"
 )
 
@@ -42,7 +42,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 		return nil, errors.Wrap(err, errCannotListTopics)
 	}
 	if td[name].Err != nil {
-		return nil, errors.Wrap(td[name].Err, errTopicDoesNotExist)
+		return nil, errors.Wrap(td[name].Err, ErrTopicDoesNotExist)
 	}
 
 	t, ok := td[name]
@@ -124,7 +124,7 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 		return errors.Wrap(err, errCannotGetTopic)
 	}
 	if existing == nil {
-		return errors.New(errTopicDoesNotExist)
+		return errors.New(ErrTopicDoesNotExist)
 	}
 
 	if desired.Partitions != existing.Partitions {
@@ -150,7 +150,7 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 		return errors.Wrap(err, errCannotGetTopic)
 	}
 	if existing == nil {
-		return errors.New(errTopicDoesNotExist)
+		return errors.New(ErrTopicDoesNotExist)
 	}
 
 	if desired.Partitions != existing.Partitions {
