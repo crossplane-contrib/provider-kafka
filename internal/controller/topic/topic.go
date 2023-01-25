@@ -61,7 +61,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnectDisconnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			log:          l,
@@ -83,6 +83,7 @@ type connector struct {
 	usage        resource.Tracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
+	cachedClient *kadm.Client
 }
 
 // Connect typically produces an ExternalClient by:
@@ -115,8 +116,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
+	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
+}
+
+func (c *connector) Disconnect(ctx context.Context) error {
+	c.cachedClient.Close()
+	return nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
