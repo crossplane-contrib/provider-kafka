@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -33,11 +32,11 @@ import (
 
 // Setup adds a controller that reconciles ProviderConfigs by accounting for
 // their current usage.
-func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
+func Setup(mgr ctrl.Manager, l logging.Logger) error {
 	name := providerconfig.ControllerName(v1alpha1.ProviderConfigGroupKind)
 
 	o := controller.Options{
-		RateLimiter: ratelimiter.NewDefaultManagedRateLimiter(rl),
+		RateLimiter: ratelimiter.NewController(),
 	}
 
 	of := resource.ProviderConfigKinds{

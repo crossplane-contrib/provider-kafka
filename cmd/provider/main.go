@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 
 	"github.com/crossplane-contrib/provider-kafka/apis"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller"
@@ -61,8 +60,7 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
-	rl := ratelimiter.NewDefaultProviderRateLimiter(ratelimiter.DefaultProviderRPS)
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Kafka APIs to scheme")
-	kingpin.FatalIfError(controller.Setup(mgr, log, rl), "Cannot setup Kafka controllers")
+	kingpin.FatalIfError(controller.Setup(mgr, log), "Cannot setup Kafka controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

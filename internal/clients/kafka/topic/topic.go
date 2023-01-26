@@ -30,8 +30,10 @@ const (
 	errNoDeleteResponseForTopic   = "no delete response for topic"
 	errCannotDeleteTopic          = "cannot delete topic"
 	errCannotGetTopic             = "cannot get topic"
-	ErrTopicDoesNotExist          = "topic does not exist"
 	errCannotUpdateTopicConfigs   = "cannot update topic configs"
+
+	// ErrTopicDoesNotExist indicates that the topic of a given name doesn't exist in the external Kafka cluster
+	ErrTopicDoesNotExist = "topic does not exist"
 )
 
 // Get gets the topic from Kafka side and returns a Topic object.
