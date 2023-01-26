@@ -49,7 +49,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       helm repo add bitnami https://charts.bitnami.com/bitnami
       kubectl create ns kafka-cluster
       helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
-        --version 15.0.1 \
+        --version 20.0.5 \
         --set auth.clientProtocol=sasl \
         --set deleteTopicEnable=true \
         --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
@@ -88,10 +88,16 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       sudo kubefwd svc -n kafka-cluster
       ```
 
-5. (optional) Install the [kafka cli](https://github.com/twmb/kcl).
+5. To run tests, export the KAFKA_PASSWORD environment variable using the password from step 2
+
+      ```
+      export KAFKA_PASSWORD="<password-you-obtained-in-step-2>"
+      ```
+
+6. (optional) Install the [kafka cli](https://github.com/twmb/kcl).
 
 
-6. (optional) Configure the kafka cli to talk against local Kafka installation:
+7. (optional) Configure the kafka cli to talk against local Kafka installation:
 
     1. Create a config file for the client with the following content at `~/.kcl/config.toml`:
 
