@@ -61,7 +61,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
-		managed.WithExternalConnectDisconnecter(&connector{
+		managed.WithExternalConnectDisconnecter(&connectDisconnector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			log:          l,
@@ -76,9 +76,9 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 		Complete(r)
 }
 
-// A connector is expected to produce an ExternalClient when its Connect method
-// is called.
-type connector struct {
+// A connectDisconnector is expected to produce an ExternalClient when its Connect method
+// is called and close it when its Disconnect method is called.
+type connectDisconnector struct {
 	kube         client.Client
 	usage        resource.Tracker
 	log          logging.Logger
@@ -91,7 +91,7 @@ type connector struct {
 // 2. Getting the managed resource's ProviderConfig.
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
 		return nil, errors.New(errNotTopic)
@@ -121,7 +121,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
-func (c *connector) Disconnect(ctx context.Context) error {
+func (c *connectDisconnector) Disconnect(ctx context.Context) error {
 	c.cachedClient.Close()
 	return nil
 }
