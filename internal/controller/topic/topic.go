@@ -121,7 +121,10 @@ func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) 
 }
 
 func (c *connectDisconnector) Disconnect(ctx context.Context) error {
-	c.cachedClient.Close()
+	if c.cachedClient != nil {
+		c.cachedClient.Close()
+	}
+	c.cachedClient = nil
 	return nil
 }
 
