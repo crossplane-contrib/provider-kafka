@@ -30,7 +30,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -52,16 +51,16 @@ const (
 )
 
 // Setup adds a controller that reconciles Topic managed resources.
-func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
+func Setup(mgr ctrl.Manager, l logging.Logger) error {
 	name := managed.ControllerName(v1alpha1.TopicGroupKind)
 
 	o := controller.Options{
-		RateLimiter: ratelimiter.NewDefaultManagedRateLimiter(rl),
+		RateLimiter: ratelimiter.NewController(),
 	}
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnectDisconnecter(&connectDisconnector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			log:          l,
@@ -76,13 +75,14 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 		Complete(r)
 }
 
-// A connector is expected to produce an ExternalClient when its Connect method
-// is called.
-type connector struct {
+// A connectDisconnector is expected to produce an ExternalClient when its Connect method
+// is called and close it when its Disconnect method is called.
+type connectDisconnector struct {
 	kube         client.Client
 	usage        resource.Tracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
+	cachedClient *kadm.Client
 }
 
 // Connect typically produces an ExternalClient by:
@@ -90,7 +90,7 @@ type connector struct {
 // 2. Getting the managed resource's ProviderConfig.
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
 		return nil, errors.New(errNotTopic)
@@ -115,8 +115,17 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
+	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
+}
+
+func (c *connectDisconnector) Disconnect(ctx context.Context) error {
+	if c.cachedClient != nil {
+		c.cachedClient.Close()
+	}
+	c.cachedClient = nil
+	return nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an

@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -29,13 +28,13 @@ import (
 
 // Setup creates all Template controllers with the supplied logger and adds them to
 // the supplied manager.
-func Setup(mgr ctrl.Manager, l logging.Logger, wl workqueue.RateLimiter) error {
-	for _, setup := range []func(ctrl.Manager, logging.Logger, workqueue.RateLimiter) error{
+func Setup(mgr ctrl.Manager, l logging.Logger) error {
+	for _, setup := range []func(ctrl.Manager, logging.Logger) error{
 		config.Setup,
 		topic.Setup,
 		acl.Setup,
 	} {
-		if err := setup(mgr, l, wl); err != nil {
+		if err := setup(mgr, l); err != nil {
 			return err
 		}
 	}
