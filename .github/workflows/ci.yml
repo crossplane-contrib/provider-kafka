@@ -194,7 +194,7 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           kubectl create ns kafka-cluster
           helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
-            --version 15.0.1 \
+            --version 20.0.5 \
             --set auth.clientProtocol=sasl \
             --set deleteTopicEnable=true \
             --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
