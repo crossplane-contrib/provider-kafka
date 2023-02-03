@@ -68,6 +68,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger) error {
 		managed.WithExternalConnectDisconnecter(&connectDisconnector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			log:          l,
 			newServiceFn: kafka.NewAdminClient}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -120,6 +121,7 @@ func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) 
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
+	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
