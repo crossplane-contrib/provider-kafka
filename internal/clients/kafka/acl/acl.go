@@ -122,7 +122,20 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 
 	b := kadm.ACLBuilder{}
-	ab := b.Topics(accessControlList.ResourceName).Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
+
+	switch accessControlList.ResourceType {
+	case "Topic":
+		ab = ab.Topics(accessControlList.ResourceName)
+	case "Group":
+		ab = ab.Groups(accessControlList.ResourceName)
+	case "TransactionalID":
+		ab = ab.TransactionalIDs(accessControlList.ResourceName)
+	case "Cluster":
+		ab = ab.Clusters()
+	case "Any":
+		ab = ab.AnyResource(accessControlList.ResourceName)
+	}
 
 	resp, err := cl.DeleteACLs(ctx, ab)
 	if err != nil {
