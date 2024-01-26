@@ -57,8 +57,6 @@ const (
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1alpha1.AccessControlListGroupKind)
 
-	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
-
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.AccessControlListGroupVersionKind),
 		managed.WithExternalConnectDisconnecter(&connectDisconnector{
@@ -68,7 +66,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(cps...))
+		managed.WithInitializers())
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
