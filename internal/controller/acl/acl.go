@@ -198,7 +198,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)
-		return managed.ExternalCreation{ExternalNameAssigned: true}, acl.Create(ctx, c.kafkaClient, generated)
+		return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
 	}
 
 	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)

@@ -22,6 +22,7 @@ import (
 
 	"gopkg.in/alecthomas/kingpin.v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -56,7 +57,9 @@ func main() {
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		LeaderElection:   *leaderElection,
 		LeaderElectionID: "crossplane-leader-election-provider-kafka",
-		SyncPeriod:       syncPeriod,
+		Cache: cache.Options{
+			SyncPeriod: syncPeriod,
+		},
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
