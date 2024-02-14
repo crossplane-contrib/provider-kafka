@@ -11,3 +11,4 @@ metadata:
     meta.crossplane.io/readme: |
       provider-kafka is a Crossplane Provider that is used to manage Kafka resources,
       such as Kafka Topics and Access Control Lists.
+    auth.upbound.io/group: kafka.crossplane.io
