@@ -162,6 +162,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotTopic)
 	}
+	if len(cr.Spec.ForProvider.TopicName) != 0 {
+		meta.SetExternalName(cr, cr.Spec.ForProvider.TopicName)
+	} else {
+		meta.SetExternalName(cr, meta.GetExternalName(cr))
+	}
 	return managed.ExternalCreation{}, topic.Create(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
 

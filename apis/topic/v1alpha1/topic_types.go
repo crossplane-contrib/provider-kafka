@@ -33,6 +33,10 @@ type TopicParameters struct {
 	// Partitions defines the number of partitions the topic should have.
 	// +kubebuilder:validation:Minimum:=1
 	Partitions int `json:"partitions"`
+	// TopicName is an optional field that defines the name of the topic.
+	// Use this to set a different topic name than the default.
+	// +optional
+	TopicName string `json:"topicName"`
 	// Config is an optional map of string key/ value pairs.
 	// +optional
 	Config map[string]*string `json:"config,omitempty"`

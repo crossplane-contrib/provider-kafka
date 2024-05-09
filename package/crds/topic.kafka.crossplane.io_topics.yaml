@@ -82,6 +82,9 @@ spec:
                       the topic should have.
                     minimum: 1
                     type: integer
+                  topicName:
+                    description: Override the default topic name.
+                    type: string
                 required:
                 - partitions
                 - replicationFactor

@@ -217,8 +217,14 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 
 // Generate is used to convert Crossplane TopicParameters to Kafka's Topic.
 func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
+	var topicName string
+	if params.TopicName != "" {
+		topicName = params.TopicName
+	} else {
+		topicName = name
+	}
 	tpc := &Topic{
-		Name:              name,
+		Name:              topicName,
 		ReplicationFactor: int16(params.ReplicationFactor),
 		Partitions:        int32(params.Partitions),
 	}
