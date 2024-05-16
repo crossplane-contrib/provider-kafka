@@ -190,6 +190,26 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 		},
+
+		"NameTopicField": {
+			args: args{
+				name: "nameToNotBeUsed",
+				params: &v1alpha1.TopicParameters{
+					ReplicationFactor: 1,
+					Partitions:        1,
+					TopicName:         "topic_with_valid_name",
+					Config:            nil,
+				},
+			},
+			want: want{
+				&Topic{
+					Name:              "topic_with_valid_name",
+					ReplicationFactor: 1,
+					Partitions:        1,
+					Config:            nil,
+				},
+			},
+		},
 	}
 
 	for name, tt := range cases {
