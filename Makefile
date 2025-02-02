@@ -7,8 +7,8 @@ PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
 PLATFORMS ?= linux_amd64 linux_arm64
 
 # kind-related versions
-KIND_VERSION ?= v0.11.1
-KIND_NODE_IMAGE_TAG ?= v1.19.11
+KIND_VERSION ?= v0.26.0
+KIND_NODE_IMAGE_TAG ?= v1.32.0
 
 # -include will silently skip missing files, which allows us
 # to load those files with a target in the Makefile. If only
@@ -25,9 +25,9 @@ KIND_NODE_IMAGE_TAG ?= v1.19.11
 # Setup Go
 
 # TODO(jastang): update Go version to be in-line with the build submodule.
-GO_REQUIRED_VERSION = 1.21
+GO_REQUIRED_VERSION = 1.23
 
-GOLANGCILINT_VERSION ?= 1.54.0
+GOLANGCILINT_VERSION ?= 1.63.4
 
 # Set a sane default so that the nprocs calculation below is less noisy on the initial
 # loading of this file
@@ -47,10 +47,10 @@ GO111MODULE = on
 # ====================================================================================
 # Setup Kubernetes tools
 
-UP_VERSION = v0.13.0
+UP_VERSION = v0.37.0
 UP_CHANNEL = stable
 USE_HELM3 = true
-HELM3_VERSION = v3.6.3
+HELM3_VERSION = v3.17.0
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
