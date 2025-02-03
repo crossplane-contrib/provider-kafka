@@ -8,7 +8,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
 1. Create a provider secret containing a json like the following, see expected
    schema [here](internal/clients/kafka/config.go):
 
-    ```
+    ```json
     {
       "brokers":[
         "kafka-dev-0.kafka-dev-headless:9092"
@@ -23,9 +23,10 @@ manage [Kafka](https://kafka.apache.org/) resources.
 
 2. Create a k8s secret containing above config:
 
-    ```
+    ```console
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
+
 3. Create a `ProviderConfig`, see [this](examples/provider/config.yaml) as an example.
 
 
@@ -169,7 +170,7 @@ spec:
     secretRef:
       key: credentials
       name: kafka-creds
-      namespace: kafka-cluster    
+      namespace: kafka-cluster
     source: Secret
 EOF
 ```
