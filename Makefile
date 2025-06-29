@@ -7,8 +7,8 @@ PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
 PLATFORMS ?= linux_amd64 linux_arm64
 
 # kind-related versions
-KIND_VERSION ?= v0.11.1
-KIND_NODE_IMAGE_TAG ?= v1.19.11
+KIND_VERSION ?= v0.29.0
+KIND_NODE_IMAGE_TAG ?= v1.30.13
 
 # -include will silently skip missing files, which allows us
 # to load those files with a target in the Makefile. If only
@@ -25,9 +25,9 @@ KIND_NODE_IMAGE_TAG ?= v1.19.11
 # Setup Go
 
 # TODO(jastang): update Go version to be in-line with the build submodule.
-GO_REQUIRED_VERSION = 1.21
+GO_REQUIRED_VERSION = 1.24
 
-GOLANGCILINT_VERSION ?= 1.54.0
+GOLANGCILINT_VERSION ?= 2.2.0
 
 # Set a sane default so that the nprocs calculation below is less noisy on the initial
 # loading of this file
@@ -47,10 +47,10 @@ GO111MODULE = on
 # ====================================================================================
 # Setup Kubernetes tools
 
-UP_VERSION = v0.13.0
+UP_VERSION = v0.28.0
 UP_CHANNEL = stable
 USE_HELM3 = true
-HELM3_VERSION = v3.6.3
+HELM3_VERSION = v3.17.0
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -66,7 +66,7 @@ XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib index.docker.io/crossplaneco
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
-XPKGS = provider-kafka
+XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
@@ -75,7 +75,6 @@ xpkg.build.provider-kafka: do.build.images
 
 # ====================================================================================
 # Targets
-
 # run `make help` to see the targets and options
 
 # We want submodules to be set up the first time `make` is run.
