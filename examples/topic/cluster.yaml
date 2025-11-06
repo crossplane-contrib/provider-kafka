@@ -1,7 +1,7 @@
 apiVersion: topic.kafka.crossplane.io/v1alpha1
 kind: Topic
 metadata:
-  name: sample-topic
+  name: cluster-sample-topic
 spec:
   forProvider:
     replicationFactor: 1
@@ -14,3 +14,4 @@ spec:
 #      compression.type: "snappy"
   providerConfigRef:
     name: example
+    kind: ClusterProviderConfig

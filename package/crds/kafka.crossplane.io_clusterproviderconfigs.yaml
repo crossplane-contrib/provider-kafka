@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: providerconfigs.kafka.crossplane.io
+  name: clusterproviderconfigs.kafka.crossplane.io
 spec:
   group: kafka.crossplane.io
   names:
@@ -12,11 +12,11 @@ spec:
     - crossplane
     - provider
     - kafka
-    kind: ProviderConfig
-    listKind: ProviderConfigList
-    plural: providerconfigs
-    singular: providerconfig
-  scope: Namespaced
+    kind: ClusterProviderConfig
+    listKind: ClusterProviderConfigList
+    plural: clusterproviderconfigs
+    singular: clusterproviderconfig
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .metadata.creationTimestamp
@@ -29,8 +29,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A ProviderConfig configures a Helm 'provider', i.e. a connection
-          to a particular
+        description: A ClusterProviderConfig configures a Kafka provider.
         properties:
           apiVersion:
             description: |-

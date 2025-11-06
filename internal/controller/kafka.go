@@ -17,7 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/acl"
@@ -25,13 +25,13 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/topic"
 )
 
-// Setup creates all Template controllers with the supplied logger and adds them to
+// SetupGated creates all Template controllers with safe-start support and adds them to
 // the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
 		config.Setup,
-		topic.Setup,
-		acl.Setup,
+		topic.SetupGated,
+		acl.SetupGated,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err

@@ -22,7 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
 )
 
 // TopicParameters are the configurable fields of a Topic.
@@ -45,8 +46,8 @@ type TopicObservation struct {
 
 // A TopicSpec defines the desired state of a Topic.
 type TopicSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       TopicParameters `json:"forProvider"`
+	xpv2.ManagedResourceSpec `json:",inline"`
+	ForProvider              TopicParameters `json:"forProvider"`
 }
 
 // A TopicStatus represents the observed state of a Topic.
@@ -63,7 +64,7 @@ type TopicStatus struct {
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,kafka}
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,kafka}
 type Topic struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

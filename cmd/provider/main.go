@@ -17,26 +17,36 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
+	kingpin "github.com/alecthomas/kingpin/v2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/feature"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/statemetrics"
+	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/crossplane-contrib/provider-kafka/apis"
 	kafkacontroller "github.com/crossplane-contrib/provider-kafka/internal/controller"
+	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
 
 func main() {
@@ -45,11 +55,15 @@ func main() {
 		debug          = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 
-		syncPeriod               = app.Flag("sync", "Controller manager sync period such as 300ms, 1.5h, or 2h45m").Short('s').Default("1h").Duration()
-		pollInterval             = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Default("1m").Duration()
-		maxReconcileRate         = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
+		syncPeriod              = app.Flag("sync", "Controller manager sync period such as 300ms, 1.5h, or 2h45m").Short('s').Default("1h").Duration()
+		pollInterval            = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Default("1m").Duration()
+		pollStateMetricInterval = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
+
+		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
+
 		enableManagementPolicies = app.Flag("enable-management-policies", "Enable support for Management Policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
-		pollStateMetricInterval  = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
+		enableChangeLogs         = app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").Bool()
+		changelogsSocketPath     = app.Flag("changelogs-socket-path", "Path for changelogs socket (if enabled)").Default("/var/run/changelogs/changelogs.sock").Envar("CHANGELOGS_SOCKET_PATH").String()
 	)
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -60,7 +74,19 @@ func main() {
 		// *very* verbose even at info level, so we only provide it a real
 		// logger when we're running in debug mode.
 		ctrl.SetLogger(zl)
+	} else {
+		// Setting the controller-runtime logger to a no-op logger by default. This
+		// is not really needed, but otherwise we get a warning from the
+		// controller-runtime.
+		ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
 	}
+
+	log.Debug(
+		"Starting",
+		"sync-period", syncPeriod.String(),
+		"poll-interval", pollInterval.String(),
+		"max-reconcile-rate", maxReconcileRate,
+	)
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
@@ -77,6 +103,8 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Kafka APIs to scheme")
+	kingpin.FatalIfError(apiextensionsv1.AddToScheme(mgr.GetScheme()), "Cannot add CustomResourceDefinition to scheme")
+
 	metricRecorder := managed.NewMRMetricRecorder()
 	stateMetrics := statemetrics.NewMRStateMetrics()
 
@@ -90,6 +118,7 @@ func main() {
 		PollInterval:            *pollInterval,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		Features:                &feature.Flags{},
+		Gate:                    new(gate.Gate[schema.GroupVersionKind]),
 		MetricOptions: &controller.MetricOptions{
 			PollStateMetricInterval: *pollStateMetricInterval,
 			MRMetrics:               metricRecorder,
@@ -102,6 +131,22 @@ func main() {
 		log.Info("Beta feature enabled", "flag", feature.EnableBetaManagementPolicies)
 	}
 
-	kingpin.FatalIfError(kafkacontroller.Setup(mgr, o), "Cannot setup Kafka controllers")
+	if *enableChangeLogs {
+		o.Features.Enable(feature.EnableAlphaChangeLogs)
+		log.Info("Alpha feature enabled", "flag", feature.EnableAlphaChangeLogs)
+
+		conn, err := grpc.NewClient("unix://"+*changelogsSocketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		kingpin.FatalIfError(err, "failed to create change logs client connection at %s", *changelogsSocketPath)
+
+		clo := controller.ChangeLogOptions{
+			ChangeLogger: managed.NewGRPCChangeLogger(
+				changelogsv1alpha1.NewChangeLogServiceClient(conn),
+				managed.WithProviderVersion(fmt.Sprintf("provider-kafka:%s", version.Version))),
+		}
+		o.ChangeLogOptions = &clo
+	}
+
+	kingpin.FatalIfError(kafkacontroller.SetupGated(mgr, o), "Cannot setup Kafka controllers")
+	kingpin.FatalIfError(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

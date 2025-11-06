@@ -17,16 +17,11 @@ limitations under the License.
 
 package v1alpha1
 
-import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+import xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 
 // GetCondition of this Topic.
 func (mg *Topic) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)
-}
-
-// GetDeletionPolicy of this Topic.
-func (mg *Topic) GetDeletionPolicy() xpv1.DeletionPolicy {
-	return mg.Spec.DeletionPolicy
 }
 
 // GetManagementPolicies of this Topic.
@@ -35,17 +30,12 @@ func (mg *Topic) GetManagementPolicies() xpv1.ManagementPolicies {
 }
 
 // GetProviderConfigReference of this Topic.
-func (mg *Topic) GetProviderConfigReference() *xpv1.Reference {
+func (mg *Topic) GetProviderConfigReference() *xpv1.ProviderConfigReference {
 	return mg.Spec.ProviderConfigReference
 }
 
-// GetPublishConnectionDetailsTo of this Topic.
-func (mg *Topic) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
-	return mg.Spec.PublishConnectionDetailsTo
-}
-
 // GetWriteConnectionSecretToReference of this Topic.
-func (mg *Topic) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+func (mg *Topic) GetWriteConnectionSecretToReference() *xpv1.LocalSecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
@@ -54,27 +44,17 @@ func (mg *Topic) SetConditions(c ...xpv1.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetDeletionPolicy of this Topic.
-func (mg *Topic) SetDeletionPolicy(r xpv1.DeletionPolicy) {
-	mg.Spec.DeletionPolicy = r
-}
-
 // SetManagementPolicies of this Topic.
 func (mg *Topic) SetManagementPolicies(r xpv1.ManagementPolicies) {
 	mg.Spec.ManagementPolicies = r
 }
 
 // SetProviderConfigReference of this Topic.
-func (mg *Topic) SetProviderConfigReference(r *xpv1.Reference) {
+func (mg *Topic) SetProviderConfigReference(r *xpv1.ProviderConfigReference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
-// SetPublishConnectionDetailsTo of this Topic.
-func (mg *Topic) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
-	mg.Spec.PublishConnectionDetailsTo = r
-}
-
 // SetWriteConnectionSecretToReference of this Topic.
-func (mg *Topic) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+func (mg *Topic) SetWriteConnectionSecretToReference(r *xpv1.LocalSecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }

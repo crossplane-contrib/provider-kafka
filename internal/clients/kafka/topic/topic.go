@@ -37,6 +37,7 @@ const (
 )
 
 // Get gets the topic from Kafka side and returns a Topic object.
+// #nosec G115
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
 
 	td, err := client.ListTopics(ctx, name)
@@ -216,6 +217,7 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 }
 
 // Generate is used to convert Crossplane TopicParameters to Kafka's Topic.
+// #nosec G115
 func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	tpc := &Topic{
 		Name:              name,

@@ -2,6 +2,7 @@ apiVersion: acl.kafka.crossplane.io/v1alpha1
 kind: AccessControlList
 metadata:
   name: marshmallory
+  namespace: kafka-cluster
 spec:
   forProvider:
     resourceName: marshmallory
@@ -19,3 +20,4 @@ spec:
     resourcePatternTypeFilter: "Literal"
   providerConfigRef:
     name: example
+    kind: ProviderConfig

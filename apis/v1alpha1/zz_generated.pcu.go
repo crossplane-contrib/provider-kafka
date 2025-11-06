@@ -17,10 +17,30 @@ limitations under the License.
 
 package v1alpha1
 
-import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+import xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+
+// GetProviderConfigReference of this ClusterProviderConfigUsage.
+func (p *ClusterProviderConfigUsage) GetProviderConfigReference() xpv1.ProviderConfigReference {
+	return p.ProviderConfigReference
+}
+
+// GetResourceReference of this ClusterProviderConfigUsage.
+func (p *ClusterProviderConfigUsage) GetResourceReference() xpv1.TypedReference {
+	return p.ResourceReference
+}
+
+// SetProviderConfigReference of this ClusterProviderConfigUsage.
+func (p *ClusterProviderConfigUsage) SetProviderConfigReference(r xpv1.ProviderConfigReference) {
+	p.ProviderConfigReference = r
+}
+
+// SetResourceReference of this ClusterProviderConfigUsage.
+func (p *ClusterProviderConfigUsage) SetResourceReference(r xpv1.TypedReference) {
+	p.ResourceReference = r
+}
 
 // GetProviderConfigReference of this ProviderConfigUsage.
-func (p *ProviderConfigUsage) GetProviderConfigReference() xpv1.Reference {
+func (p *ProviderConfigUsage) GetProviderConfigReference() xpv1.ProviderConfigReference {
 	return p.ProviderConfigReference
 }
 
@@ -30,7 +50,7 @@ func (p *ProviderConfigUsage) GetResourceReference() xpv1.TypedReference {
 }
 
 // SetProviderConfigReference of this ProviderConfigUsage.
-func (p *ProviderConfigUsage) SetProviderConfigReference(r xpv1.Reference) {
+func (p *ProviderConfigUsage) SetProviderConfigReference(r xpv1.ProviderConfigReference) {
 	p.ProviderConfigReference = r
 }
 

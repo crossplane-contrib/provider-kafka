@@ -22,12 +22,6 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/feature"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/pkg/errors"
@@ -35,10 +29,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -48,18 +48,29 @@ const (
 	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
 	errTrackPCUsage         = "cannot track ProviderConfig usage"
 	errGetPC                = "cannot get ProviderConfig"
+	errGetCPC               = "cannot get ClusterProviderConfig"
 	errGetCreds             = "cannot get credentials"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
 	errUpdateNotSupported   = "updates are not supported"
 )
 
+// SetupGated adds a controller that reconciles MyType managed resources with safe-start support.
+func SetupGated(mgr ctrl.Manager, o controller.Options) error {
+	o.Gate.Register(func() {
+		if err := Setup(mgr, o); err != nil {
+			panic(errors.Wrap(err, "cannot setup AccessControlList controller"))
+		}
+	}, v1alpha1.AccessControlListGroupVersionKind)
+	return nil
+}
+
 // Setup adds a controller that reconciles AccessControlList managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1alpha1.AccessControlListGroupKind)
 
-	reconcilerOptions := []managed.ReconcilerOption{
-		managed.WithExternalConnecter(&connector{
+	opts := []managed.ReconcilerOption{
+		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			newServiceFn: kafka.NewAdminClient,
@@ -69,25 +80,41 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithInitializers(),
 	}
+
 	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
-		reconcilerOptions = append(reconcilerOptions, managed.WithManagementPolicies())
+		opts = append(opts, managed.WithManagementPolicies())
 	}
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.AccessControlListGroupVersionKind),
-		reconcilerOptions...,
-	)
+	if o.Features.Enabled(feature.EnableAlphaChangeLogs) {
+		opts = append(opts, managed.WithChangeLogger(o.ChangeLogOptions.ChangeLogger))
+	}
+
+	if o.MetricOptions != nil {
+		opts = append(opts, managed.WithMetricRecorder(o.MetricOptions.MRMetrics))
+	}
+
+	if o.MetricOptions != nil && o.MetricOptions.MRStateMetrics != nil {
+		stateMetricsRecorder := statemetrics.NewMRStateRecorder(
+			mgr.GetClient(), o.Logger, o.MetricOptions.MRStateMetrics, &v1alpha1.AccessControlListList{}, o.MetricOptions.PollStateMetricInterval,
+		)
+		if err := mgr.Add(stateMetricsRecorder); err != nil {
+			return errors.Wrap(err, "cannot register MR state metrics recorder for kind v1alpha1.AccessControlListList")
+		}
+	}
+
+	r := managed.NewReconciler(mgr, resource.ManagedKind(v1alpha1.AccessControlListGroupVersionKind), opts...)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
+		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.AccessControlList{}).
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
 type connector struct {
 	kube         client.Client
-	usage        resource.Tracker
+	usage        *resource.ProviderConfigUsageTracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
 	cachedClient *kadm.Client
@@ -99,16 +126,33 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.New(errNotAccessControlList)
 	}
 
-	if err := c.usage.Track(ctx, mg); err != nil {
+	if err := c.usage.Track(ctx, cr); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &apisv1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, errors.Wrap(err, errGetPC)
+	var cd apisv1alpha1.ProviderCredentials
+
+	// Switch to ModernManaged resource to get ProviderConfigRef
+	m := mg.(resource.ModernManaged)
+	ref := m.GetProviderConfigReference()
+
+	switch ref.Kind {
+	case "ProviderConfig":
+		pc := &apisv1alpha1.ProviderConfig{}
+		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
+			return nil, errors.Wrap(err, errGetPC)
+		}
+		cd = pc.Spec.Credentials
+	case "ClusterProviderConfig":
+		cpc := &apisv1alpha1.ClusterProviderConfig{}
+		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
+			return nil, errors.Wrap(err, errGetCPC)
+		}
+		cd = cpc.Spec.Credentials
+	default:
+		return nil, errors.Errorf("unsupported provider config kind: %s", ref.Kind)
 	}
 
-	cd := pc.Spec.Credentials
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
@@ -121,6 +165,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
+}
+
+func (c *external) Disconnect(ctx context.Context) error {
+	if c.kafkaClient != nil {
+		c.kafkaClient.Close()
+	}
+	c.kafkaClient = nil
+	return nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
@@ -209,6 +261,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 
 	cr, ok := mg.(*v1alpha1.AccessControlList)
+	cr.Status.SetConditions(v1.Deleting())
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotAccessControlList)
 	}
