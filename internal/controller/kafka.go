@@ -20,9 +20,9 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/crossplane-contrib/provider-kafka/internal/controller/acl"
-	"github.com/crossplane-contrib/provider-kafka/internal/controller/config"
-	"github.com/crossplane-contrib/provider-kafka/internal/controller/topic"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/controller/acl"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/controller/config"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/controller/topic"
 )
 
 // SetupGated creates all Template controllers with safe-start support and adds them to

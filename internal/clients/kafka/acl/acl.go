@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/v2/apis/acl/v1alpha1"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"

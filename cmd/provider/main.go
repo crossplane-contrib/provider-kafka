@@ -44,9 +44,9 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/crossplane-contrib/provider-kafka/apis"
-	kafkacontroller "github.com/crossplane-contrib/provider-kafka/internal/controller"
-	"github.com/crossplane-contrib/provider-kafka/internal/version"
+	"github.com/crossplane-contrib/provider-kafka/v2/apis"
+	kafkacontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/version"
 )
 
 func main() {

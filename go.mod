@@ -1,4 +1,4 @@
-module github.com/crossplane-contrib/provider-kafka
+module github.com/crossplane-contrib/provider-kafka/v2
 
 go 1.24.0
 

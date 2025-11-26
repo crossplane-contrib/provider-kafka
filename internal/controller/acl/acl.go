@@ -20,8 +20,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka/acl"
 	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/pkg/errors"
@@ -40,8 +40,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
-	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/v2/apis/acl/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
 )
 
 const (

@@ -4,7 +4,7 @@ metadata:
   name: provider-kafka
   annotations:
     meta.crossplane.io/maintainer: Crossplane Maintainers <info@crossplane.io>
-    meta.crossplane.io/source: github.com/crossplane-contrib/provider-kafka
+    meta.crossplane.io/source: github.com/crossplane-contrib/provider-kafka/v2
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       provider-kafka is a Crossplane Provider that is used to manage Kafka resources.
