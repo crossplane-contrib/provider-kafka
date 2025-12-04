@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/topic/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
 )
 
 // Topic is a holistic representation of a Kafka Topic with all configurable

@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/topic/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka"
 
 	"github.com/google/go-cmp/cmp"

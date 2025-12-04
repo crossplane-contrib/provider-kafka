@@ -1,4 +1,4 @@
-apiVersion: topic.kafka.crossplane.io/v1alpha1
+apiVersion: topic.kafka.m.crossplane.io/v1alpha1
 kind: Topic
 metadata:
   name: sample-topic

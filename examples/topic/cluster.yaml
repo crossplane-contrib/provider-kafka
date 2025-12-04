@@ -14,4 +14,3 @@ spec:
 #      compression.type: "snappy"
   providerConfigRef:
     name: example
-    kind: ClusterProviderConfig

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"context"
 
 	kingpin "github.com/alecthomas/kingpin/v2"
 	"google.golang.org/grpc"
@@ -31,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	authv1 "k8s.io/api/authorization/v1"
 
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -41,11 +44,15 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis"
-	kafkacontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller"
+	clusterapis "github.com/crossplane-contrib/provider-kafka/v2/apis/cluster"
+	namespacedapis "github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced"
+
+	clustercontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller/cluster"
+	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller/namespaced"
 	"github.com/crossplane-contrib/provider-kafka/v2/internal/version"
 )
 
@@ -86,6 +93,9 @@ func main() {
 		"sync-period", syncPeriod.String(),
 		"poll-interval", pollInterval.String(),
 		"max-reconcile-rate", maxReconcileRate,
+		"enable-management-policies", *enableManagementPolicies,
+		"enable-changelogs", *enableChangeLogs,
+		"changelogs-socket-path", *changelogsSocketPath,
 	)
 
 	cfg, err := ctrl.GetConfig()
@@ -102,7 +112,8 @@ func main() {
 		},
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
-	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Kafka APIs to scheme")
+	kingpin.FatalIfError(clusterapis.AddToScheme(mgr.GetScheme()), "Cannot add Cluster Kafka APIs to scheme")
+	kingpin.FatalIfError(namespacedapis.AddToScheme(mgr.GetScheme()), "Cannot add Namespaced Kafka APIs to scheme")
 	kingpin.FatalIfError(apiextensionsv1.AddToScheme(mgr.GetScheme()), "Cannot add CustomResourceDefinition to scheme")
 
 	metricRecorder := managed.NewMRMetricRecorder()
@@ -118,7 +129,6 @@ func main() {
 		PollInterval:            *pollInterval,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		Features:                &feature.Flags{},
-		Gate:                    new(gate.Gate[schema.GroupVersionKind]),
 		MetricOptions: &controller.MetricOptions{
 			PollStateMetricInterval: *pollStateMetricInterval,
 			MRMetrics:               metricRecorder,
@@ -146,7 +156,45 @@ func main() {
 		o.ChangeLogOptions = &clo
 	}
 
-	kingpin.FatalIfError(kafkacontroller.SetupGated(mgr, o), "Cannot setup Kafka controllers")
-	kingpin.FatalIfError(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
+	canSafeStart, err := canWatchCRD(context.Background(), mgr)
+
+	kingpin.FatalIfError(err, "SafeStart precheck failed")
+
+	if canSafeStart {
+		o.Gate = new(gate.Gate[schema.GroupVersionKind])
+		kingpin.FatalIfError(clustercontroller.SetupGated(mgr, o), "Cannot setup Cluster Kafka controllers")
+		kingpin.FatalIfError(namespacedcontroller.SetupGated(mgr, o), "Cannot setup Namespaced Kafka controllers")
+		kingpin.FatalIfError(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
+	} else {
+		log.Info("Provider has missing RBAC permissions for watching CRDs, controller SafeStart capability will be disabled")
+		kingpin.FatalIfError(namespacedcontroller.Setup(mgr, o), "Cannot setup Namespaced Kafka controllers")
+		kingpin.FatalIfError(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
+	}
+
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
+}
+
+func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
+	if err := authv1.AddToScheme(mgr.GetScheme()); err != nil {
+		return false, err
+	}
+	verbs := []string{"get", "list", "watch"}
+	for _, verb := range verbs {
+		sar := &authv1.SelfSubjectAccessReview{
+			Spec: authv1.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authv1.ResourceAttributes{
+					Group:    "apiextensions.k8s.io",
+					Resource: "customresourcedefinitions",
+					Verb:     verb,
+				},
+			},
+		}
+		if err := mgr.GetClient().Create(ctx, sar); err != nil {
+			return false, errors.Wrapf(err, "unable to perform RBAC check for verb %s on CustomResourceDefinitions", verb)
+		}
+		if !sar.Status.Allowed {
+			return false, nil
+		}
+	}
+	return true, nil
 }

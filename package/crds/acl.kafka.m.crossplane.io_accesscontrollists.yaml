@@ -4,19 +4,19 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: topics.topic.kafka.crossplane.io
+  name: accesscontrollists.acl.kafka.m.crossplane.io
 spec:
-  group: topic.kafka.crossplane.io
+  group: acl.kafka.m.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - kafka
-    kind: Topic
-    listKind: TopicList
-    plural: topics
-    singular: topic
-  scope: Cluster
+    kind: AccessControlList
+    listKind: AccessControlListList
+    plural: accesscontrollists
+    singular: accesscontrollist
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status
@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A Topic is an example API type.
+        description: A AccessControlList is an example API type.
         properties:
           apiVersion:
             description: |-
@@ -54,43 +54,83 @@ spec:
           metadata:
             type: object
           spec:
-            description: A TopicSpec defines the desired state of a Topic.
+            description: An AccessControlListSpec defines the desired state of an
+              AccessControlList
             properties:
-              deletionPolicy:
-                default: Delete
-                description: |-
-                  DeletionPolicy specifies what will happen to the underlying external
-                  when this managed resource is deleted - either "Delete" or "Orphan" the
-                  external resource.
-                  This field is planned to be deprecated in favor of the ManagementPolicies
-                  field in a future release. Currently, both could be set independently and
-                  non-default values would be honored if the feature flag is enabled.
-                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
-                enum:
-                - Orphan
-                - Delete
-                type: string
               forProvider:
-                description: TopicParameters are the configurable fields of a Topic.
+                description: AccessControlListParameters are the configurable fields
+                  of a AccessControlList.
                 properties:
-                  config:
-                    additionalProperties:
-                      type: string
-                    description: Config is an optional map of string key/ value pairs.
-                    type: object
-                  partitions:
-                    description: Partitions defines the number of partitions the topic
-                      should have.
-                    minimum: 1
-                    type: integer
-                  replicationFactor:
-                    description: ReplicationFactor defines the number of replicas
-                      the topic should have.
-                    minimum: 1
-                    type: integer
+                  resourceHost:
+                    description: ResourceHost is the Host from which principal listed
+                      in ResourcePrinciple will have access.
+                    type: string
+                  resourceName:
+                    description: ResourceName is the name of the resource.
+                    type: string
+                  resourceOperation:
+                    description: |-
+                      ResourceOperation is the Operation that is being allowed or denied.
+                      Valid values are Unknown, Any, All, Read, Write, Create, Delete, Alter, Describe, ClusterAction, DescribeConfigs, AlterConfigs, IdempotentWrite.
+                    enum:
+                    - Unknown
+                    - Any
+                    - All
+                    - Read
+                    - Write
+                    - Create
+                    - Delete
+                    - Alter
+                    - Describe
+                    - ClusterAction
+                    - DescribeConfigs
+                    - AlterConfigs
+                    - IdempotentWrite
+                    type: string
+                  resourcePatternTypeFilter:
+                    description: |-
+                      ResourcePatternTypeFilter is the pattern filter.
+                      Valid values are Prefixed, Any, Match, Literal.
+                    enum:
+                    - Prefixed
+                    - Any
+                    - Match
+                    - Literal
+                    type: string
+                  resourcePermissionType:
+                    description: |-
+                      ResourcePermissionType is the Type of permission.
+                      Valid values are Unknown, Any, Allow, Deny.
+                    enum:
+                    - Unknown
+                    - Any
+                    - Allow
+                    - Deny
+                    type: string
+                  resourcePrincipal:
+                    description: ResourcePrincipal is the Principal that is being
+                      allowed or denied.
+                    type: string
+                  resourceType:
+                    description: |-
+                      ResourceType is the type of resource.
+                      Valid values are Unknown, Any, Topic, Group, Cluster, TransactionalID
+                    enum:
+                    - Unknown
+                    - Any
+                    - Topic
+                    - Group
+                    - Cluster
+                    - TransactionalID
+                    type: string
                 required:
-                - partitions
-                - replicationFactor
+                - resourceHost
+                - resourceName
+                - resourceOperation
+                - resourcePatternTypeFilter
+                - resourcePermissionType
+                - resourcePrincipal
+                - resourceType
                 type: object
               managementPolicies:
                 default:
@@ -100,10 +140,6 @@ spec:
                   through a Crossplane feature flag.
                   ManagementPolicies specify the array of actions Crossplane is allowed to
                   take on the managed and external resources.
-                  This field is planned to replace the DeletionPolicy field in a future
-                  release. Currently, both could be set independently and non-default
-                  values would be honored if the feature flag is enabled. If both are
-                  custom, the DeletionPolicy field will be ignored.
                   See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
                   and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
                 items:
@@ -121,41 +157,21 @@ spec:
                 type: array
               providerConfigRef:
                 default:
+                  kind: ClusterProviderConfig
                   name: default
                 description: |-
                   ProviderConfigReference specifies how the provider that will be used to
                   create, observe, update, and delete this managed resource should be
                   configured.
                 properties:
+                  kind:
+                    description: Kind of the referenced object.
+                    type: string
                   name:
                     description: Name of the referenced object.
                     type: string
-                  policy:
-                    description: Policies for referencing.
-                    properties:
-                      resolution:
-                        default: Required
-                        description: |-
-                          Resolution specifies whether resolution of this reference is required.
-                          The default is 'Required', which means the reconcile will fail if the
-                          reference cannot be resolved. 'Optional' means this reference will be
-                          a no-op if it cannot be resolved.
-                        enum:
-                        - Required
-                        - Optional
-                        type: string
-                      resolve:
-                        description: |-
-                          Resolve specifies when this reference should be resolved. The default
-                          is 'IfNotPresent', which will attempt to resolve the reference only when
-                          the corresponding field is not present. Use 'Always' to resolve the
-                          reference on every reconcile.
-                        enum:
-                        - Always
-                        - IfNotPresent
-                        type: string
-                    type: object
                 required:
+                - kind
                 - name
                 type: object
               writeConnectionSecretToRef:
@@ -168,21 +184,19 @@ spec:
                   name:
                     description: Name of the secret.
                     type: string
-                  namespace:
-                    description: Namespace of the secret.
-                    type: string
                 required:
                 - name
-                - namespace
                 type: object
             required:
             - forProvider
             type: object
           status:
-            description: A TopicStatus represents the observed state of a Topic.
+            description: A AccessControlListStatus represents the observed state of
+              a AccessControlList.
             properties:
               atProvider:
-                description: TopicObservation are the observable fields of a Topic.
+                description: AccessControlListObservation are the observable fields
+                  of an AccessControlList
                 properties:
                   id:
                     type: string

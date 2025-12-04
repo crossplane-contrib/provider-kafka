@@ -1,4 +1,4 @@
-apiVersion: acl.kafka.crossplane.io/v1alpha1
+apiVersion: acl.kafka.m.crossplane.io/v1alpha1
 kind: AccessControlList
 metadata:
   name: marshmallory

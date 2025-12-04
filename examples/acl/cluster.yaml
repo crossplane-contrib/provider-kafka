@@ -19,4 +19,3 @@ spec:
     resourcePatternTypeFilter: "Literal"
   providerConfigRef:
     name: example
-    kind: ClusterProviderConfig
