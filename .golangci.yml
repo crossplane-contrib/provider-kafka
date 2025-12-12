@@ -111,6 +111,7 @@ linters:
     - gocyclo
     - gocritic
     - goconst
+    # - gofmt is disabled because another formatter (e.g., goimports or gofumpt) is used for code formatting.
     #- gofmt
     - prealloc
     - unconvert
