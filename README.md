@@ -50,7 +50,8 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
    helm repo update bitnami
    helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
       --create-namespace \
-      --version 31.0.0 \
+      --version 32.4.3 \
+      --set image.repository=bitnamilegacy/kafka \
       --set auth.clientProtocol=sasl \
       --set deleteTopicEnable=true \
       --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \

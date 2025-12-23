@@ -24,10 +24,9 @@ KIND_NODE_IMAGE_TAG ?= v1.32.0
 # ====================================================================================
 # Setup Go
 
-# TODO(jastang): update Go version to be in-line with the build submodule.
-GO_REQUIRED_VERSION = 1.23
+GO_REQUIRED_VERSION = 1.25
 
-GOLANGCILINT_VERSION ?= 1.63.4
+GOLANGCILINT_VERSION ?= 2.7.2
 
 # Set a sane default so that the nprocs calculation below is less noisy on the initial
 # loading of this file

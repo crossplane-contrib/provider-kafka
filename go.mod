@@ -1,8 +1,6 @@
 module github.com/crossplane-contrib/provider-kafka
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.25.1
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
