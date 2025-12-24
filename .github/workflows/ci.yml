@@ -114,7 +114,7 @@ jobs:
         run: make vendor vendor.check
 
       - name: Run Unit Tests
-        run: make unit-tests
+        run: make kind-cluster unit-tests
 
       - name: Publish Unit Test Coverage
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
