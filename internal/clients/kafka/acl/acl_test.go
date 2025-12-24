@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -302,12 +302,10 @@ func TestGenerate(t *testing.T) {
 	type args struct {
 		params *v1alpha1.AccessControlListParameters
 	}
-	tests := []struct {
+	var tests []struct {
 		name string
 		args args
 		want *AccessControlList
-	}{
-		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -323,12 +321,10 @@ func TestIsUpToDate(t *testing.T) {
 		in       *v1alpha1.AccessControlListParameters
 		observed *AccessControlList
 	}
-	tests := []struct {
+	var tests []struct {
 		name string
 		args args
 		want bool
-	}{
-		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -345,13 +341,11 @@ func TestList(t *testing.T) {
 		cl                *kadm.Client
 		accessControlList *AccessControlList
 	}
-	tests := []struct {
+	var tests []struct {
 		name    string
 		args    args
 		want    *AccessControlList
 		wantErr bool
-	}{
-		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

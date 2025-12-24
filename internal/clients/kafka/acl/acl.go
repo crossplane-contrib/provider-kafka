@@ -3,10 +3,7 @@ package acl
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
-
-	"github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -60,7 +57,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	if err != nil {
 		return nil, errors.Wrap(err, "describe ACLs response is empty")
 	}
-	if exists := resp[0].Described; len(exists) == 0 {
+	if len(resp) == 0 || len(resp[0].Described) == 0 {
 		return nil, nil
 	}
 
@@ -137,14 +134,8 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 		ab = ab.AnyResource(accessControlList.ResourceName)
 	}
 
-	resp, err := cl.DeleteACLs(ctx, ab)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Delete Response:", resp)
-
-	return nil
+	_, err := cl.DeleteACLs(ctx, ab)
+	return err
 }
 
 // ConvertToJSON performs a json marshalling for ACLs
@@ -163,7 +154,7 @@ func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	acl := AccessControlList{}
 	err := json.Unmarshal([]byte(extname), &acl)
 	if err != nil {
-		return nil, errors.Wrap(err, "describe ACLs response is empty")
+		return nil, errors.Wrap(err, "cannot unmarshal external-name JSON")
 	}
 	return &acl, nil
 }
@@ -202,44 +193,4 @@ func Diff(existing AccessControlList, observed AccessControlList) []string {
 // CompareAcls performs an observed to incoming ACL comparison
 func CompareAcls(extname AccessControlList, observed AccessControlList) bool {
 	return extname == observed
-}
-
-// Generate is used to convert Crossplane AccessControlListParameters to Kafka's AccessControlList.
-func Generate(params *v1alpha1.AccessControlListParameters) *AccessControlList {
-	acl := &AccessControlList{
-		ResourceName:              params.ResourceName,
-		ResourceType:              params.ResourceType,
-		ResourcePrincipal:         params.ResourcePrincipal,
-		ResourceHost:              params.ResourceHost,
-		ResourceOperation:         params.ResourceOperation,
-		ResourcePermissionType:    params.ResourcePermissionType,
-		ResourcePatternTypeFilter: params.ResourcePatternTypeFilter,
-	}
-
-	return acl
-}
-
-// IsUpToDate returns true if the supplied Kubernetes resource differs from the
-// supplied Kafka ACLs.
-func IsUpToDate(in *v1alpha1.AccessControlListParameters, observed *AccessControlList) bool {
-
-	if in.ResourceType != observed.ResourceType {
-		return false
-	}
-	if in.ResourcePrincipal != observed.ResourcePrincipal {
-		return false
-	}
-	if in.ResourceHost != observed.ResourceHost {
-		return false
-	}
-	if in.ResourceOperation != observed.ResourceOperation {
-		return false
-	}
-	if in.ResourcePermissionType != observed.ResourcePermissionType {
-		return false
-	}
-	if in.ResourcePatternTypeFilter != observed.ResourcePatternTypeFilter {
-		return false
-	}
-	return true
 }

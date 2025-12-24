@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2025 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package apis contains Kubernetes API for the Template provider.
+// Package apis contains Kubernetes API for the Kafka provider.
 package apis
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	aclv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/acl/v1alpha1"
-	topicv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/topic/v1alpha1"
-	kafkav1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	aclv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
+	topicv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
+	kafkav1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
+
+	aclv1alpha2 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha2"
+	topicv1alpha2 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha2"
+	kafkav1alpha2 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha2"
 )
 
 func init() {
 	// Register the types with the Scheme so the components can map objects to GroupVersionKinds and back
 	AddToSchemes = append(AddToSchemes,
+		// Cluster-scoped APIs
 		kafkav1alpha1.SchemeBuilder.AddToScheme,
 		topicv1alpha1.SchemeBuilder.AddToScheme,
 		aclv1alpha1.SchemeBuilder.AddToScheme,
+		// Namespaced APIs
+		kafkav1alpha2.SchemeBuilder.AddToScheme,
+		topicv1alpha2.SchemeBuilder.AddToScheme,
+		aclv1alpha2.SchemeBuilder.AddToScheme,
 	)
 }
 

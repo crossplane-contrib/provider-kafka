@@ -2,13 +2,8 @@
 /.work
 /_output
 cover.out
-/bin
 /vendor
 /.vendor-new
+.vscode
+.idea
 .DS_Store
-kc.json
-# ignore IDE folders
-.vscode/
-.idea/
-kaf.yaml
-local-test-scripts/*

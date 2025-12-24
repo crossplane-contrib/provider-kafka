@@ -1,4 +1,4 @@
-apiVersion: meta.pkg.crossplane.io/v1
+apiVersion: meta.pkg.crossplane.io/v1alpha1
 kind: Provider
 metadata:
   name: provider-kafka
@@ -11,3 +11,6 @@ metadata:
     meta.crossplane.io/readme: |
       provider-kafka is a Crossplane Provider that is used to manage Kafka resources,
       such as Kafka Topics and Access Control Lists.
+spec:
+  capabilities:
+    - safe-start
