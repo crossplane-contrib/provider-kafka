@@ -156,8 +156,12 @@ unit-tests: $(HELM) $(KIND) $(KUBECTL)
 	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
 	@sudo killall kubefwd > /dev/null || true
 	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
+ifndef KAFKA_PASSWORD
 	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
 	export KAFKA_PASSWORD=$$KAFKA_PASSWORD; $(MAKE) -j2 -s test
+else
+	$(MAKE) -j2 -s test
+endif
 	@sudo killall kubefwd
 	@$(MAKE) -s dev-clean
 

@@ -113,8 +113,20 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
+      - name: Setup Kind cluster
+        run: make kind-cluster
+
+      - name: Get Kafka Client Password
+        id: kafka
+        run: |-
+          echo "password=$( \
+            kubectl get secret kafka-dev-user-passwords --namespace kafka-cluster \
+            -o jsonpath='{.data.client-passwords}' | base64 --decode | cut -d , -f 1)" >> $GITHUB_OUTPUT
+
       - name: Run Unit Tests
-        run: make kind-cluster unit-tests
+        env:
+          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
+        run: make unit-tests KAFKA_PASSWORD=${KAFKA_PASSWORD}
 
       - name: Publish Unit Test Coverage
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
