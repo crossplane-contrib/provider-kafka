@@ -13,11 +13,6 @@ env:
   GO_VERSION: '1.25'
   GOLANGCI_VERSION: 'v2.7.2'
   DOCKER_BUILDX_VERSION: 'v0.30.1'
-  KIND_VERSION: 'v0.31.0'
-  HELM_VERSION: 'v3.19.4'
-  CROSSPLANE_VERSION: 'stable'
-  KUBECTL_VERSION: 'v1.35.0'
-  KUBEFWD_VERSION: 'v1.23.2'
 
   # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
   # a step 'if env.AWS_USR' != ""', so we copy these to succinctly test whether
@@ -65,7 +60,6 @@ jobs:
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
           version: ${{ env.GOLANGCI_VERSION }}
-          skip-go-installation: true
           args: --timeout 10m0s
 
   check-diff:
@@ -115,82 +109,14 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
-      - name: Set up Kind Cluster 
-        uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
-        with:
-          cluster_name: 'kafka'
-          kubectl_version: ${{ env.KUBECTL_VERSION}}
-          version: ${{ env.KIND_VERSION }}
-
-      - name: Install Crossplane
-        run: |
-          helm repo add crossplane-stable https://charts.crossplane.io/stable
-          helm repo update crossplane-stable
-          helm install crossplane --create-namespace --namespace crossplane-system crossplane-stable/crossplane
-
-      - name: Install Provider-Kafka CRDs
-        run: kubectl apply -f package/crds
-
-      # TODO: move away from bitnami
-      - name: Install Kafka
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm upgrade --install kafka-dev bitnami/kafka \
-            --create-namespace --namespace kafka-cluster \
-            --version 32.4.3 \
-            --set image.repository=bitnamilegacy/kafka \
-            --set auth.clientProtocol=sasl \
-            --set deleteTopicEnable=true \
-            --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
-            --wait
-
-      - name: Get Kafka Client Password
-        id: kafka
-        run: >-
-          echo "password=$(kubectl get secret kafka-dev-jaas
-            --namespace kafka-cluster -o jsonpath='{.data.client-passwords}' |
-            base64 --decode | cut -d , -f 1)" >> $GITHUB_OUTPUT
-
-      - name: Create Kafka Credentials File
-        env:
-          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
-        run: |
-          echo "{
-            "brokers": [
-              "kafka-dev-0.kafka-dev-headless:9092"
-            ],
-            "sasl": {
-              "mechanism": "PLAIN",
-              "username": "user",
-              "password": "${KAFKA_PASSWORD}"
-            }
-          }" | tee -a kc.json
-
-      - name: create Kafka K8s secret
-        run: kubectl -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
-
-      - name: Test downloading external binary
-        uses: giantswarm/install-binary-action@c94c7adadeb14af4bdbdd601f9a6e7f69638134c # v4.0.0
-        with:
-          binary: kubefwd
-          version: "${{ env.KUBEFWD_VERSION }}"
-          download_url: https://github.com/txn2/kubefwd/releases/download/${version}/${binary}_Linux_x86_64.tar.gz
-          tarball_binary_path: "${binary}"
-          smoke_test: "${binary} version"
-
-      - name: run Kubefwd
-        run: sudo -E /opt/hostedtoolcache/kubefwd/${{ env.KUBEFWD_VERSION }}/x64/kubefwd svc -n kafka-cluster &
-
       - name: Run Unit Tests
-        env:
-          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
-        run: make -j2 test
+        run: make unit-tests
 
       - name: Publish Unit Test Coverage
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           flags: unittests
-          file: _output/tests/linux_amd64/coverage.txt
+          files: _output/tests/linux_amd64/coverage.txt
 
   e2e-tests:
     runs-on: ubuntu-24.04
@@ -207,7 +133,6 @@ jobs:
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           version: ${{ env.DOCKER_BUILDX_VERSION }}
-          install: true
 
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -250,7 +175,6 @@ jobs:
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           version: ${{ env.DOCKER_BUILDX_VERSION }}
-          install: true
 
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1

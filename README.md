@@ -11,11 +11,13 @@ manage [Kafka](https://kafka.apache.org/) resources.
     ```json
     {
       "brokers":[
-        "kafka-dev-0.kafka-dev-headless:9092"
+        "kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
+        "kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
+        "kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"
        ],
        "sasl":{
          "mechanism":"PLAIN",
-         "username":"user",
+         "username":"user1",
          "password":"<your-password>"
        }
     }
@@ -40,10 +42,15 @@ The following instructions will setup a development environment where you will h
 installation (SASL-Plain enabled). To change the configuration of your instance further, please see available helm
 parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#installing-the-chart).
 
+> steps 1-5 can be done with `make local-tests`
+
 1. (Optional) Create a local [kind](https://kind.sigs.k8s.io/) cluster unless you want to develop against an existing
    k8s cluster.
+   Or simply run: `make kind-setup`
 
-2. Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
+2. Run `make kind-kafka-setup` or manually with:
+
+   Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
 
    ```shell
    helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -99,7 +106,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 
       ```shell
       cat <<EOF > ~/.kcl/config.toml
-      seed_brokers = ["kafka-dev-0.kafka-dev-headless:9092"]
+      seed_brokers = ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"]
       timeout_ms = 10000
       [sasl]
       method = "plain"

@@ -5,15 +5,6 @@ PROJECT_NAME := provider-kafka
 PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
-
-# kind-related versions
-KIND_VERSION ?= v0.26.0
-KIND_NODE_IMAGE_TAG ?= v1.32.0
-
-# -include will silently skip missing files, which allows us
-# to load those files with a target in the Makefile. If only
-# "include" was used, the make command would fail and refuse
-# to run a target until the include commands succeeded.
 -include build/makelib/common.mk
 
 # ====================================================================================
@@ -24,23 +15,13 @@ KIND_NODE_IMAGE_TAG ?= v1.32.0
 # ====================================================================================
 # Setup Go
 
-GO_REQUIRED_VERSION = 1.25
-
-GOLANGCILINT_VERSION ?= 2.7.2
-
-# Set a sane default so that the nprocs calculation below is less noisy on the initial
-# loading of this file
 NPROCS ?= 1
-
-# each of our test suites starts a kube-apiserver and running many test suites in
-# parallel can lead to high CPU utilization. by default we reduce the parallelism
-# to half the number of CPU cores.
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
-
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
-GO_LDFLAGS += -X $(GO_PROJECT)/pkg/version.Version=$(VERSION)
+GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
+GOLANGCILINT_VERSION = 2.7.2
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -49,7 +30,9 @@ GO111MODULE = on
 UP_VERSION = v0.37.0
 UP_CHANNEL = stable
 USE_HELM3 = true
-HELM3_VERSION = v3.17.0
+HELM3_VERSION = v3.19.4
+KIND_VERSION = v0.31.0
+KUBEFWD_VERSION = v1.23.2
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -61,7 +44,7 @@ IMAGES = provider-kafka
 # ====================================================================================
 # Setup XPKG
 
-XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib index.docker.io/crossplanecontrib
+XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
@@ -72,41 +55,15 @@ XPKGS = provider-kafka
 # we ensure image is present in daemon.
 xpkg.build.provider-kafka: do.build.images
 
-# ====================================================================================
-# Targets
-
-# run `make help` to see the targets and options
-
-# We want submodules to be set up the first time `make` is run.
-# We manage the build/ folder and its Makefiles as a submodule.
-# The first time `make` is run, the includes of build/*.mk files will
-# all fail, and this target will be run. The next time, the default as defined
-# by the includes will be run instead.
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
-
-# Generate a coverage report for cobertura applying exclusions on
-# - generated file
-cobertura:
-	@cat $(GO_TEST_OUTPUT)/coverage.txt | \
-		grep -v zz_generated.deepcopy | \
-		$(GOCOVER_COBERTURA) > $(GO_TEST_OUTPUT)/cobertura-coverage.xml
-
-crds.clean:
-	@$(INFO) cleaning generated CRDs
-	@find package/crds -name *.yaml -exec sed -i.sed -e '1,2d' {} \; || $(FAIL)
-	@find package/crds -name *.yaml.sed -delete || $(FAIL)
-	@$(OK) cleaned generated CRDs
-
-generate: crds.clean
-
 
 # integration tests
 e2e.run: test-integration
 
 # Run integration tests.
-test-integration: $(KIND) $(KUBECTL) $(HELM3)
+test-integration: $(KIND) $(KUBECTL) $(CROSSPLANE_CLI) $(HELM3)
 	@$(INFO) running integration tests using kind $(KIND_VERSION)
 	@KIND_NODE_IMAGE_TAG=${KIND_NODE_IMAGE_TAG} $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
 	@$(OK) integration tests passed
@@ -125,10 +82,13 @@ submodules:
 go.cachedir:
 	@go env GOCACHE
 
+go.mod.cachedir:
+	@go env GOMODCACHE
+
 # NOTE(hasheddan): we must ensure up is installed in tool cache prior to build
 # as including the k8s_tools machinery prior to the xpkg machinery sets UP to
 # point to tool cache.
-build.init: $(UP)
+build.init: $(CROSSPLANE_CLI)
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
@@ -138,22 +98,126 @@ run: go.build
 	@# To see other arguments that can be provided, run the command with --help instead
 	$(GO_OUT_DIR)/provider --debug
 
-dev: generate
-	kubectl apply -f package/crds/ -R
-	go run cmd/provider/main.go -d
+dev: $(KIND) $(KUBECTL) $(DOCKER)
+	@($(MAKE) -s kind-setup)
+	@$(INFO) Starting Provider Kafka controllers
+	@$(GO) run cmd/provider/main.go --debug
 
-manifests:
-	@$(INFO) Deprecated. Run make generate instead.
+dev-clean: $(KIND) $(KUBECTL)
+	@$(INFO) Deleting kind cluster
+	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
 
-.PHONY: cobertura submodules fallthrough test-integration run crds.clean manifests
+kind-setup: $(KIND)
+	@$(KIND) get clusters | grep $(PROJECT_NAME)-dev || ( \
+		$(INFO) Creating kind cluster; \
+		$(KIND) create cluster --name=$(PROJECT_NAME)-dev; \
+	)
+	@$(KIND) export kubeconfig --name $(PROJECT_NAME)-dev
+	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
+	@$(HELM) repo update crossplane-stable
+	@$(HELM) upgrade --install crossplane --create-namespace --namespace crossplane-system crossplane-stable/crossplane --wait
+	@$(INFO) Installing Provider Kafka CRDs
+	@$(KUBECTL) apply -R -f package/crds
+
+kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
+	@$(INFO) Installing Kafka cluster in kind
+	@$(HELM) repo add bitnami https://charts.bitnami.com/bitnami
+	@$(HELM) repo update bitnami
+	@$(HELM) upgrade --install kafka-dev bitnami/kafka \
+		--create-namespace --namespace kafka-cluster \
+		--version 32.4.3 \
+		--set image.repository=bitnamilegacy/kafka \
+		--set auth.clientProtocol=sasl \
+		--set deleteTopicEnable=true \
+		--set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
+		--wait
+	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1)
+	@echo "{ \
+		\"brokers\": [ \
+			\"kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
+			\"kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
+			\"kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\" \
+		], \
+		\"sasl\": { \
+			\"mechanism\": \"PLAIN\", \
+			\"username\": \"user\", \
+			\"password\": \"${KAFKA_PASSWORD}\" \
+		} \
+	}" | tee kc.json
+	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds || true
+	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
+
+local-tests: $(HELM) $(KIND) $(KUBECTL)
+	@$(MAKE) -s kind-setup
+	@$(MAKE) -s kind-kafka-setup
+# TODO: replace with another kafka helm chart
+	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
+	@sudo killall kubefwd || true
+	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
+	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
+	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
+	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
+	@$(INFO) Stopping kubefwd
+	@sudo killall kubefwd
+	@$(MAKE) -s dev-clean
+
+unit-tests: $(HELM) $(KIND) $(KUBECTL)
+	@$(MAKE) -s kind-setup
+	@$(MAKE) -s kind-kafka-setup
+# TODO: replace with another kafka helm chart
+	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
+	@killall kubefwd || true
+	@$(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
+	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
+	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
+	@$(INFO) Stopping kubefwd
+	@killall kubefwd
+	@$(MAKE) -s dev-clean
+
+.PHONY: submodules fallthrough test-integration run dev dev-clean
 
 # ====================================================================================
 # Special Targets
 
+# Install gomplate
+GOMPLATE_VERSION := 3.10.0
+GOMPLATE := $(TOOLS_HOST_DIR)/gomplate-$(GOMPLATE_VERSION)
+
+$(GOMPLATE):
+	@$(INFO) installing gomplate $(SAFEHOSTPLATFORM)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@curl -fsSLo $(GOMPLATE) https://github.com/hairyhenderson/gomplate/releases/download/v$(GOMPLATE_VERSION)/gomplate_$(SAFEHOSTPLATFORM) || $(FAIL)
+	@chmod +x $(GOMPLATE)
+	@$(OK) installing gomplate $(SAFEHOSTPLATFORM)
+
+export GOMPLATE
+
+# This target prepares repo for your provider by replacing all "template"
+# occurrences with your provider name.
+# This target can only be run once, if you want to rerun for some reason,
+# consider stashing/resetting your git state.
+# Arguments:
+#   provider: Camel case name of your provider, e.g. GitHub, PlanetScale
+provider.prepare:
+	@[ "${provider}" ] || ( echo "argument \"provider\" is not set"; exit 1 )
+	@PROVIDER=$(provider) ./hack/helpers/prepare.sh
+
+# This target adds a new api type and its controller.
+# You would still need to register new api in "apis/<provider>.go" and
+# controller in "internal/controller/<provider>.go".
+# Arguments:
+#   provider: Camel case name of your provider, e.g. GitHub, PlanetScale
+#   group: API group for the type you want to add.
+#   kind: Kind of the type you want to add
+#	apiversion: API version of the type you want to add. Optional and defaults to "v1alpha1"
+provider.addtype: $(GOMPLATE)
+	@[ "${provider}" ] || ( echo "argument \"provider\" is not set"; exit 1 )
+	@[ "${group}" ] || ( echo "argument \"group\" is not set"; exit 1 )
+	@[ "${kind}" ] || ( echo "argument \"kind\" is not set"; exit 1 )
+	@PROVIDER=$(provider) GROUP=$(group) KIND=$(kind) APIVERSION=$(apiversion) PROJECT_REPO=$(PROJECT_REPO) ./hack/helpers/addtype.sh
+
 define CROSSPLANE_MAKE_HELP
 Crossplane Targets:
-    cobertura             Generate a coverage report for cobertura applying exclusions on generated files.
-    reviewable            Ensure a PR is ready for review.
     submodules            Update the submodules, such as the common build scripts.
     run                   Run crossplane locally, out-of-cluster. Useful for development.
 

@@ -4,7 +4,9 @@ clusters:
 - name: local
   version: ""
   brokers:
-  - kafka-dev-0.kafka-dev-headless:9092
+  - kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092
+  - kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092
+  - kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092
   SASL:
     mechanism: PLAIN
     username: user
