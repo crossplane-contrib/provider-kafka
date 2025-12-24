@@ -110,7 +110,7 @@ dev-clean: $(KIND) $(KUBECTL)
 kind-setup: $(KIND)
 	@$(KIND) get clusters | grep $(PROJECT_NAME)-dev || ( \
 		$(INFO) Creating kind cluster; \
-		$(KIND) create cluster --name=$(PROJECT_NAME)-dev; \
+		$(KIND) create cluster --name=$(PROJECT_NAME)-dev --quiet; \
 	)
 	@$(KIND) export kubeconfig --name $(PROJECT_NAME)-dev
 	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
@@ -144,20 +144,20 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 			\"password\": \"${KAFKA_PASSWORD}\" \
 		} \
 	}" | tee kc.json
-	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds || true
+	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
 
-unit-tests: $(HELM) $(KIND) $(KUBECTL)
+kind-cluster: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup
 	@$(MAKE) -s kind-kafka-setup
+
+unit-tests: $(HELM) $(KIND) $(KUBECTL)
 # TODO: replace with another kafka helm chart
 	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
-	@sudo killall kubefwd || true
+	@sudo killall kubefwd > /dev/null || true
 	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
 	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
-	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
-	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
-	@$(INFO) Stopping kubefwd
+	export KAFKA_PASSWORD=$$KAFKA_PASSWORD; $(MAKE) -j2 -s test
 	@sudo killall kubefwd
 	@$(MAKE) -s dev-clean
 

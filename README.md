@@ -42,11 +42,12 @@ The following instructions will setup a development environment where you will h
 installation (SASL-Plain enabled). To change the configuration of your instance further, please see available helm
 parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#installing-the-chart).
 
-> steps 1-5 can be done with `make unit-tests`
+> steps 1-5 can be done with `make kind-cluster unit-tests`
 
 1. (Optional) Create a local [kind](https://kind.sigs.k8s.io/) cluster unless you want to develop against an existing
    k8s cluster.
-   Or simply run: `make kind-setup`
+
+   > Or simply run: `make kind-setup` or `kind-cluster` for steps 1-2.
 
 2. Run `make kind-kafka-setup` or manually with:
 

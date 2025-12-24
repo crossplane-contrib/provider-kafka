@@ -21,6 +21,10 @@ env:
   XPKG_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
   AWS_USR: ${{ secrets.AWS_USR }}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   detect-noop:
     runs-on: ubuntu-24.04
