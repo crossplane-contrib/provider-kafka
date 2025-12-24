@@ -32,6 +32,11 @@ echo_error(){
     exit 1
 }
 
+
+# The name of your provider. Many provider Makefiles override this value.
+PACKAGE_NAME="provider-kafka"
+
+
 # ------------------------------
 projectdir="$( cd "$( dirname "${BASH_SOURCE[0]}")"/../.. && pwd )"
 
@@ -41,14 +46,16 @@ eval $(make --no-print-directory -C ${projectdir} build.vars)
 # ------------------------------
 
 SAFEHOSTARCH="${SAFEHOSTARCH:-amd64}"
-CONTROLLER_IMAGE="${BUILD_REGISTRY}/${PROJECT_NAME}-${SAFEHOSTARCH}"
+BUILD_IMAGE="${BUILD_REGISTRY}/${PROJECT_NAME}-${SAFEHOSTARCH}"
+PACKAGE_IMAGE="crossplane.io/inttests/${PROJECT_NAME}:${VERSION}"
+CONTROLLER_IMAGE="${BUILD_REGISTRY}/${PROJECT_NAME}-controller-${SAFEHOSTARCH}"
 
 version_tag="$(cat ${projectdir}/_output/version)"
 # tag as latest version to load into kind cluster
+PACKAGE_CONTROLLER_IMAGE="${DOCKER_REGISTRY}/${PROJECT_NAME}-controller:${VERSION}"
 K8S_CLUSTER="${K8S_CLUSTER:-${BUILD_REGISTRY}-inttests}"
 
 CROSSPLANE_NAMESPACE="crossplane-system"
-PACKAGE_NAME="provider-kafka"
 
 # cleanup on exit
 if [ "$skipcleanup" != true ]; then
@@ -66,7 +73,8 @@ echo_step "setting up local package cache"
 CACHE_PATH="${projectdir}/.work/inttest-package-cache"
 mkdir -p "${CACHE_PATH}"
 echo "created cache dir at ${CACHE_PATH}"
-"${UP}" alpha xpkg xp-extract --from-xpkg "${OUTPUT_DIR}"/xpkg/"${HOSTOS}"_"${SAFEHOSTARCH}"/"${PACKAGE_NAME}"-"${VERSION}".xpkg -o "${CACHE_PATH}/${PACKAGE_NAME}.gz" && chmod 644 "${CACHE_PATH}/${PACKAGE_NAME}.gz"
+docker tag "${BUILD_IMAGE}" "${PACKAGE_IMAGE}"
+"${UP}" xpkg xp-extract --from-daemon "${PACKAGE_IMAGE}" -o "${CACHE_PATH}/${PACKAGE_NAME}.gz" && chmod 644 "${CACHE_PATH}/${PACKAGE_NAME}.gz"
 
 # create kind cluster with extra mounts
 KIND_NODE_IMAGE="kindest/node:${KIND_NODE_IMAGE_TAG}"
@@ -84,13 +92,8 @@ EOF
 echo "${KIND_CONFIG}" | "${KIND}" create cluster --name="${K8S_CLUSTER}" --wait=5m --image="${KIND_NODE_IMAGE}" --config=-
 
 # tag controller image and load it into kind cluster
-docker tag "${CONTROLLER_IMAGE}" "${PACKAGE_NAME}"
-"${KIND}" load docker-image "${PACKAGE_NAME}" --name="${K8S_CLUSTER}"
-
-# files are not synced properly from host to kind node container on Jenkins, so
-# we must manually copy image from host to node
-echo_step "pre-cache package by copying to kind node"
-docker cp "${CACHE_PATH}/${PACKAGE_NAME}.xpkg" "${K8S_CLUSTER}-control-plane":"/cache/${PACKAGE_NAME}.xpkg"
+docker tag "${CONTROLLER_IMAGE}" "${PACKAGE_CONTROLLER_IMAGE}"
+"${KIND}" load docker-image "${PACKAGE_CONTROLLER_IMAGE}" --name="${K8S_CLUSTER}"
 
 echo_step "create crossplane-system namespace"
 "${KUBECTL}" create ns crossplane-system
@@ -135,7 +138,7 @@ echo "${PVC_YAML}" | "${KUBECTL}" create -f -
 
 # install crossplane from stable channel
 echo_step "installing crossplane from stable channel"
-"${HELM3}" repo add crossplane-stable https://charts.crossplane.io/stable/ --force-update
+"${HELM3}" repo add crossplane-stable https://charts.crossplane.io/stable/
 chart_version="$("${HELM3}" search repo crossplane-stable/crossplane | awk 'FNR == 2 {print $2}')"
 echo_info "using crossplane version ${chart_version}"
 echo

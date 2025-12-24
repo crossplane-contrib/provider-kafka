@@ -36,10 +36,10 @@ const (
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
-func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) { // nolint: gocyclo
+func NewAdminClient(ctx context.Context, credentials []byte, kube client.Client) (*kadm.Client, error) {
 	kc := Config{}
 
-	if err := json.Unmarshal(data, &kc); err != nil {
+	if err := json.Unmarshal(credentials, &kc); err != nil {
 		return nil, errors.Wrap(err, errCannotParse)
 	}
 
