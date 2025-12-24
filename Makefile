@@ -27,12 +27,12 @@ GOLANGCILINT_VERSION = 2.7.2
 # ====================================================================================
 # Setup Kubernetes tools
 
-UP_VERSION = v0.37.0
-UP_CHANNEL = stable
-USE_HELM3 = true
-HELM3_VERSION = v3.19.4
+HELM_VERSION = v3.19.4
 KIND_VERSION = v0.31.0
+KUBECTL_VERSION = v1.35.0
 KUBEFWD_VERSION = v1.23.2
+UP_CHANNEL = stable
+UP_VERSION = v0.37.0
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -147,7 +147,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds || true
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
 
-local-tests: $(HELM) $(KIND) $(KUBECTL)
+unit-tests: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup
 	@$(MAKE) -s kind-kafka-setup
 # TODO: replace with another kafka helm chart
@@ -159,19 +159,6 @@ local-tests: $(HELM) $(KIND) $(KUBECTL)
 	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
 	@$(INFO) Stopping kubefwd
 	@sudo killall kubefwd
-	@$(MAKE) -s dev-clean
-
-unit-tests: $(HELM) $(KIND) $(KUBECTL)
-	@$(MAKE) -s kind-setup
-	@$(MAKE) -s kind-kafka-setup
-# TODO: replace with another kafka helm chart
-	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
-	@killall kubefwd || true
-	@$(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
-	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
-	KAFKA_PASSWORD=$$KAFKA_PASSWORD $(MAKE) -s -j2 test
-	@$(INFO) Stopping kubefwd
-	@killall kubefwd
 	@$(MAKE) -s dev-clean
 
 .PHONY: submodules fallthrough test-integration run dev dev-clean
