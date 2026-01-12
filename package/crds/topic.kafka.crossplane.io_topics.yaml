@@ -88,6 +88,11 @@ spec:
                       the topic should have.
                     minimum: 1
                     type: integer
+                  topicName:
+                    description: TopicName is an optional field that defines the name
+                      of the topic. Use this to set a different topic name than the
+                      default.
+                    type: string
                 required:
                 - partitions
                 - replicationFactor
