@@ -18,16 +18,16 @@ jobs:
   # The main gotchas with this action are that it _only_ supports merge commits,
   # and that PRs _must_ be labelled before they're merged to trigger a backport.
   open-pr:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     if: github.event.pull_request.merged
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
       - name: Open Backport PR
-        uses: zeebe-io/backport-action@v0.0.4
+        uses: zeebe-io/backport-action@c656f5d5851037b2b38fb5db2691a03fa229e3b2 # v4.0.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           github_workspace: ${{ github.workspace }}

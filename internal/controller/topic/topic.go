@@ -23,6 +23,7 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
+	"github.com/crossplane/crossplane-runtime/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
@@ -54,15 +55,23 @@ const (
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := managed.ControllerName(v1alpha1.TopicGroupKind)
 
-	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
-		managed.WithExternalConnectDisconnecter(&connectDisconnector{
+	reconcilerOptions := []managed.ReconcilerOption{
+		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: kafka.NewAdminClient}),
+			newServiceFn: kafka.NewAdminClient,
+		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+	}
+	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
+		reconcilerOptions = append(reconcilerOptions, managed.WithManagementPolicies())
+	}
+	r := managed.NewReconciler(mgr,
+		resource.ManagedKind(v1alpha1.TopicGroupVersionKind),
+		reconcilerOptions...,
+	)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -71,9 +80,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// A connectDisconnector is expected to produce an ExternalClient when its Connect method
-// is called and close it when its Disconnect method is called.
-type connectDisconnector struct {
+type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
 	log          logging.Logger
@@ -81,12 +88,7 @@ type connectDisconnector struct {
 	cachedClient *kadm.Client
 }
 
-// Connect typically produces an ExternalClient by:
-// 1. Tracking that the managed resource is using a ProviderConfig.
-// 2. Getting the managed resource's ProviderConfig.
-// 3. Getting the credentials specified by the ProviderConfig.
-// 4. Using the credentials to form a client.
-func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
 		return nil, errors.New(errNotTopic)
@@ -116,11 +118,11 @@ func (c *connectDisconnector) Connect(ctx context.Context, mg resource.Managed) 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
-func (c *connectDisconnector) Disconnect(ctx context.Context) error {
-	if c.cachedClient != nil {
-		c.cachedClient.Close()
+func (c *external) Disconnect(ctx context.Context) error {
+	if c.kafkaClient != nil {
+		c.kafkaClient.Close()
 	}
-	c.cachedClient = nil
+	c.kafkaClient = nil
 	return nil
 }
 
@@ -174,10 +176,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, topic.Update(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
 
-func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return errors.New(errNotTopic)
+		return managed.ExternalDelete{}, errors.New(errNotTopic)
 	}
-	return topic.Delete(ctx, c.kafkaClient, meta.GetExternalName(cr))
+	return managed.ExternalDelete{}, topic.Delete(ctx, c.kafkaClient, meta.GetExternalName(cr))
 }

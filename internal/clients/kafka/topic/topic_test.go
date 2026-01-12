@@ -17,10 +17,10 @@ var kafkaPassword = os.Getenv("KAFKA_PASSWORD")
 
 var dataTesting = []byte(
 	fmt.Sprintf(`{
-			"brokers": [ "kafka-dev-0.kafka-dev-headless:9092"],
+			"brokers": ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"],
 			"sasl": {
 				"mechanism": "PLAIN",
-				"username": "user",
+				"username": "user1",
 				"password": "%s"
 			}
 		}`, kafkaPassword),

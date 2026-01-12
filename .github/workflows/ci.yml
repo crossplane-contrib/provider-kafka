@@ -10,14 +10,9 @@ on:
 
 env:
   # Common versions
-  GO_VERSION: '1.21'
-  GOLANGCI_VERSION: 'v1.54'
-  DOCKER_BUILDX_VERSION: 'v0.4.2'
-  KIND_VERSION: 'v0.12.0'
-  HELM_VERSION: 'v3.8.1'
-  CROSSPLANE_VERSION: 'stable'
-  KUBECTL_VERSION: 'v1.23.4'
-  KUBEFWD_VERSION: '1.22.0'
+  GO_VERSION: '1.25'
+  GOLANGCI_VERSION: 'v2.7.2'
+  DOCKER_BUILDX_VERSION: 'v0.30.1'
 
   # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
   # a step 'if env.AWS_USR' != ""', so we copy these to succinctly test whether
@@ -26,55 +21,36 @@ env:
   XPKG_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
   AWS_USR: ${{ secrets.AWS_USR }}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   detect-noop:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v2.0.0
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
-
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
 
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-lint-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-lint-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
-
-      # Go version coming with golangci-lint-action may not be our desired
-      # go version. We deploy our desired go version and then skip go
-      # installation in golangci-lint-action in the next step as suggested
-      # in https://github.com/golangci/golangci-lint-action/issues/183
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -85,48 +61,29 @@ jobs:
       # prefer this action because it leaves 'annotations' (i.e. it comments
       # on PRs to point out linter violations).
       - name: Lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
           version: ${{ env.GOLANGCI_VERSION }}
-          skip-go-installation: true
           args: --timeout 10m0s
 
   check-diff:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Install goimports
         run: go install golang.org/x/tools/cmd/goimports
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-check-diff-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-check-diff-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -135,13 +92,13 @@ jobs:
         run: make check-diff
 
   unit-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
 
@@ -149,126 +106,52 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-unit-tests-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-unit-tests-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
-      - name: Set up Kind Cluster 
-        uses: helm/kind-action@v1.2.0
-        with:
-          version: ${{ env.KIND_VERSION }}
-          cluster_name: 'kafka'
-      
-      - name: Install Crossplane
-        run: |
-          kubectl create ns crossplane-system
-          helm repo add crossplane-stable https://charts.crossplane.io/stable
-          helm repo update
-          helm install crossplane --namespace crossplane-system crossplane-stable/crossplane
-          
-      - name: Install Provider-Kafka CRDs
-        run: kubectl apply -f package/crds
-         
-      - name: Install Kafka
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          kubectl create ns kafka-cluster
-          helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
-            --version 20.0.5 \
-            --set auth.clientProtocol=sasl \
-            --set deleteTopicEnable=true \
-            --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
-            --wait
+      - name: Setup Kind cluster
+        run: make kind-cluster
 
       - name: Get Kafka Client Password
         id: kafka
-        run: echo "::set-output name=password::$(kubectl get secret kafka-dev-jaas --namespace kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 --decode | cut -d , -f 1)"
-
-      - name: Create Kafka Credentials File
-        env:
-          KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
-        run: |
-          echo "{
-            "brokers": [
-              "kafka-dev-0.kafka-dev-headless:9092"
-            ],
-            "sasl": {
-              "mechanism": "PLAIN",
-              "username": "user",
-              "password": "${KAFKA_PASSWORD}"
-            }
-          }" > kc.json
-
-      - name: Show kc.json file
-        run: cat kc.json
-
-      - name: create Kafka K8s secret
-        run: kubectl -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
-      
-
-      - name: Test downloading external binary
-        uses: giantswarm/install-binary-action@v1.0.0
-        with:
-          binary: "kubefwd"
-          version: "${{ env.KUBEFWD_VERSION }}"
-          download_url: "https://github.com/txn2/kubefwd/releases/download/${version}/${binary}_Linux_x86_64.tar.gz"
-          tarball_binary_path: "${binary}"
-          smoke_test: "${binary} version"
-
-      - name: run Kubefwd
-        run: sudo -E /opt/hostedtoolcache/kubefwd/${{ env.KUBEFWD_VERSION }}/x64/kubefwd svc -n kafka-cluster &
+        run: |-
+          echo "password=$( \
+            kubectl get secret kafka-dev-user-passwords --namespace kafka-cluster \
+            -o jsonpath='{.data.client-passwords}' | base64 --decode | cut -d , -f 1)" >> $GITHUB_OUTPUT
 
       - name: Run Unit Tests
         env:
           KAFKA_PASSWORD: ${{ steps.kafka.outputs.password }}
-        run: make -j2 test
+        run: make unit-tests KAFKA_PASSWORD=${KAFKA_PASSWORD}
 
       - name: Publish Unit Test Coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           flags: unittests
-          file: _output/tests/linux_amd64/coverage.txt
+          files: _output/tests/linux_amd64/coverage.txt
 
   e2e-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         with:
           platforms: all
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           version: ${{ env.DOCKER_BUILDX_VERSION }}
-          install: true
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
 
@@ -276,28 +159,9 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-e2e-tests-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-e2e-tests-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -313,24 +177,23 @@ jobs:
       #   run: make e2e USE_HELM3=true
 
   publish-artifacts:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         with:
           platforms: all
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           version: ${{ env.DOCKER_BUILDX_VERSION }}
-          install: true
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
 
@@ -338,27 +201,9 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-publish-artifacts-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-publish-artifacts-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -371,20 +216,20 @@ jobs:
           BUILD_ARGS: "--load"
       
       - name: Publish Artifacts to GitHub
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: output
           path: _output/**
       
       - name: Login to Docker
-        uses: docker/login-action@v1
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         if: env.CONTRIB_DOCKER_USR != ''
         with:
           username: ${{ secrets.CONTRIB_DOCKER_USR }}
           password: ${{ secrets.CONTRIB_DOCKER_PSW }}
       
       - name: Login to Upbound
-        uses: docker/login-action@v1
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         if: env.XPKG_ACCESS_ID != ''
         with:
           registry: xpkg.upbound.io
