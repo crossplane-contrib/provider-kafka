@@ -25,7 +25,6 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/v2/internal/controller/namespaced/topic"
 )
 
-
 // Setup creates all controllers with the supplied logger and adds them to
 // the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options) error {

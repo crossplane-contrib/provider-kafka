@@ -20,9 +20,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/twmb/franz-go/pkg/kadm"
+
 	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka/acl"
-	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"

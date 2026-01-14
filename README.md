@@ -8,28 +8,29 @@ manage [Kafka](https://kafka.apache.org/) resources.
 1. Create a provider secret containing a json like the following, see expected
    schema [here](internal/clients/kafka/config.go):
 
-   ```json
-   {
-     "brokers": [
-       "kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
-       "kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
-       "kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"
-     ],
-     "sasl": {
-       "mechanism": "PLAIN",
-       "username": "user1",
-       "password": "<your-password>"
-     }
-   }
-   ```
+    ```json
+    {
+      "brokers":[
+        "kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
+        "kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092",
+        "kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"
+       ],
+       "sasl":{
+         "mechanism":"PLAIN",
+         "username":"user1",
+         "password":"<your-password>"
+       }
+    }
+    ```
 
 2. Create a k8s secret containing above config:
 
-   ```console
-   kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
-   ```
+    ```console
+    kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
+    ```
 
 3. Create a `ProviderConfig`, see [this](examples/provider/config.yaml) as an example.
+
 
 4. Create a managed resource see, see [this](examples/topic/topic.yaml) for an example creating a `Kafka topic`.
 
@@ -73,7 +74,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
    ```
 
    Create the Kubernetes secret to be used by the `ProviderConfig` with:
-
+   
    ```shell
    cat <<EOF > /tmp/creds.json
    {
@@ -99,11 +100,9 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
    ```console
    sudo kubefwd svc -n kafka-cluster -c ~/.kube/config
    ```
-
 5. To run tests, use the `KAFKA_PASSWORD` environment variable from step 2
 
 6. (optional) Install the [kafka cli](https://github.com/twmb/kcl)
-
    1. Create a config file for the client with:
 
       ```shell
@@ -116,16 +115,16 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       pass = "${KAFKA_PASSWORD}"
       EOF
       ```
+      
+       1. Verify that cli could talk to the Kafka cluster:
+      
+         ```shell
+         export  KCL_CONFIG_DIR=~/.kcl
+         
+         kcl metadata --all
+         ```
 
-      1. Verify that cli could talk to the Kafka cluster:
-
-      ```shell
-      export  KCL_CONFIG_DIR=~/.kcl
-
-      kcl metadata --all
-      ```
-
-7. (optional) or deploy [RedPanda console](https://github.com/redpanda-data/console) with:
+6. (optional) or deploy [RedPanda console](https://github.com/redpanda-data/console) with:
 
    ```shell
    kubectl create -f - <<EOF
@@ -160,9 +159,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
             - name: KAFKA_BROKERS
                value: kafka-dev-controller-headless.kafka-cluster.svc:9092
    EOF
-   ```
-
-````
+  ```
 
 ### Building and Running the provider locally
 
@@ -176,16 +173,16 @@ make dev
 kubectl apply -f - <<EOF
 kind: ProviderConfig
 metadata:
-name: default
+  name: default
 spec:
-credentials:
-  secretRef:
-    key: credentials
-    name: kafka-creds
-    namespace: kafka-cluster
-  source: Secret
+  credentials:
+    secretRef:
+      key: credentials
+      name: kafka-creds
+      namespace: kafka-cluster
+    source: Secret
 EOF
-````
+```
 
 Build, push, and install:
 

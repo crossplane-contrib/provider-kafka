@@ -35,11 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 
 	"github.com/crossplane-contrib/provider-kafka/v2/apis/cluster/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/v2/apis/cluster/v1alpha1"
@@ -125,7 +125,7 @@ type connector struct {
 // 2. Getting the managed resource's ProviderConfig.
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
-func (c *connector)  Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return nil, errors.New(errNotAccessControlList)
@@ -133,7 +133,7 @@ func (c *connector)  Connect(ctx context.Context, mg resource.Managed) (managed.
 
 	// Switch to LegacyManaged to support ProviderConfigUsage tracking
 	lmg := mg.(resource.LegacyManaged)
-	
+
 	if err := c.usage.Track(ctx, lmg); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}

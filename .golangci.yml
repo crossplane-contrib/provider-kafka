@@ -122,7 +122,7 @@ formatters:
       simplify: true
     goimports:
       local-prefixes:
-        - github.com/crossplane-contrib/provider-kafka
+        - github.com/crossplane-contrib/provider-kafka/v2
   exclusions:
     generated: lax
     paths:
