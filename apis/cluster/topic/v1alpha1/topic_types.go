@@ -23,7 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	common "github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
+	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 // TopicObservation are the observable fields of a Topic.

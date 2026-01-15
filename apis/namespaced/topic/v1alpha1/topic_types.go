@@ -25,7 +25,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	xpv2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
 
-	common "github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
+	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 // TopicObservation are the observable fields of a Topic.

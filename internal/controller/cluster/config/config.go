@@ -24,7 +24,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/cluster/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 )
 
 // Setup adds a controller that reconciles ProviderConfigs by accounting for

@@ -2,7 +2,7 @@
 # Setup Project
 
 PROJECT_NAME := provider-kafka
-PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)/v2
+PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk

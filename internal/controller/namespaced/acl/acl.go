@@ -22,8 +22,8 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kadm"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka/acl"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,8 +41,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced/acl/v1alpha1"
-	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 )
 
 const (

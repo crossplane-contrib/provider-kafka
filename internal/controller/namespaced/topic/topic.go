@@ -37,10 +37,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced/topic/v1alpha1"
-	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced/v1alpha1"
-	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/v2/internal/clients/kafka/topic"
+	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 )
 
 const (

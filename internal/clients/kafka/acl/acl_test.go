@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/crossplane-contrib/provider-kafka/v2/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/twmb/franz-go/pkg/kadm"

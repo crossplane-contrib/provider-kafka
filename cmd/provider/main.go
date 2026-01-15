@@ -48,12 +48,12 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	clusterapis "github.com/crossplane-contrib/provider-kafka/v2/apis/cluster"
-	namespacedapis "github.com/crossplane-contrib/provider-kafka/v2/apis/namespaced"
+	clusterapis "github.com/crossplane-contrib/provider-kafka/apis/cluster"
+	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
 
-	clustercontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller/cluster"
-	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/v2/internal/controller/namespaced"
-	"github.com/crossplane-contrib/provider-kafka/v2/internal/version"
+	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
+	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
+	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
 
 func main() {
