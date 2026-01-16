@@ -8,11 +8,9 @@ on:
   pull_request: {}
   workflow_dispatch: {}
 
-
-
 env:
   # Common versions
-  GO_VERSION: '1.25'
+  GO_VERSION: '1.25.1'
   GOLANGCI_VERSION: 'v2.7.2'
   DOCKER_BUILDX_VERSION: 'v0.30.1'
 
@@ -100,6 +98,7 @@ jobs:
           sed -i -E "s|<timestamp>.*</timestamp>|<timestamp>${TIMESTAMP}</timestamp>|" provider-kafka-sbom.xml
           sed -i -E "s|serialNumber=\"urn:uuid:[a-f0-9-]+\"|serialNumber=\"${SERIAL}\"|" provider-kafka-sbom.xml
           rm provider-kafka-sbom.xml.bak
+          GIT_PAGER=cat git diff
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
