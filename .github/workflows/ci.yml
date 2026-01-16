@@ -84,18 +84,20 @@ jobs:
 
       - name: Install tools
         run: |-
-          go install golang.org/x/tools/cmd/goimports
-          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+          go install golang.org/x/tools/cmd/goimports@v0.41.0
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
 
-      - name: Generate SBOM ignoring the timestamp and uuid fields
+      - name: Generate SBOM ignoring the whole metadata field and the serial number
         run: |-
-          cp provider-kafka-sbom.xml provider-kafka-sbom.xml.bak
+          SERIAL=$(sed -n -E 's|.*serialNumber="(urn:uuid:[a-f0-9-]+).*|\1|p' provider-kafka-sbom.xml)
+          sed -n '/<metadata>/,/<\/metadata>/p' provider-kafka-sbom.xml > /tmp/metadata.xml
+
           cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
-          TIMESTAMP=$(sed -n -E 's|.*<timestamp>(.*)</timestamp>.*|\1|p' provider-kafka-sbom.xml.bak)
-          SERIAL=$(sed -n -E 's|.*serialNumber="(urn:uuid:[a-f0-9-]+).*|\1|p' provider-kafka-sbom.xml.bak)
-          sed -i -E "s|<timestamp>.*</timestamp>|<timestamp>${TIMESTAMP}</timestamp>|" provider-kafka-sbom.xml
+
+          sed -i '/<metadata>/,/<\/metadata>/{ /<metadata>/{ r /tmp/metadata.xml
+          }; d; }' provider-kafka-sbom.xml
+
           sed -i -E "s|serialNumber=\"urn:uuid:[a-f0-9-]+\"|serialNumber=\"${SERIAL}\"|" provider-kafka-sbom.xml
-          rm provider-kafka-sbom.xml.bak
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
