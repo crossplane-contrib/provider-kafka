@@ -98,74 +98,7 @@ run: go.build
 	@# To see other arguments that can be provided, run the command with --help instead
 	$(GO_OUT_DIR)/provider --debug
 
-dev: $(KIND) $(KUBECTL) $(DOCKER)
-	@($(MAKE) -s kind-setup)
-	@$(INFO) Starting Provider Kafka controllers
-	@$(GO) run cmd/provider/main.go --debug
-
-dev-clean: $(KIND) $(KUBECTL)
-	@$(INFO) Deleting kind cluster
-	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
-
-kind-setup: $(KIND)
-	@$(KIND) get clusters | grep $(PROJECT_NAME)-dev || ( \
-		$(INFO) Creating kind cluster; \
-		$(KIND) create cluster --name=$(PROJECT_NAME)-dev --quiet; \
-	)
-	@$(KIND) export kubeconfig --name $(PROJECT_NAME)-dev
-	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
-	@$(HELM) repo update crossplane-stable
-	@$(HELM) upgrade --install crossplane --create-namespace --namespace crossplane-system crossplane-stable/crossplane --wait
-	@$(INFO) Installing Provider Kafka CRDs
-	@$(KUBECTL) apply -R -f package/crds
-
-kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
-	@$(INFO) Installing Kafka cluster in kind
-	@$(HELM) repo add bitnami https://charts.bitnami.com/bitnami
-	@$(HELM) repo update bitnami
-	@$(HELM) upgrade --install kafka-dev bitnami/kafka \
-		--create-namespace --namespace kafka-cluster \
-		--version 32.4.3 \
-		--set image.repository=bitnamilegacy/kafka \
-		--set auth.clientProtocol=sasl \
-		--set deleteTopicEnable=true \
-		--set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
-		--wait
-	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1)
-	@echo "{ \
-		\"brokers\": [ \
-			\"kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
-			\"kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
-			\"kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\" \
-		], \
-		\"sasl\": { \
-			\"mechanism\": \"PLAIN\", \
-			\"username\": \"user\", \
-			\"password\": \"${KAFKA_PASSWORD}\" \
-		} \
-	}" | tee kc.json
-	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
-	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
-
-kind-cluster: $(HELM) $(KIND) $(KUBECTL)
-	@$(MAKE) -s kind-setup
-	@$(MAKE) -s kind-kafka-setup
-
-unit-tests: $(HELM) $(KIND) $(KUBECTL)
-# TODO: replace with another kafka helm chart
-	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
-	@sudo killall kubefwd > /dev/null || true
-	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
-ifndef KAFKA_PASSWORD
-	@KAFKA_PASSWORD=$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1); \
-	export KAFKA_PASSWORD=$$KAFKA_PASSWORD; $(MAKE) -j2 -s test
-else
-	$(MAKE) -j2 -s test
-endif
-	@sudo killall kubefwd
-	@$(MAKE) -s dev-clean
-
-.PHONY: submodules fallthrough test-integration run dev dev-clean
+.PHONY: submodules fallthrough test-integration run
 
 # ====================================================================================
 # Special Targets
@@ -223,3 +156,79 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special
+
+# ====================================================================================
+# Development and Testing
+
+dev: $(KIND) $(KUBECTL) $(DOCKER)
+	@($(MAKE) -s kind-setup)
+	@$(INFO) Starting Provider Kafka controllers
+	@$(GO) run cmd/provider/main.go --debug
+
+kind-setup: $(KIND)
+	@$(KIND) get clusters | grep $(PROJECT_NAME)-dev || ( \
+		$(INFO) Creating kind cluster; \
+		$(KIND) create cluster --name=$(PROJECT_NAME)-dev --quiet --wait 5m; \
+	)
+	@$(KIND) export kubeconfig --name $(PROJECT_NAME)-dev
+	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
+	@$(HELM) repo update crossplane-stable
+	@$(HELM) upgrade --install crossplane --create-namespace --namespace crossplane-system crossplane-stable/crossplane --wait
+	@$(INFO) Installing Provider Kafka CRDs
+	@$(KUBECTL) apply -R -f package/crds
+
+# TODO: replace with another kafka helm chart
+kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
+	@$(INFO) Installing Kafka cluster in kind
+	@$(HELM) repo add bitnami https://charts.bitnami.com/bitnami
+	@$(HELM) repo update bitnami
+	@$(HELM) upgrade --install kafka-dev bitnami/kafka \
+		--create-namespace --namespace kafka-cluster \
+		--version 32.4.3 \
+		--set image.repository=bitnamilegacy/kafka \
+		--set auth.clientProtocol=sasl \
+		--set deleteTopicEnable=true \
+		--set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
+		--wait
+	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) && \
+	echo "{ \
+		\"brokers\": [ \
+			\"kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
+			\"kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
+			\"kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\" \
+		], \
+		\"sasl\": { \
+			\"mechanism\": \"PLAIN\", \
+			\"username\": \"user\", \
+			\"password\": \"$${KAFKA_PASSWORD}\" \
+		} \
+	}" | tee kc.json
+	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
+	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
+
+generate.done: sbom
+
+sbom:
+	@$(INFO) Generating SBOM
+	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
+	@$(OK) SBOM generated at provider-kafka-sbom.xml
+
+test: unit-tests.init unit-tests.run unit-tests.done
+
+unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
+	@$(MAKE) -s kind-setup
+	@$(MAKE) -s kind-kafka-setup
+
+unit-tests.done: $(KIND) $(KUBECTL)
+	@$(INFO) Deleting kind cluster
+	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
+
+unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
+	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
+	@sudo killall kubefwd > /dev/null || true
+	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
+	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) $(MAKE) -j2 -s go.test.unit
+	@sudo killall kubefwd
+
+.PHONY: dev kind-setup kind-kafka-setup sbom test
