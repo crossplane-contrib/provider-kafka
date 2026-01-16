@@ -70,8 +70,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
@@ -98,7 +96,6 @@ jobs:
           sed -i -E "s|<timestamp>.*</timestamp>|<timestamp>${TIMESTAMP}</timestamp>|" provider-kafka-sbom.xml
           sed -i -E "s|serialNumber=\"urn:uuid:[a-f0-9-]+\"|serialNumber=\"${SERIAL}\"|" provider-kafka-sbom.xml
           rm provider-kafka-sbom.xml.bak
-          GIT_PAGER=cat git diff
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
