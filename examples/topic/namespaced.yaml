@@ -1,0 +1,18 @@
+apiVersion: topic.kafka.m.crossplane.io/v1alpha1
+kind: Topic
+metadata:
+  name: sample-topic
+  namespace: kafka-cluster
+spec:
+  forProvider:
+    replicationFactor: 1
+    partitions: 1
+## Optional Admin Config Parameters
+## Full list of parameter overrides can be found here:
+## https://docs.confluent.io/platform/current/installation/configuration/topic-configs.html
+#    config:
+#      cleanup.policy: "delete"
+#      compression.type: "snappy"
+  providerConfigRef:
+    name: example
+    kind: ProviderConfig
