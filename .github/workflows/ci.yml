@@ -98,6 +98,7 @@ jobs:
           }; d; }' provider-kafka-sbom.xml
 
           sed -i -E "s|serialNumber=\"urn:uuid:[a-f0-9-]+\"|serialNumber=\"${SERIAL}\"|" provider-kafka-sbom.xml
+          GIT_PAGER=cat git diff
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
