@@ -206,9 +206,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
 
-generate.done: sbom
-
-sbom:
+generate.done:
 	@$(INFO) Generating SBOM
 	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
 	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6

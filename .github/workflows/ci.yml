@@ -8,6 +8,8 @@ on:
   pull_request: {}
   workflow_dispatch: {}
 
+
+
 env:
   # Common versions
   GO_VERSION: '1.25'
@@ -92,6 +94,24 @@ jobs:
       - name: Generate SBOM
         run: |-
           cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
+
+      - name: "Import GPG key"
+        id: import-gpg
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Push SBOM
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7
+        with:
+          commit_message: 'chore: regenerate SBOM'
+          commit_options: '--no-verify --signoff'
+          commit_author: "${{ steps.import-gpg.outputs.name }} <${{ steps.import-gpg.outputs.email }}>"
+          commit_user_name: ${{ steps.import-gpg.outputs.name }}
+          commit_user_email: ${{ steps.import-gpg.outputs.email }}
+          file_pattern: 'provide-kafka-sbom.xml'
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
