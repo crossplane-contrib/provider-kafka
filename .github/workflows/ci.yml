@@ -8,8 +8,6 @@ on:
   pull_request: {}
   workflow_dispatch: {}
 
-
-
 env:
   # Common versions
   GO_VERSION: '1.25'
