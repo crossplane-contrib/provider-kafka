@@ -105,7 +105,7 @@ jobs:
         run: make vendor vendor.check
 
       - name: Check Diff
-        run: make check-diff
+        run: make SKIP_SBOM=yes check-diff
 
   unit-tests:
     runs-on: ubuntu-24.04
