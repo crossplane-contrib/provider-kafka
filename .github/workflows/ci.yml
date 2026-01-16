@@ -88,7 +88,7 @@ jobs:
           go install golang.org/x/tools/cmd/goimports@v0.41.0
           go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
 
-      - name: Generate SBOM ignoring the whole metadata field and the serial number
+      - name: Generate SBOM ignoring metadata
         run: |-
           SERIAL=$(sed -n -E 's|.*serialNumber="(urn:uuid:[a-f0-9-]+).*|\1|p' provider-kafka-sbom.xml)
           sed -n '/<metadata>/,/<\/metadata>/p' provider-kafka-sbom.xml > /tmp/metadata.xml
@@ -99,7 +99,6 @@ jobs:
           }; d; }' provider-kafka-sbom.xml
 
           sed -i -E "s|serialNumber=\"urn:uuid:[a-f0-9-]+\"|serialNumber=\"${SERIAL}\"|" provider-kafka-sbom.xml
-          GIT_PAGER=cat git diff
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
