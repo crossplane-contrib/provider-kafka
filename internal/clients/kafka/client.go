@@ -9,9 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
-
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -87,14 +85,12 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 }
 
 func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
-	var s *session.Session
-	s, err = session.NewSession()
+	s, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return kaws.Auth{}, err
 	}
 
-	var v credentials.Value
-	v, err = s.Config.Credentials.GetWithContext(ctx)
+	v, err := s.Credentials.Retrieve(ctx)
 	if err != nil {
 		return kaws.Auth{}, err
 	}

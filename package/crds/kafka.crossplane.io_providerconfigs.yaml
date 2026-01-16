@@ -3,11 +3,15 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.17.1
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: providerconfigs.kafka.crossplane.io
 spec:
   group: kafka.crossplane.io
   names:
+    categories:
+    - crossplane
+    - provider
+    - kafka
     kind: ProviderConfig
     listKind: ProviderConfigList
     plural: providerconfigs
@@ -25,7 +29,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A ProviderConfig configures a Template provider.
+        description: A ProviderConfig configures a Helm 'provider', i.e. a connection
+          to a particular
         properties:
           apiVersion:
             description: |-
@@ -45,7 +50,6 @@ spec:
           metadata:
             type: object
           spec:
-            description: A ProviderConfigSpec defines the desired state of a ProviderConfig.
             properties:
               credentials:
                 description: Credentials required to authenticate to this provider.
@@ -107,7 +111,7 @@ spec:
             - credentials
             type: object
           status:
-            description: A ProviderConfigStatus reflects the observed state of a ProviderConfig.
+            description: A ProviderConfigStatus defines the status of a Provider.
             properties:
               conditions:
                 description: Conditions of the resource.
