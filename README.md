@@ -38,7 +38,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
 
 Usually the only command you may need to run is:
 
-`make reviewable`
+`make review`
 
 For more detailed development instructions, continue reading below.
 

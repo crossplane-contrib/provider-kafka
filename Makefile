@@ -206,14 +206,16 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
 
-generate.done:
-ifndef SKIP_SBOM
+sbom:
 	@$(INFO) Generating SBOM
-	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
 	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
 	@$(OK) SBOM generated at provider-kafka-sbom.xml
-endif
 
+review:
+	@$(MAKE) reviewable
+	@$(MAKE) sbom
+	
 test: unit-tests.init unit-tests.run unit-tests.done
 
 unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
@@ -231,4 +233,4 @@ unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
 	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) $(MAKE) -j2 -s go.test.unit
 	@sudo killall kubefwd
 
-.PHONY: dev kind-setup kind-kafka-setup sbom test
+.PHONY: dev kind-setup kind-kafka-setup reviewable generate lint test sbom test
