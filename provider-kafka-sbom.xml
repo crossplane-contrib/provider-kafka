@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:594e7f59-622d-4c45-8f92-9b88cbff0178" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:9f57f0d4-0ccc-4cd1-96d4-cc55f3420f65" version="1">
   <metadata>
-    <timestamp>2026-01-19T15:19:37+01:00</timestamp>
+    <timestamp>2026-01-16T12:50:42+01:00</timestamp>
     <tools>
       <tool>
         <vendor>CycloneDX</vendor>
@@ -24,10 +24,10 @@
         </externalReferences>
       </tool>
     </tools>
-    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.0-rc1.0.20260116114723-3d404d19d053?type=module" type="application">
+    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.1-0.20260112130447-87953ea8d6e1?type=module" type="application">
       <name>github.com/crossplane-contrib/provider-kafka</name>
-      <version>v0.6.0-rc1.0.20260116114723-3d404d19d053</version>
-      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.0-rc1.0.20260116114723-3d404d19d053?type=module&amp;goos=linux&amp;goarch=amd64</purl>
+      <version>v0.6.1-0.20260112130447-87953ea8d6e1</version>
+      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.1-0.20260112130447-87953ea8d6e1?type=module&amp;goos=linux&amp;goarch=amd64</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/crossplane-contrib/provider-kafka</url>
@@ -1332,7 +1332,7 @@
     </component>
   </components>
   <dependencies>
-    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.0-rc1.0.20260116114723-3d404d19d053?type=module">
+    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v0.6.1-0.20260112130447-87953ea8d6e1?type=module">
       <dependency ref="pkg:golang/github.com/alecthomas/kingpin/v2@v2.4.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.7?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/crossplane/crossplane-runtime/v2@v2.1.0?type=module"></dependency>
