@@ -233,4 +233,4 @@ unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
 	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) $(MAKE) -j2 -s go.test.unit
 	@sudo killall kubefwd
 
-.PHONY: dev kind-setup kind-kafka-setup reviewable generate lint test sbom test
+.PHONY: dev kind-setup kind-kafka-setup review sbom test
