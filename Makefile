@@ -21,7 +21,7 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION = 2.7.2
+GOLANGCILINT_VERSION = 2.8.0
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -30,7 +30,6 @@ GOLANGCILINT_VERSION = 2.7.2
 HELM_VERSION = v3.19.4
 KIND_VERSION = v0.31.0
 KUBECTL_VERSION = v1.35.0
-KUBEFWD_VERSION = v1.23.2
 UP_CHANNEL = stable
 UP_VERSION = v0.37.0
 -include build/makelib/k8s_tools.mk
@@ -180,31 +179,36 @@ kind-setup: $(KIND)
 # TODO: replace with another kafka helm chart
 kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(INFO) Installing Kafka cluster in kind
-	@$(HELM) repo add bitnami https://charts.bitnami.com/bitnami
-	@$(HELM) repo update bitnami
-	@$(HELM) upgrade --install kafka-dev bitnami/kafka \
-		--create-namespace --namespace kafka-cluster \
-		--version 32.4.3 \
-		--set image.repository=bitnamilegacy/kafka \
-		--set auth.clientProtocol=sasl \
-		--set deleteTopicEnable=true \
-		--set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
+	@$(HELM) repo add strimzi https://strimzi.io/charts
+	@$(HELM) repo update strimzi
+	@$(HELM) upgrade --install kafka-operator strimzi/strimzi-kafka-operator \
+		--create-namespace --namespace kafka-operator \
+		--version 0.50.0 \
+		--set watchAnyNamespace=true \
 		--wait
-	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) && \
+	@$(KUBECTL) create namespace kafka-cluster --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@$(KUBECTL) apply -f cluster/local/kafka-cluster.yaml
+	@$(INFO) Creating Kafka cluster and waiting for readiness...
+	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafka/dev --timeout=300s
+	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkauser/user --timeout=300s
+	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkatopic/pre-existing --timeout=300s
+	@$(INFO) Getting service IP and port
+	@KIND_NODE_IP=$$($(KIND) get nodes --name=$(PROJECT_NAME)-dev | \
+	xargs $(KUBECTL) get node -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}') && \
+	KAFKA_NODEPORT=$$($(KUBECTL) -n kafka-cluster get svc dev-kafka-plain-bootstrap -o jsonpath='{.spec.ports[0].nodePort}') && \
+	KAFKA_PASSWORD=$$($(KUBECTL) get secret user -n kafka-cluster -o jsonpath='{.data.password}' | base64 -d) && \
 	echo "{ \
 		\"brokers\": [ \
-			\"kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
-			\"kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\", \
-			\"kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092\" \
+			\"$${KIND_NODE_IP}:$${KAFKA_NODEPORT}\" \
 		], \
 		\"sasl\": { \
-			\"mechanism\": \"PLAIN\", \
+			\"mechanism\": \"SCRAM-SHA-512\", \
 			\"username\": \"user\", \
 			\"password\": \"$${KAFKA_PASSWORD}\" \
 		} \
 	}" | tee kc.json
-	@$(KUBECTL) -n kafka-cluster get secret kafka-creds > /dev/null && $(KUBECTL) -n kafka-cluster delete secret kafka-creds > /dev/null || true
-	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json
+	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json \
+	--dry-run=client -o yaml | $(KUBECTL) apply -f -
 
 sbom:
 	@$(INFO) Generating SBOM
@@ -216,7 +220,7 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 	
-test: unit-tests.init unit-tests.run unit-tests.done
+test: unit-tests.init unit-tests.run
 
 unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup
@@ -227,10 +231,6 @@ unit-tests.done: $(KIND) $(KUBECTL)
 	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
 
 unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
-	@test -f $(TOOLS_HOST_DIR)/kubefwd || curl -fsSL "https://github.com/txn2/kubefwd/releases/download/${KUBEFWD_VERSION}/kubefwd_Linux_x86_64.tar.gz" -o - | tar zxvf - -C $(TOOLS_HOST_DIR) kubefwd
-	@sudo killall kubefwd > /dev/null || true
-	@sudo -E $(TOOLS_HOST_DIR)/kubefwd svc kafka-dev -n kafka-cluster -c ~/.kube/config &
-	@KAFKA_PASSWORD=$$($(KUBECTL) get secret kafka-dev-user-passwords -n kafka-cluster -o jsonpath='{.data.client-passwords}' | base64 -d | cut -d , -f 1) $(MAKE) -j2 -s go.test.unit
-	@sudo killall kubefwd
+	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
 
 .PHONY: dev kind-setup kind-kafka-setup review sbom test

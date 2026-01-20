@@ -25,7 +25,7 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/cluster/topic"
 )
 
-// Setup creates all Template controllers with the supplied logger and adds them to
+// Setup creates all Kafka controllers with the supplied logger and adds them to
 // the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{

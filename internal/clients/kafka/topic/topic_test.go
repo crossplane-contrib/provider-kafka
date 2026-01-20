@@ -13,18 +13,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-var kafkaPassword = os.Getenv("KAFKA_PASSWORD")
-
-var dataTesting = []byte(
-	fmt.Sprintf(`{
-			"brokers": ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"],
-			"sasl": {
-				"mechanism": "PLAIN",
-				"username": "user1",
-				"password": "%s"
-			}
-		}`, kafkaPassword),
-)
+var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
 func TestCreate(t *testing.T) {
 
