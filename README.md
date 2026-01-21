@@ -190,10 +190,10 @@ spec:
 EOF
 ```
 
-Build, push, and install:
+Build package:
 
 ```console
-make all
+make build
 ```
 
 Build image:

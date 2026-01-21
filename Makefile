@@ -176,7 +176,6 @@ kind-setup: $(KIND)
 	@$(INFO) Installing Provider Kafka CRDs
 	@$(KUBECTL) apply -R -f package/crds
 
-# TODO: replace with another kafka helm chart
 kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(INFO) Installing Kafka cluster in kind
 	@$(HELM) repo add strimzi https://strimzi.io/charts
@@ -220,7 +219,7 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 	
-test: unit-tests.init unit-tests.run
+test: unit-tests.init unit-tests.run unit-tests.done
 
 unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup

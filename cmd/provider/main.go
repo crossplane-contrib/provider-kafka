@@ -54,7 +54,7 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
 
-var CLI struct {
+var cli struct {
 	Debug          bool `help:"Run with debug logging." short:"d"`
 	LeaderElection bool `help:"Use leader election for the controller manager." short:"l" default:"false" env:"LEADER_ELECTION"`
 
@@ -71,9 +71,7 @@ var CLI struct {
 }
 
 func main() {
-	cli := &CLI
-	ctx := kong.Parse(cli, kong.Description("Crossplane Kafka Provider"))
-	ctx.FatalIfErrorf(ctx.Run())
+	ctx := kong.Parse(&cli, kong.Description("Crossplane Kafka Provider"))
 
 	zl := zap.New(zap.UseDevMode(cli.Debug))
 	log := logging.NewLogrLogger(zl.WithName("provider-kafka"))
@@ -88,18 +86,7 @@ func main() {
 		// controller-runtime.
 		ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
 	}
-
-	log.Debug(
-		"Starting",
-		"sync-period", cli.SyncPeriod.String(),
-		"poll-interval", cli.PollInterval.String(),
-		"max-reconcile-rate", cli.MaxReconcileRate,
-		"enable-management-policies", cli.EnableManagementPolicies,
-		"enable-changelogs", cli.EnableChangeLogs,
-		"changelogs-socket-path", cli.ChangelogsSocketPath,
-		"broker-connection-timeout", cli.BrokerConnectionTimeout.String(),
-		"version", version.Version,
-	)
+	ctx.Bind(log)
 
 	cfg, err := ctrl.GetConfig()
 	ctx.FatalIfErrorf(err, "Cannot get API server rest config")

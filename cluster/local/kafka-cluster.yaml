@@ -35,7 +35,6 @@ spec:
         tls: false
         authentication:
           type: scram-sha-512
-
       - name: tls
         port: 9093
         configuration:
@@ -52,11 +51,8 @@ spec:
       default.replication.factor: 1
       min.insync.replicas: 1
       allow.everyone.if.no.acl.found: false
-      # Require SASL authentication - reject anonymous connections
       authorizer.class.name: org.apache.kafka.metadata.authorizer.StandardAuthorizer
-      # Close connections that fail authentication quickly
       connections.max.idle.ms: 60000
-      # Force re-authentication periodically
       connections.max.reauth.ms: 300000
   entityOperator:
     topicOperator: {}
