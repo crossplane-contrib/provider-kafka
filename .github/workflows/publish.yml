@@ -22,3 +22,5 @@ jobs:
       version: ${{ github.event.inputs.version }}
     secrets:
       GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
+      XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
+      XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
