@@ -9,7 +9,7 @@ on:
         required: false
       go-version:
         description: 'Go version to use if building needs to be done'
-        default: '1.25'
+        default: '1.25.6'
         required: false
 
 jobs:
@@ -22,3 +22,5 @@ jobs:
       version: ${{ github.event.inputs.version }}
     secrets:
       GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
+      XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
+      XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}

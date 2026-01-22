@@ -29,6 +29,8 @@ const (
 	defaultClientCertificateCertField = "tls.crt"
 
 	errCannotParse                    = "cannot parse credentials"
+	errMissingSASLMechanism           = "SASL mechanism is required"
+	errMissingSASLCredentials         = "SASL username and password are required"
 	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
 )
@@ -39,6 +41,19 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	if err := json.Unmarshal(data, &kc); err != nil {
 		return nil, errors.Wrap(err, errCannotParse)
+	}
+
+	// Validate SASL configuration if provided
+	if kc.SASL != nil {
+		if kc.SASL.Mechanism == "" {
+			return nil, errors.New(errMissingSASLMechanism)
+		}
+		// AWS MSK IAM uses IAM credentials, not username/password
+		if !strings.EqualFold(kc.SASL.Mechanism, "aws-msk-iam") {
+			if kc.SASL.Username == "" || kc.SASL.Password == "" {
+				return nil, errors.New(errMissingSASLCredentials)
+			}
+		}
 	}
 
 	opts := []kgo.Opt{

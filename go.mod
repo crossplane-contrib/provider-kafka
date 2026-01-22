@@ -1,15 +1,18 @@
 module github.com/crossplane-contrib/provider-kafka
 
-go 1.25.1
+go 1.25.6
 
 tool golang.org/x/tools/cmd/goimports
 
+tool github.com/stretchr/testify
+
 require (
-	github.com/alecthomas/kingpin/v2 v2.4.0
+	github.com/alecthomas/kong v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/crossplane/crossplane-runtime/v2 v2.1.0
 	github.com/google/go-cmp v0.7.0
 	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.11.1
 	github.com/twmb/franz-go v1.20.6
 	github.com/twmb/franz-go/pkg/kadm v1.17.1
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0
@@ -23,6 +26,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
+	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect

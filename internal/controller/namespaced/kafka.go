@@ -40,7 +40,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	return nil
 }
 
-// SetupGated creates all Template controllers with safe-start support and adds them to
+// SetupGated creates all Kafka controllers with safe-start support and adds them to
 // the supplied manager.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
