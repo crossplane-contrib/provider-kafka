@@ -165,7 +165,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
             - name: KAFKA_BROKERS
                value: kafka-dev-controller-headless.kafka-cluster.svc:9092
    EOF
-  ```
+    ```
 
 ### Building and Running the provider locally
 
