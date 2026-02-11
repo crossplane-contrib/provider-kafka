@@ -157,8 +157,8 @@ func main() {
 		ctx.FatalIfErrorf(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
 	} else {
 		log.Info("Provider has missing RBAC permissions for watching CRDs, controller SafeStart capability will be disabled")
+		ctx.FatalIfErrorf(clustercontroller.Setup(mgr, o), "Cannot setup Cluster Kafka controllers")
 		ctx.FatalIfErrorf(namespacedcontroller.Setup(mgr, o), "Cannot setup Namespaced Kafka controllers")
-		ctx.FatalIfErrorf(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate controller")
 	}
 
 	ctx.FatalIfErrorf(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
