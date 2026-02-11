@@ -7,7 +7,7 @@ tool golang.org/x/tools/cmd/goimports
 tool github.com/stretchr/testify
 
 require (
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.14.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/crossplane/crossplane-runtime/v2 v2.1.0
 	github.com/google/go-cmp v0.7.0
