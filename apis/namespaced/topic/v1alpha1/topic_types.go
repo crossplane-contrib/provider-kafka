@@ -28,11 +28,6 @@ import (
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
-// TopicObservation are the observable fields of a Topic.
-type TopicObservation struct {
-	ID string `json:"id,omitempty"`
-}
-
 // A TopicSpec defines the desired state of a Topic.
 type TopicSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
@@ -42,7 +37,7 @@ type TopicSpec struct {
 // A TopicStatus represents the observed state of a Topic.
 type TopicStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          TopicObservation `json:"atProvider,omitempty"`
+	AtProvider          common.TopicObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

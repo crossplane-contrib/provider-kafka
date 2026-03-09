@@ -68,7 +68,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck
 		managed.WithInitializers(),
 	}
 
@@ -223,6 +223,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	cr.Status.AtProvider.ResourceName = ae.ResourceName
+	cr.Status.AtProvider.ResourceType = ae.ResourceType
+	cr.Status.AtProvider.ResourcePrincipal = ae.ResourcePrincipal
+	cr.Status.AtProvider.ResourceHost = ae.ResourceHost
+	cr.Status.AtProvider.ResourceOperation = ae.ResourceOperation
+	cr.Status.AtProvider.ResourcePermissionType = ae.ResourcePermissionType
+	cr.Status.AtProvider.ResourcePatternTypeFilter = ae.ResourcePatternTypeFilter
 	cr.Status.SetConditions(v1.Available())
 
 	return managed.ExternalObservation{

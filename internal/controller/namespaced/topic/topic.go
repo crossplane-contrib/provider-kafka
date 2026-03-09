@@ -66,7 +66,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck
 	}
 
 	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
@@ -201,6 +201,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	cr.Status.AtProvider.ID = tpc.ID
+	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
+	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
+	cr.Status.AtProvider.Config = tpc.Config
 	cr.Status.SetConditions(v1.Available())
 
 	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)

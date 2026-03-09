@@ -11,7 +11,7 @@ type Config struct {
 type SASL struct {
 	Mechanism string `json:"mechanism"`
 	Username  string `json:"username"`
-	Password  string `json:"password"`
+	Password  string `json:"password"` //nolint:gosec
 }
 
 // TLS is an option for enabling encryption in transit
