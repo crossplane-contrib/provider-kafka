@@ -66,7 +66,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			newServiceFn: kafka.NewAdminClient}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithInitializers(),
 	}
 
