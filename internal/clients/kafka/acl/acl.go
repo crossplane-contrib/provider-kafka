@@ -151,7 +151,7 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 func ConvertToJSON(acl *AccessControlList) (string, error) {
 	j, err := json.Marshal(acl)
 	if err != nil {
-		return "", fmt.Errorf("describe ACLs response is empty: %w", err)
+		return "", fmt.Errorf("could not unmarshal ACL from JSON: %w", err)
 	}
 	name := string(j)
 
@@ -163,7 +163,7 @@ func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	acl := AccessControlList{}
 	err := json.Unmarshal([]byte(extname), &acl)
 	if err != nil {
-		return nil, fmt.Errorf("describe ACLs response is empty: %w", err)
+		return nil, fmt.Errorf("could not unmarshal ACL from JSON: %w", err)
 	}
 	return &acl, nil
 }
