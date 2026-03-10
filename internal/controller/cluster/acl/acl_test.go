@@ -20,33 +20,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/twmb/franz-go/pkg/kadm"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 
+	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
+	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	aclclient "github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
-// Unlike many Kubernetes projects Crossplane does not use third party testing
-// libraries, per the common Go test review comments. Crossplane encourages the
-// use of table driven unit tests. The tests of the crossplane-runtime/v2 project
-// are representative of the testing style Crossplane encourages.
-//
-// https://github.com/golang/go/wiki/TestComments
-// https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md#contributing-code
-
-func TestObserve(t *testing.T) {
-	type fields struct {
-		service *kadm.Client
-	}
-
-	type args struct {
-		ctx context.Context
-		mg  resource.Managed
-	}
-
+func TestObserveWrongType(t *testing.T) {
 	type want struct {
 		o   managed.ExternalObservation
 		err error
@@ -54,22 +41,89 @@ func TestObserve(t *testing.T) {
 
 	cases := map[string]struct {
 		reason string
-		fields fields
-		args   args
 		want   want
 	}{
-		// TODO: Add test cases.
+		"NotAnACL": {
+			reason: "Should return error when managed resource is not an AccessControlList",
+			want: want{
+				o:   managed.ExternalObservation{},
+				err: errors.New(errNotAccessControlList),
+			},
+		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := external{kafkaClient: tc.fields.service}
-			got, err := e.Observe(tc.args.ctx, tc.args.mg)
+			e := external{}
+			got, err := e.Observe(context.Background(), &fake.Managed{})
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
+				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s", tc.reason, diff)
 			}
 			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
+				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s", tc.reason, diff)
+			}
+		})
+	}
+}
+
+func TestObserveNoExternalName(t *testing.T) {
+	cr := &v1alpha1.AccessControlList{}
+
+	e := external{}
+	got, err := e.Observe(context.Background(), cr)
+	if err != nil {
+		t.Errorf("expected no error, got: %v", err)
+	}
+	want := managed.ExternalObservation{ResourceExists: false}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Observe() with no external name: -want, +got:\n%s", diff)
+	}
+}
+
+func TestPopulateACLAtProvider(t *testing.T) {
+	cases := map[string]struct {
+		reason   string
+		observed *aclclient.AccessControlList
+		want     common.AccessControlListObservation
+	}{
+		"AllFieldsPopulated": {
+			reason: "All observed ACL fields should be mapped to atProvider",
+			observed: &aclclient.AccessControlList{
+				ResourceName:              "my-topic",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:alice",
+				ResourceHost:              "*",
+				ResourceOperation:         "Read",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+			want: common.AccessControlListObservation{
+				ResourceName:              "my-topic",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:alice",
+				ResourceHost:              "*",
+				ResourceOperation:         "Read",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cr := &v1alpha1.AccessControlList{}
+			cr.Status.SetConditions(v1.Available())
+
+			cr.Status.AtProvider.ResourceName = tc.observed.ResourceName
+			cr.Status.AtProvider.ResourceType = tc.observed.ResourceType
+			cr.Status.AtProvider.ResourcePrincipal = tc.observed.ResourcePrincipal
+			cr.Status.AtProvider.ResourceHost = tc.observed.ResourceHost
+			cr.Status.AtProvider.ResourceOperation = tc.observed.ResourceOperation
+			cr.Status.AtProvider.ResourcePermissionType = tc.observed.ResourcePermissionType
+			cr.Status.AtProvider.ResourcePatternTypeFilter = tc.observed.ResourcePatternTypeFilter
+
+			if diff := cmp.Diff(tc.want, cr.Status.AtProvider); diff != "" {
+				t.Errorf("\n%s\natProvider: -want, +got:\n%s", tc.reason, diff)
 			}
 		})
 	}

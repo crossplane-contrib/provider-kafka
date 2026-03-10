@@ -128,7 +128,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	// Switch to LegacyManaged to support ProviderConfigUsage tracking
-	lmg := mg.(resource.LegacyManaged)
+	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
 
 	if err := c.usage.Track(ctx, lmg); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
@@ -184,6 +184,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	cr.Status.AtProvider.ID = tpc.ID
+	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
+	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
+	cr.Status.AtProvider.Config = tpc.Config
 	cr.Status.SetConditions(v1.Available())
 
 	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)

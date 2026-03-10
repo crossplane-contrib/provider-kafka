@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: accesscontrollists.acl.kafka.m.crossplane.io
 spec:
   group: acl.kafka.m.crossplane.io
@@ -196,9 +196,23 @@ spec:
             properties:
               atProvider:
                 description: AccessControlListObservation are the observable fields
-                  of an AccessControlList
+                  of an AccessControlList.
                 properties:
                   id:
+                    type: string
+                  resourceHost:
+                    type: string
+                  resourceName:
+                    type: string
+                  resourceOperation:
+                    type: string
+                  resourcePatternTypeFilter:
+                    type: string
+                  resourcePermissionType:
+                    type: string
+                  resourcePrincipal:
+                    type: string
+                  resourceType:
                     type: string
                 type: object
               conditions:

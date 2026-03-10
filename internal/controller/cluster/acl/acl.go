@@ -132,7 +132,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	// Switch to LegacyManaged to support ProviderConfigUsage tracking
-	lmg := mg.(resource.LegacyManaged)
+	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
 
 	if err := c.usage.Track(ctx, lmg); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
@@ -207,6 +207,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	cr.Status.AtProvider.ResourceName = ae.ResourceName
+	cr.Status.AtProvider.ResourceType = ae.ResourceType
+	cr.Status.AtProvider.ResourcePrincipal = ae.ResourcePrincipal
+	cr.Status.AtProvider.ResourceHost = ae.ResourceHost
+	cr.Status.AtProvider.ResourceOperation = ae.ResourceOperation
+	cr.Status.AtProvider.ResourcePermissionType = ae.ResourcePermissionType
+	cr.Status.AtProvider.ResourcePatternTypeFilter = ae.ResourcePatternTypeFilter
 	cr.Status.SetConditions(v1.Available())
 
 	return managed.ExternalObservation{
