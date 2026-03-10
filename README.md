@@ -23,7 +23,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
     }
     ```
 
-   See [examples/providerconfig/](examples/providerconfig/) for more credential examples
+   See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
    (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
    **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
@@ -55,9 +55,9 @@ manage [Kafka](https://kafka.apache.org/) resources.
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
 
-3. Create a `ProviderConfig`, see [examples/providerconfig/](examples/providerconfig/) for examples.
+3. Create a `ProviderConfig`, see [providerconfig examples](examples/namespaced/providerconfig/).
 
-4. Create a managed resource, see [examples/namespaced/topic/](examples/namespaced/topic/) and [examples/namespaced/acl/](examples/namespaced/acl/) for examples.
+4. Create a managed resource, see [topic](examples/namespaced/topic/) and [acl](examples/namespaced/acl/) for examples.
 
 ### Importing existing resources
 
@@ -255,15 +255,7 @@ Build the provider image and deploy it as a Crossplane Provider package in the
 kind cluster:
 
 ```console
-make deploy
-```
-
-This will build the provider binary, container image, and xpkg, then deploy it
-into the kind cluster as a Crossplane `Provider` resource. The dev sidecar image
-can be overridden if needed (e.g. to use a private registry):
-
-```console
-make deploy DEV_SIDECAR_IMAGE=my-registry.example.com/alpine:3.21
+make local-deploy
 ```
 
 Build package:
