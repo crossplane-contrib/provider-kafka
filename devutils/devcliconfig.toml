@@ -1,7 +1,0 @@
-seed_brokers = ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"]
-timeout_ms = 10000
-
-[sasl]
-method = "plain"
-user = "user1"
-pass = "<your-password>"

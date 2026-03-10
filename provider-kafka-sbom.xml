@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:6a675161-70ac-4d17-a614-8e4179daa358" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:604ebdc9-2f1b-421a-8296-263fb4ff1b4c" version="1">
   <metadata>
-    <timestamp>2026-03-09T23:00:07+01:00</timestamp>
+    <timestamp>2026-03-11T00:06:47+01:00</timestamp>
     <tools>
       <tool>
         <vendor>CycloneDX</vendor>
@@ -24,10 +24,10 @@
         </externalReferences>
       </tool>
     </tools>
-    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.0.2-0.20260211232609-7c17721b5e45?type=module" type="application">
+    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?type=module" type="application">
       <name>github.com/crossplane-contrib/provider-kafka</name>
-      <version>v1.0.2-0.20260211232609-7c17721b5e45</version>
-      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.0.2-0.20260211232609-7c17721b5e45?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <version>v1.1.0</version>
+      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/crossplane-contrib/provider-kafka</url>
@@ -1458,7 +1458,7 @@
     </component>
   </components>
   <dependencies>
-    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.0.2-0.20260211232609-7c17721b5e45?type=module">
+    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?type=module">
       <dependency ref="pkg:golang/github.com/alecthomas/kong@v1.14.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.11?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/crossplane/crossplane-runtime/v2@v2.2.0?type=module"></dependency>

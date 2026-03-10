@@ -64,15 +64,6 @@ fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
 
-# integration tests
-e2e.run: test-integration
-
-# Run integration tests.
-test-integration: $(KIND) $(KUBECTL) $(CROSSPLANE_CLI) $(HELM3)
-	@$(INFO) running integration tests using kind $(KIND_VERSION)
-	@KIND_NODE_IMAGE_TAG=${KIND_NODE_IMAGE_TAG} $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
-	@$(OK) integration tests passed
-
 # Update the submodules, such as the common build scripts.
 submodules:
 	@git submodule sync
@@ -103,7 +94,7 @@ run: go.build
 	@# To see other arguments that can be provided, run the command with --help instead
 	$(GO_OUT_DIR)/provider --debug
 
-.PHONY: submodules fallthrough test-integration run
+.PHONY: submodules fallthrough run
 
 # ====================================================================================
 # Special Targets
@@ -217,15 +208,15 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json \
 	--dry-run=client -o yaml | $(KUBECTL) apply -f -
 
+review:
+	@$(MAKE) reviewable
+	@$(MAKE) sbom
+
 sbom:
 	@$(INFO) Generating SBOM
 	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
 	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
 	@$(OK) SBOM generated at provider-kafka-sbom.xml
-
-review:
-	@$(MAKE) reviewable
-	@$(MAKE) sbom
 	
 test: unit-tests.init unit-tests.run unit-tests.done
 
@@ -240,18 +231,4 @@ unit-tests.done: $(KIND) $(KUBECTL)
 unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
 	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
 
-DEV_SIDECAR_IMAGE ?= alpine
-
-deploy: $(KIND) $(KUBECTL)
-	@$(INFO) Building provider
-	@$(MAKE) build
-	@$(INFO) Ensuring Crossplane dev sidecar is running
-	@if ! $(KUBECTL) -n $(CROSSPLANE_NAMESPACE) get deployment crossplane -o jsonpath="{.spec.template.spec.containers[*].name}" | grep -q "dev"; then \
-		$(KUBECTL) -n $(CROSSPLANE_NAMESPACE) patch deployment/crossplane --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/1","value":{"image":"$(DEV_SIDECAR_IMAGE)","name":"dev","command":["sleep","infinity"],"volumeMounts":[{"mountPath":"/tmp/cache","name":"package-cache"}]}},{"op":"add","path":"/spec/template/metadata/labels/patched","value":"true"}]'; \
-		$(KUBECTL) -n $(CROSSPLANE_NAMESPACE) rollout status deployment/crossplane --timeout=120s; \
-	fi
-	@$(INFO) Deploying provider to kind cluster $(KIND_CLUSTER_NAME)
-	@$(MAKE) XPKG_SKIP_DEP_RESOLUTION=true local.xpkg.deploy.provider.provider-kafka
-	@$(OK) Provider deployed. Check status with: kubectl get providers
-
-.PHONY: dev kind-setup kind-kafka-setup deploy review sbom test
+.PHONY: dev kind-setup kind-kafka-setup review sbom test
