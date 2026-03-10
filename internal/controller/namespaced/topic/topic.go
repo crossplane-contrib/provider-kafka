@@ -18,6 +18,8 @@ package topic
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
@@ -31,7 +33,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 
-	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,7 +67,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // crossplane-runtime doesn't support new events API yet
 	}
 
 	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
@@ -86,7 +87,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			mgr.GetClient(), o.Logger, o.MetricOptions.MRStateMetrics, &v1alpha1.TopicList{}, o.MetricOptions.PollStateMetricInterval,
 		)
 		if err := mgr.Add(stateMetricsRecorder); err != nil {
-			return errors.Wrap(err, "cannot register MR state metrics recorder for kind v1alpha1.TopicList")
+			return fmt.Errorf("cannot register MR state metrics recorder for kind v1alpha1.TopicList: %w", err)
 		}
 	}
 
@@ -104,7 +105,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {
-			panic(errors.Wrap(err, "cannot setup Topic controller"))
+			panic(fmt.Errorf("cannot setup Topic controller: %w", err))
 		}
 	}, v1alpha1.TopicGroupVersionKind)
 	return nil
@@ -131,7 +132,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, errors.Wrap(err, errTrackPCUsage)
+		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
 	}
 
 	var cd apisv1alpha1.ProviderCredentials
@@ -144,27 +145,27 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	case "ProviderConfig":
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
-			return nil, errors.Wrap(err, errGetPC)
+			return nil, fmt.Errorf("%s: %w", errGetPC, err)
 		}
 		cd = pc.Spec.Credentials
 	case "ClusterProviderConfig":
 		cpc := &apisv1alpha1.ClusterProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, errors.Wrap(err, errGetCPC)
+			return nil, fmt.Errorf("%s: %w", errGetCPC, err)
 		}
 		cd = cpc.Spec.Credentials
 	default:
-		return nil, errors.Errorf("unsupported provider config kind: %s", ref.Kind)
+		return nil, fmt.Errorf("unsupported provider config kind: %s", ref.Kind)
 	}
 
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, errors.Wrap(err, errGetCreds)
+		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
 	svc, err := c.newServiceFn(ctx, data, c.kube)
 	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
+		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
 	c.cachedClient = svc
 
@@ -197,7 +198,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if strings.HasPrefix(err.Error(), topic.ErrTopicDoesNotExist) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
-		return managed.ExternalObservation{}, errors.Wrapf(err, errGetTopic)
+		return managed.ExternalObservation{}, fmt.Errorf(errGetTopic+": %w", err)
 	}
 
 	cr.Status.AtProvider.ID = tpc.ID

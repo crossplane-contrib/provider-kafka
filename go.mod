@@ -2,16 +2,18 @@ module github.com/crossplane-contrib/provider-kafka
 
 go 1.26.1
 
-tool golang.org/x/tools/cmd/goimports
-
-tool github.com/stretchr/testify
+tool (
+	github.com/crossplane/crossplane-tools/cmd/angryjet
+	github.com/stretchr/testify
+	golang.org/x/tools/cmd/goimports
+	sigs.k8s.io/controller-tools/cmd/controller-gen
+)
 
 require (
 	github.com/alecthomas/kong v1.14.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.11
 	github.com/crossplane/crossplane-runtime/v2 v2.2.0
 	github.com/google/go-cmp v0.7.0
-	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/twmb/franz-go v1.20.7
 	github.com/twmb/franz-go/pkg/kadm v1.17.2
@@ -83,6 +85,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -128,9 +131,4 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2-0.20260122202528-d9cc6641c482 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
-)
-
-tool (
-	github.com/crossplane/crossplane-tools/cmd/angryjet
-	sigs.k8s.io/controller-tools/cmd/controller-gen
 )

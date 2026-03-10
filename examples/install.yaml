@@ -1,0 +1,6 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-kafka
+spec:
+  package: crossplane-contrib/provider-kafka:v1.0.0

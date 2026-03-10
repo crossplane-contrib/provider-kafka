@@ -23,16 +23,74 @@ manage [Kafka](https://kafka.apache.org/) resources.
     }
     ```
 
+   See [examples/providerconfig/](examples/providerconfig/) for more credential examples
+   (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
+
+   **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
+   credential chain (environment variables, IRSA, etc.). The IAM role needs at
+   minimum the following permissions to manage topics:
+
+    ```json
+    {
+      "Action": [
+        "kafka-cluster:Connect",
+        "kafka-cluster:CreateTopic",
+        "kafka-cluster:DeleteTopic",
+        "kafka-cluster:DescribeTopic",
+        "kafka-cluster:DescribeTopicDynamicConfiguration",
+        "kafka-cluster:AlterTopic",
+        "kafka-cluster:AlterTopicDynamicConfiguration"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:kafka:<aws-region>:<aws-account-id>:cluster/<cluster-name>/<cluster-id>",
+        "arn:aws:kafka:<aws-region>:<aws-account-id>:topic/<cluster-name>/<cluster-id>/<topic-name>"
+      ]
+    }
+    ```
+
 2. Create a k8s secret containing above config:
 
     ```console
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
 
-3. Create a `ProviderConfig`, see [this](examples/provider/config.yaml) as an example.
+3. Create a `ProviderConfig`, see [examples/providerconfig/](examples/providerconfig/) for examples.
 
+4. Create a managed resource, see [examples/namespaced/topic/](examples/namespaced/topic/) and [examples/namespaced/acl/](examples/namespaced/acl/) for examples.
 
-4. Create a managed resource see, see [this](examples/topic/topic.yaml) for an example creating a `Kafka topic`.
+### Importing existing resources
+
+You can import existing resources into Crossplane by using the `Observe` management policy.
+
+To import an existing topic, set the `crossplane.io/external-name` annotation to
+the topic name as follows:
+
+```yaml
+apiVersion: topic.kafka.m.crossplane.io/v1alpha1
+kind: Topic
+metadata:
+  name: imported-topic
+  annotations:
+    crossplane.io/external-name: cluster-sample-topic
+spec:
+  managementPolicies:
+    - Observe
+  forProvider:
+    replicationFactor: 3
+    partitions: 6
+  providerConfigRef:
+    name: default
+    kind: ClusterProviderConfig
+```
+
+The provider will observe the topic and populate `status.atProvider` with the
+actual state without making any changes to the Kafka cluster.
+
+> **Note**: Importing ACLs via `Observe` is not supported. Kafka ACLs don't have
+> a unique identifier — they are identified by the full combination of their
+> fields (resource name, type, principal, host, operation, permission type, and
+> pattern type), making observe-only imports impractical.
 
 ## Development
 
@@ -172,12 +230,13 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 Run against a Kubernetes cluster:
 
 ```console
-# Install CRD and run provider locally
+# Install CRD and run provider locally (out-of-cluster)
 make dev
 
 # Create a ProviderConfig pointing to the local Kafka cluster
 kubectl apply -f - <<EOF
-kind: ProviderConfig
+apiVersion: kafka.m.crossplane.io/v1alpha1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:
@@ -188,6 +247,23 @@ spec:
       namespace: kafka-cluster
     source: Secret
 EOF
+```
+
+### Building and deploying the provider in-cluster
+
+Build the provider image and deploy it as a Crossplane Provider package in the
+kind cluster:
+
+```console
+make deploy
+```
+
+This will build the provider binary, container image, and xpkg, then deploy it
+into the kind cluster as a Crossplane `Provider` resource. The dev sidecar image
+can be overridden if needed (e.g. to use a private registry):
+
+```console
+make deploy DEV_SIDECAR_IMAGE=my-registry.example.com/alpine:3.21
 ```
 
 Build package:

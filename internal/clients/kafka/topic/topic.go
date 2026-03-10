@@ -2,8 +2,9 @@ package topic
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -37,15 +38,14 @@ const (
 )
 
 // Get gets the topic from Kafka side and returns a Topic object.
-// #nosec G115
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
 
 	td, err := client.ListTopics(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, errCannotListTopics)
+		return nil, fmt.Errorf("%s: %w", errCannotListTopics, err)
 	}
 	if td[name].Err != nil {
-		return nil, errors.Wrap(td[name].Err, ErrTopicDoesNotExist)
+		return nil, fmt.Errorf("%s: %w", ErrTopicDoesNotExist, td[name].Err)
 	}
 
 	t, ok := td[name]
@@ -55,7 +55,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 	tc, err := client.DescribeTopicConfigs(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, errCannotDescribeTopic)
+		return nil, fmt.Errorf("%s: %w", errCannotDescribeTopic, err)
 	}
 
 	ts := Topic{}
@@ -69,10 +69,10 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 
 	rc, err := tc.On(name, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, errCannotFindTopicInDescribe)
+		return nil, fmt.Errorf(errCannotFindTopicInDescribe+": %w", err)
 	}
 	if rc.Err != nil {
-		return nil, errors.Wrapf(rc.Err, errErrorInTopicDescribeResult)
+		return nil, fmt.Errorf(errErrorInTopicDescribeResult+": %w", rc.Err)
 	}
 	for _, value := range rc.Configs {
 		ts.Config[value.Key] = value.Value
@@ -94,7 +94,7 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 		return errors.New(errNoCreateResponseForTopic)
 	}
 	if t.Err != nil {
-		return errors.Wrap(t.Err, errCannotCreateTopic)
+		return fmt.Errorf("%s: %w", errCannotCreateTopic, t.Err)
 	}
 
 	return nil
@@ -113,7 +113,7 @@ func Delete(ctx context.Context, client *kadm.Client, name string) error {
 		return errors.New(errNoDeleteResponseForTopic)
 	}
 	if t.Err != nil {
-		return errors.Wrap(t.Err, errCannotDeleteTopic)
+		return fmt.Errorf("%s: %w", errCannotDeleteTopic, t.Err)
 	}
 
 	return nil
@@ -124,7 +124,7 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, errCannotGetTopic)
+		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
 	}
 	if existing == nil {
 		return errors.New(ErrTopicDoesNotExist)
@@ -150,7 +150,7 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, errCannotGetTopic)
+		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
 	}
 	if existing == nil {
 		return errors.New(ErrTopicDoesNotExist)
@@ -159,14 +159,14 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 	if desired.Partitions != existing.Partitions {
 		resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
 		if err != nil {
-			return errors.Wrap(err, "cannot update topic partitions")
+			return fmt.Errorf("cannot update topic partitions: %w", err)
 		}
 		r, err := resp.On(desired.Name, nil)
 		if err != nil {
-			return errors.Wrap(err, "cannot find topic in update partitions result")
+			return fmt.Errorf("cannot find topic in update partitions result: %w", err)
 		}
 		if r.Err != nil {
-			return errors.Wrap(r.Err, "error in update partitions result")
+			return fmt.Errorf("error in update partitions result: %w", r.Err)
 		}
 	}
 
@@ -184,7 +184,7 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
-		return errors.Wrap(err, errCannotGetTopic)
+		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
 	}
 	if existing == nil {
 		return errors.New("topic does not exist")
@@ -204,10 +204,10 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 				}
 				r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
 				if err != nil {
-					return errors.Wrap(err, errCannotUpdateTopicConfigs)
+					return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, err)
 				}
 				if r[0].Err != nil {
-					return errors.Wrap(r[0].Err, errCannotUpdateTopicConfigs)
+					return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, r[0].Err)
 				}
 			}
 		}
@@ -217,7 +217,6 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 }
 
 // Generate is used to convert Crossplane TopicParameters to Kafka's Topic.
-// #nosec G115
 func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	tpc := &Topic{
 		Name:              name,

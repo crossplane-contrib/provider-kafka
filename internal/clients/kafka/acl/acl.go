@@ -3,12 +3,12 @@ package acl
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 
-	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kmsg"
 )
@@ -30,14 +30,14 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	if err != nil {
-		return nil, errors.Wrap(err, "did not return ACL Operation")
+		return nil, fmt.Errorf("did not return ACL Operation: %w", err)
 	}
 
 	ao := []kadm.ACLOperation{o}
 
 	rpt, err := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 	if err != nil {
-		return nil, errors.Wrap(err, "did not return parsing of ACL pattern")
+		return nil, fmt.Errorf("did not return parsing of ACL pattern: %w", err)
 	}
 
 	b := kadm.ACLBuilder{}
@@ -58,7 +58,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	resp, err := cl.DescribeACLs(ctx, ab)
 	if err != nil {
-		return nil, errors.Wrap(err, "describe ACLs response is empty")
+		return nil, fmt.Errorf("describe ACLs response is empty: %w", err)
 	}
 	if exists := resp[0].Described; len(exists) == 0 {
 		return nil, nil
@@ -151,7 +151,7 @@ func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 func ConvertToJSON(acl *AccessControlList) (string, error) {
 	j, err := json.Marshal(acl)
 	if err != nil {
-		return "", errors.Wrap(err, "describe ACLs response is empty")
+		return "", fmt.Errorf("could not unmarshal ACL from JSON: %w", err)
 	}
 	name := string(j)
 
@@ -163,7 +163,7 @@ func ConvertFromJSON(extname string) (*AccessControlList, error) {
 	acl := AccessControlList{}
 	err := json.Unmarshal([]byte(extname), &acl)
 	if err != nil {
-		return nil, errors.Wrap(err, "describe ACLs response is empty")
+		return nil, fmt.Errorf("could not unmarshal ACL from JSON: %w", err)
 	}
 	return &acl, nil
 }

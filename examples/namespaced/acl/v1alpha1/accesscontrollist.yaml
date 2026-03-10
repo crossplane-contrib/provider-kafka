@@ -19,5 +19,5 @@ spec:
     # Valid values are: Prefixed, Any, Match, Literal
     resourcePatternTypeFilter: "Literal"
   providerConfigRef:
-    name: example
-    kind: ProviderConfig
+    name: default
+    kind: ClusterProviderConfig

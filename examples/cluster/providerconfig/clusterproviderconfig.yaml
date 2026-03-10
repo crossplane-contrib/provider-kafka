@@ -1,8 +1,7 @@
-apiVersion: kafka.crossplane.io/v1alpha1
-kind: ProviderConfig
+apiVersion: kafka.m.crossplane.io/v1alpha1
+kind: ClusterProviderConfig
 metadata:
   name: example
-  namespace: kafka-cluster
 spec:
   credentials:
     source: Secret

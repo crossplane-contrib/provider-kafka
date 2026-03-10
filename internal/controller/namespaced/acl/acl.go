@@ -18,6 +18,8 @@ package acl
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -25,7 +27,6 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,7 +69,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // crossplane-runtime doesn't support new events API yet
 		managed.WithInitializers(),
 	}
 
@@ -89,7 +90,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			mgr.GetClient(), o.Logger, o.MetricOptions.MRStateMetrics, &v1alpha1.AccessControlListList{}, o.MetricOptions.PollStateMetricInterval,
 		)
 		if err := mgr.Add(stateMetricsRecorder); err != nil {
-			return errors.Wrap(err, "cannot register MR state metrics recorder for kind v1alpha1.AccessControlListList")
+			return fmt.Errorf("cannot register MR state metrics recorder for kind v1alpha1.AccessControlListList: %w", err)
 		}
 	}
 
@@ -107,7 +108,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {
-			panic(errors.Wrap(err, "cannot setup AccessControlList controller"))
+			panic(fmt.Errorf("cannot setup AccessControlList controller: %w", err))
 		}
 	}, v1alpha1.AccessControlListGroupVersionKind)
 	return nil
@@ -134,7 +135,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, errors.Wrap(err, errTrackPCUsage)
+		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
 	}
 
 	var cd apisv1alpha1.ProviderCredentials
@@ -147,27 +148,27 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	case "ProviderConfig":
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
-			return nil, errors.Wrap(err, errGetPC)
+			return nil, fmt.Errorf("%s: %w", errGetPC, err)
 		}
 		cd = pc.Spec.Credentials
 	case "ClusterProviderConfig":
 		cpc := &apisv1alpha1.ClusterProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, errors.Wrap(err, errGetCPC)
+			return nil, fmt.Errorf("%s: %w", errGetCPC, err)
 		}
 		cd = cpc.Spec.Credentials
 	default:
-		return nil, errors.Errorf("unsupported provider config kind: %s", ref.Kind)
+		return nil, fmt.Errorf("unsupported provider config kind: %s", ref.Kind)
 	}
 
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, errors.Wrap(err, errGetCreds)
+		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
 	svc, err := c.newServiceFn(ctx, data, c.kube)
 	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
+		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
 	c.cachedClient = svc
 
@@ -216,7 +217,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
 
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errListACL)
+		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
 	}
 
 	if ae == nil {
@@ -249,7 +250,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	generated := acl.Generate(&cr.Spec.ForProvider)
 	extname, err := acl.ConvertToJSON(generated)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, "could not convert external name to JSON")
+		return managed.ExternalCreation{}, fmt.Errorf("could not convert external name to JSON: %w", err)
 	}
 	if meta.GetExternalName(cr) == "" {
 		meta.SetExternalName(cr, extname)
