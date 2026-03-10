@@ -23,7 +23,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
     }
     ```
 
-   See [examples/provider/](examples/provider/) for more credential examples
+   See [examples/providerconfig/](examples/providerconfig/) for more credential examples
    (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
    **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
@@ -55,9 +55,9 @@ manage [Kafka](https://kafka.apache.org/) resources.
     kubectl -n crossplane-system create secret generic kafka-creds --from-file=credentials=kc.json
     ```
 
-3. Create a `ProviderConfig`, see [examples/provider/](examples/provider/) for examples.
+3. Create a `ProviderConfig`, see [examples/providerconfig/](examples/providerconfig/) for examples.
 
-4. Create a managed resource, see [examples/topic/](examples/topic/) and [examples/acl/](examples/acl/) for examples.
+4. Create a managed resource, see [examples/namespaced/topic/](examples/namespaced/topic/) and [examples/namespaced/acl/](examples/namespaced/acl/) for examples.
 
 ### Importing existing resources
 

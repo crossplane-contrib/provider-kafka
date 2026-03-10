@@ -1,0 +1,11 @@
+apiVersion: kafka.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: example
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: kafka-cluster
+      name: kafka-creds
+      key: credentials
