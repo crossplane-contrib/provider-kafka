@@ -11,6 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.11
 	github.com/crossplane/crossplane-runtime/v2 v2.2.0
 	github.com/google/go-cmp v0.7.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/twmb/franz-go v1.20.7
 	github.com/twmb/franz-go/pkg/kadm v1.17.2
@@ -82,7 +83,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
