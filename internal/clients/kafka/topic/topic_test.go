@@ -137,13 +137,88 @@ func TestGet(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Get(tt.args.ctx, tt.args.client, tt.args.name)
+			got, err := Get(tt.args.ctx, tt.args.client, tt.args.name)
 			fmt.Println(err)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if err == nil && got != nil {
+				if got.Name != tt.args.name {
+					t.Errorf("Get() Name = %v, want %v", got.Name, tt.args.name)
+				}
+				if got.Partitions != tt.want.Partitions {
+					t.Errorf("Get() Partitions = %v, want %v", got.Partitions, tt.want.Partitions)
+				}
+				if got.ReplicationFactor != tt.want.ReplicationFactor {
+					t.Errorf("Get() ReplicationFactor = %v, want %v", got.ReplicationFactor, tt.want.ReplicationFactor)
+				}
+				if got.ID == "" {
+					t.Errorf("Get() ID should not be empty")
+				}
+				if got.Config == nil {
+					t.Errorf("Get() Config should not be nil")
+				}
+			}
 		})
+	}
+}
+
+// TestGetAtProviderFields verifies that Get() returns all fields needed for
+// status.atProvider population, including topic config entries.
+func TestGetAtProviderFields(t *testing.T) {
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
+	}
+
+	ctx := context.Background()
+	newAc, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	if err != nil {
+		t.Fatalf("failed to create admin client: %v", err)
+	}
+
+	topicName := "test-atprovider-fields"
+	retentionMs := "86400000"
+
+	// Create a topic with a specific config
+	err = Create(ctx, newAc, &Topic{
+		Name:              topicName,
+		ReplicationFactor: 1,
+		Partitions:        2,
+		Config:            map[string]*string{"retention.ms": &retentionMs},
+	})
+	if err != nil {
+		t.Fatalf("failed to create topic: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = Delete(ctx, newAc, topicName)
+	})
+
+	got, err := Get(ctx, newAc, topicName)
+	if err != nil {
+		t.Fatalf("Get() returned error: %v", err)
+	}
+
+	// Validate all fields that feed into status.atProvider
+	if got.Name != topicName {
+		t.Errorf("Name = %q, want %q", got.Name, topicName)
+	}
+	if got.ID == "" {
+		t.Error("ID should not be empty for an existing topic")
+	}
+	if got.Partitions != 2 {
+		t.Errorf("Partitions = %d, want 2", got.Partitions)
+	}
+	if got.ReplicationFactor != 1 {
+		t.Errorf("ReplicationFactor = %d, want 1", got.ReplicationFactor)
+	}
+	if got.Config == nil {
+		t.Fatal("Config should not be nil")
+	}
+	if v, ok := got.Config["retention.ms"]; !ok {
+		t.Error("Config should contain 'retention.ms' key")
+	} else if v == nil || *v != retentionMs {
+		t.Errorf("Config['retention.ms'] = %v, want %q", v, retentionMs)
 	}
 }
 

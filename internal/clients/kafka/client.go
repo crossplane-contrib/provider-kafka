@@ -4,14 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-
-	"github.com/pkg/errors"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
@@ -40,7 +40,7 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	kc := Config{}
 
 	if err := json.Unmarshal(data, &kc); err != nil {
-		return nil, errors.Wrap(err, errCannotParse)
+		return nil, fmt.Errorf("%s: %w", errCannotParse, err)
 	}
 
 	// Validate SASL configuration if provided
@@ -78,7 +78,7 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 				Pass: kc.SASL.Password,
 			}.AsSha512Mechanism()
 		default:
-			return nil, errors.Errorf("SASL mechanism %q not supported, only PLAIN / SCRAM-SHA-512 / AWS-MSK-IAM are supported for now.", kc.SASL.Mechanism)
+			return nil, fmt.Errorf("SASL mechanism %q not supported, only PLAIN / SCRAM-SHA-512 / AWS-MSK-IAM are supported for now", kc.SASL.Mechanism)
 		}
 		opts = append(opts, kgo.SASL(mechanism))
 	}
@@ -133,15 +133,15 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 
 	secret := &corev1.Secret{}
 	if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
-		return errors.Wrap(err, errCannotReadClientCertSecret)
+		return fmt.Errorf("%s: %w", errCannotReadClientCertSecret, err)
 	}
 
 	kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
 	cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
 	kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
 	if err != nil {
-		return errors.Wrapf(err, "Invalid key pair, using fields %q/%q from secret %q in namespace %q",
-			cf, kf, sr.Name, sr.Namespace)
+		return fmt.Errorf("invalid key pair, using fields %q/%q from secret %q in namespace %q: %w",
+			cf, kf, sr.Name, sr.Namespace, err)
 	}
 
 	tc.Certificates = append(tc.Certificates, kp)

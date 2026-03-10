@@ -26,11 +26,6 @@ import (
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
-// AccessControlListObservation are the observable fields of an AccessControlList
-type AccessControlListObservation struct {
-	ID string `json:"id,omitempty"`
-}
-
 // An AccessControlListSpec defines the desired state of an AccessControlList
 type AccessControlListSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
@@ -40,7 +35,7 @@ type AccessControlListSpec struct {
 // A AccessControlListStatus represents the observed state of a AccessControlList.
 type AccessControlListStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          AccessControlListObservation `json:"atProvider,omitempty"`
+	AtProvider          common.AccessControlListObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -2,16 +2,19 @@ package acl
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/twmb/franz-go/pkg/kadm"
 
 	"k8s.io/apimachinery/pkg/util/json"
 )
+
+var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
 var baseACL = AccessControlList{
 	ResourceName:              "acl1",
@@ -255,84 +258,153 @@ func TestConvertToJSON(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	type args struct {
-		ctx               context.Context
-		cl                *kadm.Client
-		accessControlList *AccessControlList
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
 	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+
+	ctx := context.Background()
+	newAc, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	if err != nil {
+		t.Fatalf("failed to create admin client: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Create(tt.args.ctx, tt.args.cl, tt.args.accessControlList); (err != nil) != tt.wantErr {
-				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+
+	testACL := &AccessControlList{
+		ResourceName:              "test-acl-create-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:user",
+		ResourceHost:              "*",
+		ResourceOperation:         "Read",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
 	}
+
+	err = Create(ctx, newAc, testACL)
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// Clean up
+	t.Cleanup(func() {
+		_ = Delete(ctx, newAc, testACL)
+	})
 }
 
 func TestDelete(t *testing.T) {
-	type args struct {
-		ctx               context.Context
-		cl                *kadm.Client
-		accessControlList *AccessControlList
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
 	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+
+	ctx := context.Background()
+	newAc, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	if err != nil {
+		t.Fatalf("failed to create admin client: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Delete(tt.args.ctx, tt.args.cl, tt.args.accessControlList); (err != nil) != tt.wantErr {
-				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+
+	testACL := &AccessControlList{
+		ResourceName:              "test-acl-delete-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:user",
+		ResourceHost:              "*",
+		ResourceOperation:         "Write",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
+	}
+
+	// Create first, then delete
+	err = Create(ctx, newAc, testACL)
+	if err != nil {
+		t.Fatalf("Create() setup error = %v", err)
+	}
+
+	err = Delete(ctx, newAc, testACL)
+	if err != nil {
+		t.Errorf("Delete() error = %v", err)
 	}
 }
 
 func TestGenerate(t *testing.T) {
-	type args struct {
-		params *v1alpha1.AccessControlListParameters
+	params := &v1alpha1.AccessControlListParameters{
+		ResourceName:              "my-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:alice",
+		ResourceHost:              "*",
+		ResourceOperation:         "Read",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
 	}
-	tests := []struct {
-		name string
-		args args
-		want *AccessControlList
-	}{
-		// TODO: Add test cases.
+
+	got := Generate(params)
+	want := &AccessControlList{
+		ResourceName:              "my-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:alice",
+		ResourceHost:              "*",
+		ResourceOperation:         "Read",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Generate(tt.args.params); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Generate() = %v, want %v", got, tt.want)
-			}
-		})
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Generate() = %v, want %v", got, want)
 	}
 }
 
 func TestIsUpToDate(t *testing.T) {
-	type args struct {
-		in       *v1alpha1.AccessControlListParameters
-		observed *AccessControlList
-	}
-	tests := []struct {
+	cases := []struct {
 		name string
-		args args
+		in   *v1alpha1.AccessControlListParameters
+		obs  *AccessControlList
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "UpToDate",
+			in: &v1alpha1.AccessControlListParameters{
+				ResourceName:              "acl1",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:Ken",
+				ResourceHost:              "*",
+				ResourceOperation:         "AlterConfigs",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+			obs: &AccessControlList{
+				ResourceName:              "acl1",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:Ken",
+				ResourceHost:              "*",
+				ResourceOperation:         "AlterConfigs",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+			want: true,
+		},
+		{
+			name: "DiffOperation",
+			in: &v1alpha1.AccessControlListParameters{
+				ResourceName:              "acl1",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:Ken",
+				ResourceHost:              "*",
+				ResourceOperation:         "Read",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+			obs: &AccessControlList{
+				ResourceName:              "acl1",
+				ResourceType:              "Topic",
+				ResourcePrincipal:         "User:Ken",
+				ResourceHost:              "*",
+				ResourceOperation:         "AlterConfigs",
+				ResourcePermissionType:    "Allow",
+				ResourcePatternTypeFilter: "Literal",
+			},
+			want: false,
+		},
 	}
-	for _, tt := range tests {
+
+	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsUpToDate(tt.args.in, tt.args.observed); got != tt.want {
+			if got := IsUpToDate(tt.in, tt.obs); got != tt.want {
 				t.Errorf("IsUpToDate() = %v, want %v", got, tt.want)
 			}
 		})
@@ -340,29 +412,92 @@ func TestIsUpToDate(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	type args struct {
-		ctx               context.Context
-		cl                *kadm.Client
-		accessControlList *AccessControlList
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
 	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *AccessControlList
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+
+	ctx := context.Background()
+	newAc, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	if err != nil {
+		t.Fatalf("failed to create admin client: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := List(tt.args.ctx, tt.args.cl, tt.args.accessControlList)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("List() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("List() got = %v, want %v", got, tt.want)
-			}
-		})
+
+	testACL := &AccessControlList{
+		ResourceName:              "test-acl-list-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:user",
+		ResourceHost:              "*",
+		ResourceOperation:         "Describe",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
+	}
+
+	// Create the ACL first
+	err = Create(ctx, newAc, testACL)
+	if err != nil {
+		t.Fatalf("Create() setup error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = Delete(ctx, newAc, testACL)
+	})
+
+	// List and verify all fields needed for atProvider population
+	got, err := List(ctx, newAc, testACL)
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if got == nil {
+		t.Fatal("List() returned nil, expected ACL")
+	}
+
+	// Verify all fields that feed into status.atProvider
+	if got.ResourceType != testACL.ResourceType {
+		t.Errorf("ResourceType = %q, want %q", got.ResourceType, testACL.ResourceType)
+	}
+	if got.ResourcePrincipal != testACL.ResourcePrincipal {
+		t.Errorf("ResourcePrincipal = %q, want %q", got.ResourcePrincipal, testACL.ResourcePrincipal)
+	}
+	if got.ResourceHost != testACL.ResourceHost {
+		t.Errorf("ResourceHost = %q, want %q", got.ResourceHost, testACL.ResourceHost)
+	}
+	if got.ResourceOperation != testACL.ResourceOperation {
+		t.Errorf("ResourceOperation = %q, want %q", got.ResourceOperation, testACL.ResourceOperation)
+	}
+	if got.ResourcePermissionType != testACL.ResourcePermissionType {
+		t.Errorf("ResourcePermissionType = %q, want %q", got.ResourcePermissionType, testACL.ResourcePermissionType)
+	}
+	if got.ResourcePatternTypeFilter != testACL.ResourcePatternTypeFilter {
+		t.Errorf("ResourcePatternTypeFilter = %q, want %q", got.ResourcePatternTypeFilter, testACL.ResourcePatternTypeFilter)
+	}
+}
+
+// TestListAtProviderNotFound verifies that List returns nil when the ACL does not exist.
+func TestListAtProviderNotFound(t *testing.T) {
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
+	}
+
+	ctx := context.Background()
+	newAc, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	if err != nil {
+		t.Fatalf("failed to create admin client: %v", err)
+	}
+
+	nonExistentACL := &AccessControlList{
+		ResourceName:              "non-existent-acl-topic",
+		ResourceType:              "Topic",
+		ResourcePrincipal:         "User:nobody",
+		ResourceHost:              "*",
+		ResourceOperation:         "Read",
+		ResourcePermissionType:    "Allow",
+		ResourcePatternTypeFilter: "Literal",
+	}
+
+	got, err := List(ctx, newAc, nonExistentACL)
+	if err != nil {
+		t.Fatalf("List() error = %v, expected nil result without error", err)
+	}
+	if got != nil {
+		t.Errorf("List() = %v, expected nil for non-existent ACL", got)
 	}
 }

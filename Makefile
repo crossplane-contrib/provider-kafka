@@ -17,11 +17,13 @@ PLATFORMS ?= linux_amd64 linux_arm64
 
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
+GO_REQUIRED_VERSION ?= 1.26.1
+GOLANGCILINT_VERSION = 2.11.0
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION = 2.8.0
+export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -37,11 +39,14 @@ UP_VERSION = v0.37.0
 # ====================================================================================
 # Setup Images
 
+REGISTRY_ORGS ?= ghcr.io/crossplane-contrib
 IMAGES = provider-kafka
 -include build/makelib/imagelight.mk
 
 # ====================================================================================
 # Setup XPKG
+
+KIND_CLUSTER_NAME = $(PROJECT_NAME)-dev
 
 XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
@@ -49,6 +54,7 @@ XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
 XPKGS = provider-kafka
 -include build/makelib/xpkg.mk
+-include build/makelib/local.xpkg.mk
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
@@ -143,6 +149,8 @@ define CROSSPLANE_MAKE_HELP
 Crossplane Targets:
     submodules            Update the submodules, such as the common build scripts.
     run                   Run crossplane locally, out-of-cluster. Useful for development.
+    dev                   Create kind cluster with Crossplane and run provider locally.
+    deploy                Build and deploy provider as a Crossplane package in kind.
 
 endef
 # The reason CROSSPLANE_MAKE_HELP is used instead of CROSSPLANE_HELP is because the crossplane
@@ -165,11 +173,11 @@ dev: $(KIND) $(KUBECTL) $(DOCKER)
 	@$(GO) run cmd/provider/main.go --debug
 
 kind-setup: $(KIND)
-	@$(KIND) get clusters | grep $(PROJECT_NAME)-dev || ( \
+	@$(KIND) get clusters | grep $(KIND_CLUSTER_NAME) || ( \
 		$(INFO) Creating kind cluster; \
-		$(KIND) create cluster --name=$(PROJECT_NAME)-dev --quiet --wait 5m; \
+		$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --quiet --wait 5m; \
 	)
-	@$(KIND) export kubeconfig --name $(PROJECT_NAME)-dev
+	@$(KIND) export kubeconfig --name $(KIND_CLUSTER_NAME)
 	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
 	@$(HELM) repo update crossplane-stable
 	@$(HELM) upgrade --install crossplane --create-namespace --namespace crossplane-system crossplane-stable/crossplane --wait
@@ -182,7 +190,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(HELM) repo update strimzi
 	@$(HELM) upgrade --install kafka-operator strimzi/strimzi-kafka-operator \
 		--create-namespace --namespace kafka-operator \
-		--version 0.50.0 \
+		--version 0.51.0 \
 		--set watchAnyNamespace=true \
 		--wait
 	@$(KUBECTL) create namespace kafka-cluster --dry-run=client -o yaml | $(KUBECTL) apply -f -
@@ -192,7 +200,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkauser/user --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkatopic/pre-existing --timeout=300s
 	@$(INFO) Getting service IP and port
-	@KIND_NODE_IP=$$($(KIND) get nodes --name=$(PROJECT_NAME)-dev | \
+	@KIND_NODE_IP=$$($(KIND) get nodes --name=$(KIND_CLUSTER_NAME) | \
 	xargs $(KUBECTL) get node -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}') && \
 	KAFKA_NODEPORT=$$($(KUBECTL) -n kafka-cluster get svc dev-kafka-plain-bootstrap -o jsonpath='{.spec.ports[0].nodePort}') && \
 	KAFKA_PASSWORD=$$($(KUBECTL) get secret user -n kafka-cluster -o jsonpath='{.data.password}' | base64 -d) && \
@@ -211,7 +219,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 
 sbom:
 	@$(INFO) Generating SBOM
-	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
 	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
 	@$(OK) SBOM generated at provider-kafka-sbom.xml
 
@@ -227,9 +235,23 @@ unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
 
 unit-tests.done: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
-	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
+	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
 
 unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
 	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
 
-.PHONY: dev kind-setup kind-kafka-setup review sbom test
+DEV_SIDECAR_IMAGE ?= alpine
+
+deploy: $(KIND) $(KUBECTL)
+	@$(INFO) Building provider
+	@$(MAKE) build
+	@$(INFO) Ensuring Crossplane dev sidecar is running
+	@if ! $(KUBECTL) -n $(CROSSPLANE_NAMESPACE) get deployment crossplane -o jsonpath="{.spec.template.spec.containers[*].name}" | grep -q "dev"; then \
+		$(KUBECTL) -n $(CROSSPLANE_NAMESPACE) patch deployment/crossplane --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/1","value":{"image":"$(DEV_SIDECAR_IMAGE)","name":"dev","command":["sleep","infinity"],"volumeMounts":[{"mountPath":"/tmp/cache","name":"package-cache"}]}},{"op":"add","path":"/spec/template/metadata/labels/patched","value":"true"}]'; \
+		$(KUBECTL) -n $(CROSSPLANE_NAMESPACE) rollout status deployment/crossplane --timeout=120s; \
+	fi
+	@$(INFO) Deploying provider to kind cluster $(KIND_CLUSTER_NAME)
+	@$(MAKE) XPKG_SKIP_DEP_RESOLUTION=true local.xpkg.deploy.provider.provider-kafka
+	@$(OK) Provider deployed. Check status with: kubectl get providers
+
+.PHONY: dev kind-setup kind-kafka-setup deploy review sbom test

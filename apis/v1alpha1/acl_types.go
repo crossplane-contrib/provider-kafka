@@ -1,5 +1,32 @@
 package v1alpha1
 
+// AccessControlListObservation are the observable fields of an AccessControlList.
+type AccessControlListObservation struct {
+	ID                        string `json:"id,omitempty"`
+	ResourceName              string `json:"resourceName,omitempty"`
+	ResourceType              string `json:"resourceType,omitempty"`
+	ResourcePrincipal         string `json:"resourcePrincipal,omitempty"`
+	ResourceHost              string `json:"resourceHost,omitempty"`
+	ResourceOperation         string `json:"resourceOperation,omitempty"`
+	ResourcePermissionType    string `json:"resourcePermissionType,omitempty"`
+	ResourcePatternTypeFilter string `json:"resourcePatternTypeFilter,omitempty"`
+}
+
+// DeepCopyInto is a deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *AccessControlListObservation) DeepCopyInto(out *AccessControlListObservation) {
+	*out = *in
+}
+
+// DeepCopy is a deepcopy function, copying the receiver, creating a new AccessControlListObservation.
+func (in *AccessControlListObservation) DeepCopy() *AccessControlListObservation {
+	if in == nil {
+		return nil
+	}
+	out := new(AccessControlListObservation)
+	in.DeepCopyInto(out)
+	return out
+}
+
 // AccessControlListParameters are the configurable fields of a AccessControlList.
 type AccessControlListParameters struct {
 	// ResourceName is the name of the resource.
