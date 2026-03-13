@@ -33,6 +33,8 @@ const (
 	errMissingSASLCredentials         = "SASL username and password are required"
 	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
+	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
+	errCannotReadClientCertFile       = "cannot read client cert file"
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
@@ -122,11 +124,16 @@ func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
 
 // Add options to TLS config for client certificate (if configured)
 func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
-	sr := kc.TLS.ClientCertificateSecretRef
+	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	return configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc)
+}
+
+func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSecretRef, kube client.Client, tc *tls.Config) error {
 	if sr == nil {
 		return nil
 	}
-
 	if sr.Name == "" || sr.Namespace == "" {
 		return errors.New(errMissingClientCertSecretRefKeys)
 	}
@@ -142,6 +149,33 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 	if err != nil {
 		return fmt.Errorf("invalid key pair, using fields %q/%q from secret %q in namespace %q: %w",
 			cf, kf, sr.Name, sr.Namespace, err)
+	}
+
+	tc.Certificates = append(tc.Certificates, kp)
+	return nil
+}
+
+func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) error {
+	if fr == nil {
+		return nil
+	}
+	if fr.KeyFile == "" || fr.CertFile == "" {
+		return errors.New(errMissingClientCertFileKeys)
+	}
+
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
 	}
 
 	tc.Certificates = append(tc.Certificates, kp)

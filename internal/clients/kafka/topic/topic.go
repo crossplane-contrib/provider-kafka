@@ -65,7 +65,6 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 		ts.ReplicationFactor = int16(len(t.Partitions[0].Replicas))
 	}
 	ts.ID = t.ID.String()
-	ts.Config = make(map[string]*string, len(ts.Config))
 
 	rc, err := tc.On(name, nil)
 	if err != nil {
@@ -74,6 +73,7 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	if rc.Err != nil {
 		return nil, fmt.Errorf(errErrorInTopicDescribeResult+": %w", rc.Err)
 	}
+	ts.Config = make(map[string]*string, len(rc.Configs))
 	for _, value := range rc.Configs {
 		ts.Config[value.Key] = value.Value
 	}
@@ -187,15 +187,15 @@ func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) err
 		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
 	}
 	if existing == nil {
-		return errors.New("topic does not exist")
+		return errors.New(ErrTopicDoesNotExist)
 	}
 
 	if desired.Config != nil {
 		configs := desired.Config
-		existing := existing.Config
+		existingConfig := existing.Config
 
 		for key, value := range configs {
-			ev := existing[key]
+			ev := existingConfig[key]
 			if stringValue(value) != stringValue(ev) {
 				s := kadm.AlterConfig{
 					Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
