@@ -26,6 +26,43 @@ manage [Kafka](https://kafka.apache.org/) resources.
    See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
    (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
+   **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
+   skip server certificate verification.
+
+   **mTLS**: To additionally present a client certificate (mutual TLS), use one
+   of two methods:
+
+   - `clientCertificateSecretRef` - reference a Kubernetes Secret containing the
+    certificate and key (default fields: `tls.crt` and `tls.key`, compatible with
+    cert-manager). Override field names with `certField` and `keyField`.
+
+      ```json
+      "tls": {
+        "clientCertificateSecretRef": {
+          "name": "kafka-client-certs",
+          "namespace": "kafka-cluster",
+          "certField": "tls.crt",
+          "keyField": "tls.key"
+        }
+      }
+      ```
+
+   - `clientCertificatePath` — read the certificate and key directly from files
+    on disk. Useful when the provider Pod has a volume-mounted Secret or a
+    cert-manager Certificate projected into the filesystem.
+
+      ```json
+      "tls": {
+        "clientCertificatePath": {
+          "certFile": "/etc/certs/tls.crt",
+          "keyFile": "/etc/certs/tls.key"
+        }
+      }
+      ```
+
+   Both mTLS options can be combined; each will add its certificate to the TLS
+   handshake.
+
    **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
    credential chain (environment variables, IRSA, etc.). The IAM role needs at
    minimum the following permissions to manage topics:
@@ -113,14 +150,14 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 
    > Or simply run: `make kind-setup` or `make unit-tests.init` for steps 1-2.
 
-2. Run `make kind-kafka-setup` or manually with:
+2. Run `make kind-kafka-setup` or manually as follows:
 
-   Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
+  Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
 
-   ```shell
-   helm repo add bitnami https://charts.bitnami.com/bitnami
-   helm repo update bitnami
-   helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
+    ```shell
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo update bitnami
+    helm upgrade --install kafka-dev -n kafka-cluster bitnami/kafka \
       --create-namespace \
       --version 32.4.3 \
       --set image.repository=bitnamilegacy/kafka \
@@ -129,41 +166,41 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       --set authorizerClassName="kafka.security.authorizer.AclAuthorizer" \
       --set controller.replicaCount=1 \
       --wait
-   ```
+    ```
 
-   Username is `user1`, obtain password using the following:
+  Username is `user1`, obtain password using the following:
 
-   ```shell
-   export KAFKA_PASSWORD=$(kubectl get secret kafka-dev-user-passwords -oyaml | yq '.data.client-passwords | @base64d')
-   ```
+    ```shell
+    export KAFKA_PASSWORD=$(kubectl get secret kafka-dev-user-passwords -oyaml | yq '.data.client-passwords | @base64d')
+    ```
 
    Create the Kubernetes secret to be used by the `ProviderConfig` with:
    
-   ```shell
-   cat <<EOF > /tmp/creds.json
-   {
+    ```shell
+    cat <<EOF > /tmp/creds.json
+    {
       "brokers": [
-         "kafka-dev-controller-headless.kafka-cluster.svc:9092"
+          "kafka-dev-controller-headless.kafka-cluster.svc:9092"
       ],
       "sasl": {
-         "mechanism": "PLAIN",
-         "username": "user1",
-         "password": "${KAFKA_PASSWORD}"
+          "mechanism": "PLAIN",
+          "username": "user1",
+          "password": "${KAFKA_PASSWORD}"
       }
-   }
-   EOF
+    }
+    EOF
 
-   kubectl -n kafka-cluster create secret generic kafka-creds \
+    kubectl -n kafka-cluster create secret generic kafka-creds \
       --from-file=credentials=/tmp/creds.json
-   ```
+    ```
 
 3. Install [kubefwd](https://github.com/txn2/kubefwd#os).
 
 4. Run `kubefwd` for `kafka-cluster` namespace which will make internal k8s services locally accessible:
 
-   ```console
-   sudo kubefwd svc -n kafka-cluster -c ~/.kube/config
-   ```
+    ```console
+    sudo kubefwd svc -n kafka-cluster -c ~/.kube/config
+    ```
 5. To run tests, use the `KAFKA_PASSWORD` environment variable from step 2
 
 6. (optional) Install the [kafka cli](https://github.com/twmb/kcl)
@@ -190,39 +227,39 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 
 6. (optional) or deploy [RedPanda console](https://github.com/redpanda-data/console) with:
 
-   ```shell
-   kubectl create -f - <<EOF
-   apiVersion: apps/v1
-   kind: Deployment
-   metadata:
-   name: rp-console
-   spec:
-   replicas: 1
-   selector:
-      matchLabels:
-         app: rp-console
-   template:
-      metadata:
-         labels:
-         app: rp-console
-      spec:
-         containers:
-         - name: rp-console
-         image: docker.redpanda.com/redpandadata/console:latest
-         ports:
-         - containerPort: 8001
-         env:
-            - name: KAFKA_TLS_ENABLED
-               value: "false"
-            - name: KAFKA_SASL_ENABLED
-               value: "true"
-            - name: KAFKA_SASL_USERNAME
-               value: user1
-            - name: KAFKA_SASL_PASSWORD
-               value: ${KAFKA_PASSWORD}
-            - name: KAFKA_BROKERS
-               value: kafka-dev-controller-headless.kafka-cluster.svc:9092
-   EOF
+    ```shell
+    kubectl create -f - <<EOF
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: rp-console
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: rp-console
+      template:
+        metadata:
+          labels:
+          app: rp-console
+        spec:
+          containers:
+            - name: rp-console
+              image: docker.redpanda.com/redpandadata/console:latest
+              ports:
+                - containerPort: 8001
+              env:
+                - name: KAFKA_TLS_ENABLED
+                  value: "false"
+                - name: KAFKA_SASL_ENABLED
+                  value: "true"
+                - name: KAFKA_SASL_USERNAME
+                  value: user1
+                - name: KAFKA_SASL_PASSWORD
+                  value: ${KAFKA_PASSWORD}
+                - name: KAFKA_BROKERS
+                  value: kafka-dev-controller-headless.kafka-cluster.svc:9092
+    EOF
     ```
 
 ### Building and Running the provider locally
