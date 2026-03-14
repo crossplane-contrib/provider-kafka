@@ -80,12 +80,12 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	acl.ResourcePatternTypeFilter = accessControlList.ResourcePatternTypeFilter
 
 	return &acl, nil
-		return fmt.Errorf("failed to parse ACL operation %q: %w", accessControlList.ResourceOperation, err)
+}
 
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
 	ab, err := buildACLBuilder(accessControlList)
-		return fmt.Errorf("failed to parse ACL resource pattern type %q: %w", accessControlList.ResourcePatternTypeFilter, err)
+	if err != nil {
 		return err
 	}
 

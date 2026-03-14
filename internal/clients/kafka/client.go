@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +36,12 @@ const (
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
 	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
 	errCannotReadClientCertFile       = "cannot read client cert file"
+	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
+	errCannotReadCACertSecret         = "cannot read CA cert secret"
+	errCannotReadCACertFile           = "cannot read CA cert file"
+	errCannotAppendCACert             = "cannot append CA certificate to pool"
+
+	defaultCACertificateField = "ca.crt"
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
@@ -127,7 +134,13 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
 		return err
 	}
-	return configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc)
+	if err := configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc); err != nil {
+		return err
+	}
+	if err := configureCACertificateSecretRef(ctx, kc.TLS.CACertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	return configureCACertificateFile(kc.TLS.CACertificateFile, tc)
 }
 
 func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSecretRef, kube client.Client, tc *tls.Config) error {
@@ -179,6 +192,45 @@ func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) err
 	}
 
 	tc.Certificates = append(tc.Certificates, kp)
+	return nil
+}
+
+func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecretRef, kube client.Client, tc *tls.Config) error {
+	if sr == nil {
+		return nil
+	}
+	if sr.Name == "" || sr.Namespace == "" {
+		return errors.New(errMissingCACertSecretRefKeys)
+	}
+
+	secret := &corev1.Secret{}
+	if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
+		return fmt.Errorf("%s: %w", errCannotReadCACertSecret, err)
+	}
+
+	field := valueOrDefault(sr.CAField, defaultCACertificateField)
+	return appendCACert(secret.Data[field], tc)
+}
+
+func configureCACertificateFile(caFile string, tc *tls.Config) error {
+	if caFile == "" {
+		return nil
+	}
+
+	caPEM, err := os.ReadFile(caFile) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadCACertFile, caFile, err)
+	}
+
+	return appendCACert(caPEM, tc)
+}
+
+func appendCACert(caPEM []byte, tc *tls.Config) error {
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return errors.New(errCannotAppendCACert)
+	}
+	tc.RootCAs = pool
 	return nil
 }
 

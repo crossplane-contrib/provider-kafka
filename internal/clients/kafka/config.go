@@ -18,6 +18,8 @@ type SASL struct {
 type TLS struct {
 	ClientCertificateSecretRef *ClientCertificateSecretRef `json:"clientCertificateSecretRef,omitempty"`
 	ClientCertificatePath      *ClientCertificatePath      `json:"clientCertificatePath,omitempty"`
+	CACertificateSecretRef     *CACertificateSecretRef     `json:"caCertificateSecretRef,omitempty"`
+	CACertificateFile          string                      `json:"caCertificateFile,omitempty"`
 	InsecureSkipVerify         bool                        `json:"insecureSkipVerify"`
 }
 
@@ -33,4 +35,11 @@ type ClientCertificateSecretRef struct {
 type ClientCertificatePath struct {
 	KeyFile  string `json:"keyFile"`
 	CertFile string `json:"certFile"`
+}
+
+// CACertificateSecretRef is a TLS option for providing a custom CA certificate from a Kubernetes secret
+type CACertificateSecretRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	CAField   string `json:"caField,omitempty"`
 }
