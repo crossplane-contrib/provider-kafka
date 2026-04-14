@@ -6,7 +6,7 @@ manage [Kafka](https://kafka.apache.org/) resources.
 ## Usage
 
 1. Create a provider secret containing a json like the following, see expected
-   schema [here](internal/clients/kafka/config.go):
+  schema [here](internal/clients/kafka/config.go):
 
     ```json
     {
@@ -23,16 +23,42 @@ manage [Kafka](https://kafka.apache.org/) resources.
     }
     ```
 
-   See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
-   (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
+    See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
+    (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
-   **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
-   skip server certificate verification.
+    **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
+    skip server certificate verification.
 
-   **mTLS**: To additionally present a client certificate (mutual TLS), use one
-   of two methods:
+    **Custom CA**: To verify brokers signed by a private or custom CA, configure
+    one of the supported CA sources:
 
-   - `clientCertificateSecretRef` - reference a Kubernetes Secret containing the
+    - `caCertificateSecretRef` - reference a Kubernetes Secret containing the CA
+      certificate. By default the provider reads the `ca.crt` field; override the
+      field name with `caField`.
+
+        ```json
+        "tls": {
+          "caCertificateSecretRef": {
+            "name": "kafka-ca",
+            "namespace": "kafka-cluster",
+            "caField": "ca.crt"
+          }
+        }
+        ```
+
+    - `caCertificateFile` - read the CA certificate from a file on disk. Useful
+      when the provider Pod has a volume-mounted Secret or ConfigMap.
+
+        ```json
+        "tls": {
+          "caCertificateFile": "/etc/certs/ca.crt"
+        }
+        ```
+
+    **mTLS**: To additionally present a client certificate (mutual TLS), use one
+    of two methods:
+
+    - `clientCertificateSecretRef` - reference a Kubernetes Secret containing the
     certificate and key (default fields: `tls.crt` and `tls.key`, compatible with
     cert-manager). Override field names with `certField` and `keyField`.
 
@@ -47,44 +73,46 @@ manage [Kafka](https://kafka.apache.org/) resources.
       }
       ```
 
-   - `clientCertificatePath` — read the certificate and key directly from files
-    on disk. Useful when the provider Pod has a volume-mounted Secret or a
-    cert-manager Certificate projected into the filesystem.
+    - `clientCertificatePath` — read the certificate and key directly from files
+      on disk. Useful when the provider Pod has a volume-mounted Secret or a
+      cert-manager Certificate projected into the filesystem.
+
+        ```json
+        "tls": {
+          "clientCertificatePath": {
+            "certFile": "/etc/certs/tls.crt",
+            "keyFile": "/etc/certs/tls.key"
+          }
+        }
+        ```
+
+    Both mTLS options may be configured, but they are not combined in the same
+    TLS handshake. If `clientCertificatePath` is set, it takes precedence over
+    `clientCertificateSecretRef` and its certificate/key will be used. Otherwise,
+    the certificate/key from `clientCertificateSecretRef` will be used.
+
+    **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
+    credential chain (environment variables, IRSA, etc.). The IAM role needs at
+    minimum the following permissions to manage topics:
 
       ```json
-      "tls": {
-        "clientCertificatePath": {
-          "certFile": "/etc/certs/tls.crt",
-          "keyFile": "/etc/certs/tls.key"
-        }
+      {
+        "Action": [
+          "kafka-cluster:Connect",
+          "kafka-cluster:CreateTopic",
+          "kafka-cluster:DeleteTopic",
+          "kafka-cluster:DescribeTopic",
+          "kafka-cluster:DescribeTopicDynamicConfiguration",
+          "kafka-cluster:AlterTopic",
+          "kafka-cluster:AlterTopicDynamicConfiguration"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+          "arn:aws:kafka:<aws-region>:<aws-account-id>:cluster/<cluster-name>/<cluster-id>",
+          "arn:aws:kafka:<aws-region>:<aws-account-id>:topic/<cluster-name>/<cluster-id>/<topic-name>"
+        ]
       }
       ```
-
-   Both mTLS options can be combined; each will add its certificate to the TLS
-   handshake.
-
-   **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
-   credential chain (environment variables, IRSA, etc.). The IAM role needs at
-   minimum the following permissions to manage topics:
-
-    ```json
-    {
-      "Action": [
-        "kafka-cluster:Connect",
-        "kafka-cluster:CreateTopic",
-        "kafka-cluster:DeleteTopic",
-        "kafka-cluster:DescribeTopic",
-        "kafka-cluster:DescribeTopicDynamicConfiguration",
-        "kafka-cluster:AlterTopic",
-        "kafka-cluster:AlterTopicDynamicConfiguration"
-      ],
-      "Effect": "Allow",
-      "Resource": [
-        "arn:aws:kafka:<aws-region>:<aws-account-id>:cluster/<cluster-name>/<cluster-id>",
-        "arn:aws:kafka:<aws-region>:<aws-account-id>:topic/<cluster-name>/<cluster-id>/<topic-name>"
-      ]
-    }
-    ```
 
 2. Create a k8s secret containing above config:
 
@@ -201,31 +229,33 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
     ```console
     sudo kubefwd svc -n kafka-cluster -c ~/.kube/config
     ```
+
 5. To run tests, use the `KAFKA_PASSWORD` environment variable from step 2
 
-6. (optional) Install the [kafka cli](https://github.com/twmb/kcl)
-   1. Create a config file for the client with:
+6. (optional) Install the [kafka cli](https://github.com/twmb/kcl) and:
 
-      ```shell
-      cat <<EOF > ~/.kcl/config.toml
-      seed_brokers = ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"]
-      timeout_ms = 10000
-      [sasl]
-      method = "plain"
-      user = "user1"
-      pass = "${KAFKA_PASSWORD}"
-      EOF
-      ```
-      
-       1. Verify that cli could talk to the Kafka cluster:
-      
-         ```shell
-         export  KCL_CONFIG_DIR=~/.kcl
-         
-         kcl metadata --all
-         ```
+    1. Create a config file for the client with:
 
-6. (optional) or deploy [RedPanda console](https://github.com/redpanda-data/console) with:
+        ```shell
+        cat <<EOF > ~/.kcl/config.toml
+        seed_brokers = ["kafka-dev-controller-0.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-1.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092","kafka-dev-controller-2.kafka-dev-controller-headless.kafka-cluster.svc.cluster.local:9092"]
+        timeout_ms = 10000
+        [sasl]
+        method = "plain"
+        user = "user1"
+        pass = "${KAFKA_PASSWORD}"
+        EOF
+        ```
+
+    2. Verify that cli could talk to the Kafka cluster:
+
+        ```shell
+        export  KCL_CONFIG_DIR=~/.kcl
+        
+        kcl metadata --all
+        ```
+
+7. (optional) or deploy [RedPanda console](https://github.com/redpanda-data/console) with:
 
     ```shell
     kubectl create -f - <<EOF
@@ -266,7 +296,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 
 Run against a Kubernetes cluster:
 
-```console
+```yaml
 # Install CRD and run provider locally (out-of-cluster)
 make dev
 
