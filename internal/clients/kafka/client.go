@@ -166,7 +166,20 @@ func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSec
 
 	kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
 	cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
-	kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
+
+	certPEM, certOk := secret.Data[cf]
+
+	if !certOk || len(certPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate field %q in secret %s/%s", cf, sr.Namespace, sr.Name)
+	}
+
+	keyPEM, keyOk := secret.Data[kf]
+
+	if !keyOk || len(keyPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate key field %q in secret %s/%s", kf, sr.Namespace, sr.Name)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return fmt.Errorf("invalid key pair, using fields %q/%q from secret %q in namespace %q: %w",
 			cf, kf, sr.Name, sr.Namespace, err)

@@ -439,3 +439,117 @@ func TestConfigureFilePathCertificate_CallbackSupportsCertificateRotation(t *tes
 	// Certs should be different (different generated certificates)
 	assert.NotEqual(t, cert1.Certificate[0], cert2.Certificate[0], "expected certificate to change after rotation")
 }
+
+// TestConfigureSecretRefCertificate_NilReference tests nil reference is handled gracefully
+func TestConfigureSecretRefCertificate_NilReference(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	tc := &tls.Config{}
+
+	err := configureSecretRefCertificate(ctx, nil, nil, tc)
+	require.NoError(t, err, "expected no error for nil reference")
+	assert.Empty(t, tc.Certificates, "expected no certificates to be added")
+}
+
+// TestConfigureCACertificateFile_HappyPath tests successful configuration
+func TestConfigureCACertificateFile_HappyPath(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+
+	certPEM, _ := generateTestCertificate(t)
+
+	// Create temp file
+	certFile, err := os.CreateTemp("", "test-ca-*.crt")
+	require.NoError(t, err)
+	defer os.Remove(certFile.Name())
+	_, err = certFile.Write(certPEM)
+	require.NoError(t, err)
+	certFile.Close()
+
+	err = configureCACertificateFile(certFile.Name(), tc)
+	require.NoError(t, err, "expected no error for valid CA file")
+	assert.NotNil(t, tc.RootCAs, "expected RootCAs to be set")
+}
+
+// TestConfigureCACertificateFile_NonexistentFile tests error when file doesn't exist
+func TestConfigureCACertificateFile_NonexistentFile(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+
+	err := configureCACertificateFile("/nonexistent/path/ca.crt", tc)
+	require.Error(t, err, "expected error for nonexistent file")
+	require.ErrorContains(t, err, errCannotReadCACertFile)
+}
+
+// TestConfigureCACertificateFile_EmptyPath tests no-op when path is empty
+func TestConfigureCACertificateFile_EmptyPath(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+
+	err := configureCACertificateFile("", tc)
+	require.NoError(t, err, "expected no error for empty path")
+	assert.Nil(t, tc.RootCAs, "expected RootCAs to remain nil")
+}
+
+// TestAppendCACert_ReuseExistingPool tests that existing pool is reused
+func TestAppendCACert_ReuseExistingPool(t *testing.T) {
+	t.Parallel()
+
+	certPEM1, _ := generateTestCertificate(t)
+	certPEM2, _ := generateTestCertificate(t)
+
+	tc := &tls.Config{}
+
+	// Add first cert
+	err := appendCACert(certPEM1, tc)
+	require.NoError(t, err)
+	firstPool := tc.RootCAs
+
+	// Add second cert - should reuse pool
+	err = appendCACert(certPEM2, tc)
+	require.NoError(t, err)
+
+	assert.Same(t, firstPool, tc.RootCAs, "expected pool to be reused (same pointer)")
+}
+
+// TestAppendCACert_SystemRootsFallback tests fallback to system roots
+func TestAppendCACert_SystemRootsFallback(t *testing.T) {
+	t.Parallel()
+
+	certPEM, _ := generateTestCertificate(t)
+
+	tc := &tls.Config{}
+
+	err := appendCACert(certPEM, tc)
+	require.NoError(t, err)
+
+	// Pool should be set (either from system or empty)
+	assert.NotNil(t, tc.RootCAs, "expected RootCAs to be set")
+}
+
+// TestConfigureClientCertificate_MutualExclusivity tests that both cert options cannot be set
+func TestConfigureClientCertificate_MutualExclusivity(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	config := Config{
+		TLS: &TLS{
+			ClientCertificateSecretRef: &ClientCertificateSecretRef{
+				Name:      "secret",
+				Namespace: "default",
+			},
+			ClientCertificatePath: &ClientCertificatePath{
+				CertFile: "/path/to/cert",
+				KeyFile:  "/path/to/key",
+			},
+		},
+	}
+
+	tc := &tls.Config{}
+
+	err := configureClientCertificate(ctx, config, nil, tc)
+	require.Error(t, err, "expected error when both cert options are set")
+	require.ErrorContains(t, err, "cannot specify both")
+	require.ErrorContains(t, err, "clientCertificateSecretRef")
+	require.ErrorContains(t, err, "clientCertificatePath")
+}
