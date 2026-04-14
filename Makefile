@@ -224,11 +224,11 @@ unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup
 	@$(MAKE) -s kind-kafka-setup
 
+unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
+	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
+
 unit-tests.done: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
 	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
-
-unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
-	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
 
 .PHONY: dev kind-setup kind-kafka-setup review sbom test

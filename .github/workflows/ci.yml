@@ -125,7 +125,7 @@ jobs:
           files: _output/tests/linux_amd64/coverage.txt
           override_branch: ${{ github.head_ref || github.ref_name }}
 
-  e2e-tests:
+  build-test:
     runs-on: ubuntu-24.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
@@ -154,18 +154,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
-
       - name: Build Helm Chart
-        run: make -j2 build
-        env:
-          # We're using docker buildx, which doesn't actually load the images it
-          # builds by default. Specifying --load does so.
-          BUILD_ARGS: "--load"
-
-      # - name: Run E2E Tests
-      #   run: make e2e USE_HELM3=true
+        run: make local-deploy
 
   publish-artifacts:
     runs-on: ubuntu-24.04
