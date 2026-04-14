@@ -159,7 +159,10 @@ jobs:
 
   publish-artifacts:
     runs-on: ubuntu-24.04
-    needs: detect-noop
+    needs:
+      - detect-noop
+      - unit-tests
+      - build-test
     if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
@@ -201,35 +204,3 @@ jobs:
         with:
           name: output
           path: _output/**
-      
-      - name: Login to Docker
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        if: env.CONTRIB_DOCKER_USR != ''
-        with:
-          username: ${{ secrets.CONTRIB_DOCKER_USR }}
-          password: ${{ secrets.CONTRIB_DOCKER_PSW }}
-      
-      - name: Login to Upbound
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        if: env.XPKG_ACCESS_ID != ''
-        with:
-          registry: xpkg.upbound.io
-          username: ${{ secrets.XPKG_ACCESS_ID }}
-          password: ${{ secrets.XPKG_TOKEN }}
-
-      - name: Publish Artifacts to S3 and Docker Hub
-        run: make -j2 publish BRANCH_NAME=${GITHUB_REF##*/}
-        if: env.AWS_USR != '' && env.CONTRIB_DOCKER_USR != ''
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_USR }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PSW }}
-          GIT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Promote Artifacts in S3 and Docker Hub
-        if: github.ref == 'refs/heads/main' && env.AWS_USR != '' && env.CONTRIB_DOCKER_USR != ''
-        run: make -j2 promote
-        env:
-          BRANCH_NAME: main
-          CHANNEL: main
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_USR }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PSW }}
