@@ -52,7 +52,7 @@ const (
 	errGetPC                = "cannot get ProviderConfig"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
-	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
+	errNotAccessControlList = "managed resource is not an AccessControlList custom resource"
 	errTrackPCUsage         = "cannot track ProviderConfig usage"
 	errUpdateNotSupported   = "updates are not supported"
 )

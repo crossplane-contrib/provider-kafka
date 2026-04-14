@@ -184,7 +184,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extName, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	extName, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: %w", err)
+	}
+	if extName == nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: nil result")
+	}
 	compare := acl.CompareAcls(*extName, *acl.Generate(&cr.Spec.ForProvider))
 	diff := acl.Diff(*extName, *acl.Generate(&cr.Spec.ForProvider))
 
