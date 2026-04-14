@@ -131,6 +131,14 @@ func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
 
 // Add options to TLS config for client certificate (if configured)
 func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
+	// Validate that both clientCertificateSecretRef and clientCertificatePath are not both set.
+	// In Go TLS, GetClientCertificate (used for file-based certs) takes precedence over Certificates (used for secret-based certs),
+	// so setting both would silently ignore the secret-based certificate.
+	if kc.TLS.ClientCertificateSecretRef != nil && kc.TLS.ClientCertificatePath != nil {
+		return errors.New("cannot specify both clientCertificateSecretRef and clientCertificatePath: " +
+			"use clientCertificateSecretRef for static certs or clientCertificatePath for certificates with rotation support")
+	}
+
 	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
 		return err
 	}
@@ -269,7 +277,21 @@ func configureCACertificateFile(caFile string, tc *tls.Config) error {
 }
 
 func appendCACert(caPEM []byte, tc *tls.Config) error {
-	pool := x509.NewCertPool()
+	var pool *x509.CertPool
+
+	// Reuse existing pool if already initialized
+	if tc.RootCAs != nil {
+		pool = tc.RootCAs
+	} else {
+		// Initialize from system roots if available
+		var err error
+		pool, err = x509.SystemCertPool()
+		if err != nil {
+			// Fallback to empty pool if system roots unavailable
+			pool = x509.NewCertPool()
+		}
+	}
+
 	if !pool.AppendCertsFromPEM(caPEM) {
 		return errors.New(errCannotAppendCACert)
 	}
