@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"crypto/sha256"
+	"errors"
 	"sync"
 
 	"github.com/twmb/franz-go/pkg/kadm"
@@ -29,6 +30,10 @@ func (c *ClientCache) GetOrCreate(creds []byte, newFn func() (*kadm.Client, erro
 	svc, err := newFn()
 	if err != nil {
 		return nil, err
+	}
+
+	if svc == nil {
+		return nil, errors.New("newFn returned nil client")
 	}
 
 	// Only close the old client after successfully creating the new one, ensuring cache

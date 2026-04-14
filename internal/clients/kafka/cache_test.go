@@ -154,3 +154,17 @@ func TestGetOrCreateErrorPreservesCacheState(t *testing.T) {
 	assert.Same(t, client1, cache.cachedClient)
 	assert.Equal(t, originalDigest, cache.credsDigest)
 }
+
+// TestGetOrCreateNilClientRejected verifies that a nil client is treated as an error.
+func TestGetOrCreateNilClientRejected(t *testing.T) {
+	cache := &ClientCache{}
+	creds := []byte("secret")
+
+	nilClientFn := func() (*kadm.Client, error) {
+		return nil, nil
+	}
+
+	_, err := cache.GetOrCreate(creds, nilClientFn)
+	require.Error(t, err)
+	assert.Nil(t, cache.cachedClient)
+}

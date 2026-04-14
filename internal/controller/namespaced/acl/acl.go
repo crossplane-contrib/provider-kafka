@@ -200,9 +200,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
-	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
+	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: %w", err)
+	}
+	if extname == nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: nil result")
+	}
+	generated := acl.Generate(&cr.Spec.ForProvider)
+	compare := acl.CompareAcls(*extname, *generated)
+	diff := acl.Diff(*extname, *generated)
 
 	if !compare {
 		err := strings.Join(diff, " ")
@@ -250,11 +257,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, fmt.Errorf("could not convert external name to JSON: %w", err)
 	}
-	if meta.GetExternalName(cr) == "" {
-		meta.SetExternalName(cr, extname)
-		return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
-	}
-
+	// Always set the external name to the JSON form to ensure it's valid,
+	// even if it was previously set to a non-JSON value (e.g., by default initializers).
+	meta.SetExternalName(cr, extname)
 	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
 }
 

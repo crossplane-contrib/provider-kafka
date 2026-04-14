@@ -18,7 +18,7 @@ PLATFORMS ?= linux_amd64 linux_arm64
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 GO_REQUIRED_VERSION ?= 1.26.2
-GOLANGCILINT_VERSION = 2.11.0
+GOLANGCILINT_VERSION = 2.11.4
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -29,11 +29,12 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 # ====================================================================================
 # Setup Kubernetes tools
 
-HELM_VERSION = v3.19.4
 KIND_VERSION = v0.31.0
 KUBECTL_VERSION = v1.35.0
 UP_CHANNEL = stable
 UP_VERSION = v0.37.0
+CROSSPLANE_CLI_VERSION = v2.2.0
+CROSSPLANE_VERSION = 2.2.20
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -52,15 +53,8 @@ XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
-XPKGS = provider-kafka
+XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
--include build/makelib/local.xpkg.mk
-
-local-deploy: build.all controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
-	@$(INFO) running locally built provider
-	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --timeout 5m
-	@$(KUBECTL) -n crossplane-system wait --for=condition=Available deployment --all --timeout=5m
-	@$(OK) running locally built provider
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
@@ -163,6 +157,14 @@ help-special: crossplane.help
 
 # ====================================================================================
 # Development and Testing
+
+-include build/makelib/controlplane.mk
+
+local-deploy: build.all controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(INFO) running locally built provider
+	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --timeout 5m
+	@$(KUBECTL) -n crossplane-system wait --for=condition=Available deployment --all --timeout=5m
+	@$(OK) running locally built provider
 
 dev: $(KIND) $(KUBECTL) $(DOCKER)
 	@($(MAKE) -s kind-setup)
