@@ -17,3 +17,11 @@ updates:
       prefix: "chore(deps)"
     allow:
       - dependency-type: "direct"
+
+  # Base image
+  - package-ecosystem: "docker"
+    directory: "/cluster/images/provider-kafka"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"

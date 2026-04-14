@@ -114,11 +114,11 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
+	cache        kafka.ClientCache
 	kube         client.Client
-	usage        *resource.LegacyProviderConfigUsageTracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
-	cachedClient *kadm.Client
+	usage        *resource.LegacyProviderConfigUsageTracker
 }
 
 // Connect typically produces an ExternalClient by:
@@ -150,19 +150,17 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
-	svc, err := c.newServiceFn(ctx, data, c.kube)
+	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+		return c.newServiceFn(ctx, data, c.kube)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
-	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
-func (c *external) Disconnect(ctx context.Context) error {
-	if c.kafkaClient != nil {
-		c.kafkaClient.Close()
-	}
+func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
 	return nil
 }
@@ -186,9 +184,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
-	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
+	extName, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	compare := acl.CompareAcls(*extName, *acl.Generate(&cr.Spec.ForProvider))
+	diff := acl.Diff(*extName, *acl.Generate(&cr.Spec.ForProvider))
 
 	if !compare {
 		err := strings.Join(diff, " ")
@@ -198,7 +196,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, errors.New(err)
 	}
 
-	ae, err := acl.List(ctx, c.kafkaClient, extname)
+	ae, err := acl.List(ctx, c.kafkaClient, extName)
 
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
@@ -232,12 +230,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	generated := acl.Generate(&cr.Spec.ForProvider)
-	extname, err := acl.ConvertToJSON(generated)
+	extName, err := acl.ConvertToJSON(generated)
 	if err != nil {
 		return managed.ExternalCreation{}, fmt.Errorf("could not convert external name to JSON: %w", err)
 	}
 	if meta.GetExternalName(cr) == "" {
-		meta.SetExternalName(cr, extname)
+		meta.SetExternalName(cr, extName)
 		return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
 	}
 

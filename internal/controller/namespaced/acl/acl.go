@@ -47,13 +47,13 @@ import (
 )
 
 const (
-	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
-	errTrackPCUsage         = "cannot track ProviderConfig usage"
-	errGetPC                = "cannot get ProviderConfig"
 	errGetCPC               = "cannot get ClusterProviderConfig"
 	errGetCreds             = "cannot get credentials"
+	errGetPC                = "cannot get ProviderConfig"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
+	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
+	errTrackPCUsage         = "cannot track ProviderConfig usage"
 	errUpdateNotSupported   = "updates are not supported"
 )
 
@@ -116,11 +116,11 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
+	cache        kafka.ClientCache
 	kube         client.Client
-	usage        *resource.ProviderConfigUsageTracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
-	cachedClient *kadm.Client
+	usage        *resource.ProviderConfigUsageTracker
 }
 
 // Connect typically produces an ExternalClient by:
@@ -166,11 +166,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
-	svc, err := c.newServiceFn(ctx, data, c.kube)
+	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+		return c.newServiceFn(ctx, data, c.kube)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
-	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
@@ -182,10 +183,7 @@ type external struct {
 	log         logging.Logger
 }
 
-func (c *external) Disconnect(ctx context.Context) error {
-	if c.kafkaClient != nil {
-		c.kafkaClient.Close()
-	}
+func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
 	return nil
 }

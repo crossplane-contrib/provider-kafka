@@ -45,15 +45,30 @@ import (
 )
 
 const (
-	errNotTopic     = "managed resource is not a Topic custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
-	errGetPC        = "cannot get ProviderConfig"
 	errGetCPC       = "cannot get ClusterProviderConfig"
 	errGetCreds     = "cannot get credentials"
+	errGetPC        = "cannot get ProviderConfig"
 	errGetTopic     = "cannot get topic spec from topic client"
-
-	errNewClient = "cannot create new Kafka client"
+	errNewClient    = "cannot create new Kafka client"
+	errNotTopic     = "managed resource is not a Topic custom resource"
+	errTrackPCUsage = "cannot track ProviderConfig usage"
 )
+
+// A connector is expected to produce an ExternalClient when its Connect method is called.
+type connector struct {
+	cache        kafka.ClientCache
+	kube         client.Client
+	log          logging.Logger
+	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
+	usage        *resource.ProviderConfigUsageTracker
+}
+
+// An ExternalClient observes, then either creates, updates, or deletes an
+// external resource to ensure it reflects the managed resource's desired state.
+type external struct {
+	kafkaClient *kadm.Client
+	log         logging.Logger
+}
 
 // Setup adds a controller that reconciles Topic managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
@@ -111,15 +126,6 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	return nil
 }
 
-// A connector is expected to produce an ExternalClient when its Connect method is called.
-type connector struct {
-	kube         client.Client
-	usage        *resource.ProviderConfigUsageTracker
-	log          logging.Logger
-	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
-	cachedClient *kadm.Client
-}
-
 // Connect typically produces an ExternalClient by:
 // 1. Tracking that the managed resource is using a ProviderConfig.
 // 2. Getting the managed resource's ProviderConfig.
@@ -163,28 +169,19 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
-	svc, err := c.newServiceFn(ctx, data, c.kube)
+	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+		return c.newServiceFn(ctx, data, c.kube)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
-	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
 
-func (c *external) Disconnect(ctx context.Context) error {
-	if c.kafkaClient != nil {
-		c.kafkaClient.Close()
-	}
+func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
 	return nil
-}
-
-// An ExternalClient observes, then either creates, updates, or deletes an
-// external resource to ensure it reflects the managed resource's desired state.
-type external struct {
-	kafkaClient *kadm.Client
-	log         logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {

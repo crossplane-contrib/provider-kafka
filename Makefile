@@ -17,7 +17,7 @@ PLATFORMS ?= linux_amd64 linux_arm64
 
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
-GO_REQUIRED_VERSION ?= 1.26.1
+GO_REQUIRED_VERSION ?= 1.26.2
 GOLANGCILINT_VERSION = 2.11.0
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
@@ -214,7 +214,7 @@ review:
 
 sbom:
 	@$(INFO) Generating SBOM
-	@go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
+	@$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
 	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
 	@$(OK) SBOM generated at provider-kafka-sbom.xml
 	
