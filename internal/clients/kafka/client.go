@@ -248,7 +248,11 @@ func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecre
 	}
 
 	field := valueOrDefault(sr.CAField, defaultCACertificateField)
-	return appendCACert(secret.Data[field], tc)
+	caPEM, ok := secret.Data[field]
+	if !ok || len(caPEM) == 0 {
+		return fmt.Errorf("missing or empty CA certificate field %q in secret %s/%s", field, sr.Namespace, sr.Name)
+	}
+	return appendCACert(caPEM, tc)
 }
 
 func configureCACertificateFile(caFile string, tc *tls.Config) error {
