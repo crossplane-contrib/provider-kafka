@@ -56,6 +56,12 @@ XPKGS = provider-kafka
 -include build/makelib/xpkg.mk
 -include build/makelib/local.xpkg.mk
 
+local-deploy: build.all controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(INFO) running locally built provider
+	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --timeout 5m
+	@$(KUBECTL) -n crossplane-system wait --for=condition=Available deployment --all --timeout=5m
+	@$(OK) running locally built provider
+
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
 xpkg.build.provider-kafka: do.build.images

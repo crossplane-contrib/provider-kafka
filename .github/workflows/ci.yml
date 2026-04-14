@@ -154,7 +154,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Build Helm Chart
+      - name: Build locally
         run: make local-deploy
 
   publish-artifacts:
