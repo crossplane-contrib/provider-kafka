@@ -123,6 +123,7 @@ jobs:
         with:
           flags: unittests
           files: _output/tests/linux_amd64/coverage.txt
+          override_branch: ${{ github.head_ref || github.ref_name }}
 
   e2e-tests:
     runs-on: ubuntu-24.04
