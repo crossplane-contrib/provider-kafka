@@ -66,7 +66,7 @@ func TestGetOrCreateConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for range goroutines {
+	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
 			_, err := cache.GetOrCreate(creds, newFn)
