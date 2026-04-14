@@ -152,7 +152,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 
 2. Run `make kind-kafka-setup` or manually as follows:
 
-  Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
+    Install the [Kafka helm chart](https://bitnami.com/stack/kafka/helm):
 
     ```shell
     helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -168,14 +168,14 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
       --wait
     ```
 
-  Username is `user1`, obtain password using the following:
+    Username is `user1`, obtain password using the following:
 
     ```shell
     export KAFKA_PASSWORD=$(kubectl get secret kafka-dev-user-passwords -oyaml | yq '.data.client-passwords | @base64d')
     ```
 
-   Create the Kubernetes secret to be used by the `ProviderConfig` with:
-   
+    Create the Kubernetes secret to be used by the `ProviderConfig` with:
+
     ```shell
     cat <<EOF > /tmp/creds.json
     {

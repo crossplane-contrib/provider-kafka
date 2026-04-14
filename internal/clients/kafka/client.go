@@ -176,6 +176,31 @@ func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) err
 		return errors.New(errMissingClientCertFileKeys)
 	}
 
+	// Validate files exist and form valid key pair on initial load
+	if err := validateClientCertificatePath(fr); err != nil {
+		return err
+	}
+
+	// Use GetClientCertificate callback to support certificate rotation.
+	// This allows certificates mounted via cert-manager or CSI to be reloaded
+	// on each TLS handshake without restarting the provider.
+	tc.GetClientCertificate = func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		return loadClientCertificate(fr)
+	}
+
+	return nil
+}
+
+func validateClientCertificatePath(fr *ClientCertificatePath) error {
+	// Validate that files exist and can be read initially
+	if _, err := os.Stat(fr.CertFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	if _, err := os.Stat(fr.KeyFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	// Validate that cert and key form a valid pair
 	certPEM, err := os.ReadFile(fr.CertFile)
 	if err != nil {
 		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
@@ -184,15 +209,29 @@ func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) err
 	if err != nil {
 		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
 	}
-
-	kp, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
 		return fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
 			fr.CertFile, fr.KeyFile, err)
 	}
-
-	tc.Certificates = append(tc.Certificates, kp)
 	return nil
+}
+
+func loadClientCertificate(fr *ClientCertificatePath) (*tls.Certificate, error) {
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
+	}
+	return &kp, nil
 }
 
 func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecretRef, kube client.Client, tc *tls.Config) error {
