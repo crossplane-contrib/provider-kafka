@@ -55,6 +55,7 @@ XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane-contrib
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane-contrib
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
+-include build/makelib/local.xpkg.mk
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
