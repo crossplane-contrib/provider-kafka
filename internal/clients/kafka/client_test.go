@@ -552,3 +552,303 @@ func TestConfigureClientCertificate_MutualExclusivity(t *testing.T) {
 	require.ErrorContains(t, err, "clientCertificateSecretRef")
 	require.ErrorContains(t, err, "clientCertificatePath")
 }
+
+// TestConfigureTLSAdvanced_NilReference tests nil reference is handled gracefully
+func TestConfigureTLSAdvanced_NilReference(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+
+	err := configureTLSAdvanced(nil, tc)
+	require.NoError(t, err, "expected no error for nil reference")
+	assert.Equal(t, uint16(0), tc.MinVersion, "expected MinVersion to remain unset")
+	assert.Equal(t, uint16(0), tc.MaxVersion, "expected MaxVersion to remain unset")
+	assert.Nil(t, tc.CipherSuites, "expected CipherSuites to remain unset")
+	assert.Nil(t, tc.CurvePreferences, "expected CurvePreferences to remain unset")
+}
+
+// TestConfigureTLSAdvanced_MinVersion_Valid tests valid TLS version configuration
+func TestConfigureTLSAdvanced_MinVersion_Valid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{MinVersion: "TLS13"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for valid TLS version")
+	assert.EqualValues(t, tls.VersionTLS13, tc.MinVersion, "expected MinVersion to be set to TLS13")
+}
+
+// TestConfigureTLSAdvanced_MinVersion_Invalid tests invalid TLS version
+func TestConfigureTLSAdvanced_MinVersion_Invalid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{MinVersion: "TLS10"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for invalid TLS version")
+	require.ErrorContains(t, err, errInvalidTLSVersion)
+	require.ErrorContains(t, err, "TLS10")
+}
+
+// TestConfigureTLSAdvanced_MaxVersion_Valid tests valid max TLS version
+func TestConfigureTLSAdvanced_MaxVersion_Valid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{MaxVersion: "TLS12"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for valid TLS version")
+	assert.EqualValues(t, tls.VersionTLS12, tc.MaxVersion, "expected MaxVersion to be set to TLS12")
+}
+
+// TestConfigureTLSAdvanced_MaxVersion_Invalid tests invalid max TLS version
+func TestConfigureTLSAdvanced_MaxVersion_Invalid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{MaxVersion: "TLS11"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for invalid TLS version")
+	require.ErrorContains(t, err, errInvalidTLSVersion)
+	require.ErrorContains(t, err, "TLS11")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_Valid tests valid cipher suite configuration
+func TestConfigureTLSAdvanced_CipherSuites_Valid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		CipherSuites: []string{
+			"TLS_AES_128_GCM_SHA256",
+			"TLS_AES_256_GCM_SHA384",
+		},
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for valid cipher suites")
+	require.Len(t, tc.CipherSuites, 2, "expected 2 cipher suites to be configured")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_Invalid tests invalid cipher suite
+func TestConfigureTLSAdvanced_CipherSuites_Invalid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{CipherSuites: []string{"INVALID_CIPHER_SUITE"}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for invalid cipher suite")
+	require.ErrorContains(t, err, errInvalidCipherSuite)
+	require.ErrorContains(t, err, "INVALID_CIPHER_SUITE")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_EmptyList tests empty cipher suite list is no-op
+func TestConfigureTLSAdvanced_CipherSuites_EmptyList(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{CipherSuites: []string{}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for empty cipher suites")
+	assert.Nil(t, tc.CipherSuites, "expected CipherSuites to remain nil")
+}
+
+// TestConfigureTLSAdvanced_CurvePreferences_Valid tests valid curve configuration
+func TestConfigureTLSAdvanced_CurvePreferences_Valid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		CurvePreferences: []string{"X25519", "P256"},
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for valid curves")
+	require.Len(t, tc.CurvePreferences, 2, "expected 2 curves to be configured")
+	assert.Equal(t, tls.X25519, tc.CurvePreferences[0], "expected first curve to be X25519")
+	assert.Equal(t, tls.CurveP256, tc.CurvePreferences[1], "expected second curve to be P256")
+}
+
+// TestConfigureTLSAdvanced_CurvePreferences_AllValid tests all valid curves
+func TestConfigureTLSAdvanced_CurvePreferences_AllValid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		CurvePreferences: []string{"P256", "P384", "P521", "X25519"},
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for all valid curves")
+	require.Len(t, tc.CurvePreferences, 4, "expected 4 curves to be configured")
+}
+
+// TestConfigureTLSAdvanced_CurvePreferences_Invalid tests invalid curve
+func TestConfigureTLSAdvanced_CurvePreferences_Invalid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{CurvePreferences: []string{"InvalidCurve"}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for invalid curve")
+	require.ErrorContains(t, err, errInvalidCurve)
+	require.ErrorContains(t, err, "InvalidCurve")
+}
+
+// TestConfigureTLSAdvanced_CurvePreferences_EmptyList tests empty curve list is no-op
+func TestConfigureTLSAdvanced_CurvePreferences_EmptyList(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{CurvePreferences: []string{}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for empty curves")
+	assert.Nil(t, tc.CurvePreferences, "expected CurvePreferences to remain nil")
+}
+
+// TestConfigureTLSAdvanced_SessionTicketsDisabled tests session tickets disabled setting
+func TestConfigureTLSAdvanced_SessionTicketsDisabled(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{SessionTicketsDisabled: true}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.True(t, tc.SessionTicketsDisabled, "expected SessionTicketsDisabled to be true")
+}
+
+// TestConfigureTLSAdvanced_SessionTicketsDisabled_Default tests session tickets default
+func TestConfigureTLSAdvanced_SessionTicketsDisabled_Default(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{SessionTicketsDisabled: false}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.False(t, tc.SessionTicketsDisabled, "expected SessionTicketsDisabled to be false")
+}
+
+// TestConfigureTLSAdvanced_DynamicRecordSizingDisabled tests dynamic record sizing disabled
+func TestConfigureTLSAdvanced_DynamicRecordSizingDisabled(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{DynamicRecordSizingDisabled: true}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.True(t, tc.DynamicRecordSizingDisabled, "expected DynamicRecordSizingDisabled to be true")
+}
+
+// TestConfigureTLSAdvanced_NextProtos tests ALPN protocol configuration
+func TestConfigureTLSAdvanced_NextProtos(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{NextProtos: []string{"h2", "http/1.1"}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.Equal(t, []string{"h2", "http/1.1"}, tc.NextProtos, "expected NextProtos to be set")
+}
+
+// TestConfigureTLSAdvanced_NextProtos_Empty tests empty NextProtos is no-op
+func TestConfigureTLSAdvanced_NextProtos_Empty(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{NextProtos: []string{}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.Nil(t, tc.NextProtos, "expected NextProtos to remain nil")
+}
+
+// TestConfigureTLSAdvanced_ServerName tests SNI server name configuration
+func TestConfigureTLSAdvanced_ServerName(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{ServerName: "example.com"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.Equal(t, "example.com", tc.ServerName, "expected ServerName to be set")
+}
+
+// TestConfigureTLSAdvanced_ServerName_Empty tests empty ServerName is no-op
+func TestConfigureTLSAdvanced_ServerName_Empty(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{ServerName: ""}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.Empty(t, tc.ServerName, "expected ServerName to remain empty")
+}
+
+// TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Valid tests session cache creation
+func TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Valid(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{ClientSessionCacheCapacity: 100}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.NotNil(t, tc.ClientSessionCache, "expected ClientSessionCache to be set")
+}
+
+// TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Zero tests zero capacity is no-op
+func TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Zero(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{ClientSessionCacheCapacity: 0}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	assert.Nil(t, tc.ClientSessionCache, "expected ClientSessionCache to remain nil")
+}
+
+// TestConfigureTLSAdvanced_DialTimeout tests dial timeout configuration
+func TestConfigureTLSAdvanced_DialTimeout(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{DialTimeoutSeconds: 30}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error")
+	// DialTimeoutSeconds is applied via buildTLSDialer in NewAdminClient, not directly in configureTLSAdvanced
+	// So we just verify configureTLSAdvanced handles it without error
+}
+
+// TestConfigureTLSAdvanced_DialTimeout_Zero tests zero timeout defaults to 10 seconds
+func TestConfigureTLSAdvanced_DialTimeout_Zero(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{DialTimeoutSeconds: 0}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for zero timeout")
+	// Zero or negative timeout is handled by buildTLSDialer which defaults to 10 seconds
+}
+
+// TestConfigureTLSAdvanced_Combined tests multiple TLS options together
+func TestConfigureTLSAdvanced_Combined(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		MinVersion:                  "TLS13",
+		MaxVersion:                  "TLS13",
+		CipherSuites:                []string{"TLS_AES_128_GCM_SHA256"},
+		CurvePreferences:            []string{"X25519"},
+		SessionTicketsDisabled:      true,
+		DynamicRecordSizingDisabled: false,
+		NextProtos:                  []string{"h2"},
+		ServerName:                  "example.com",
+		ClientSessionCacheCapacity:  50,
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for combined config")
+	assert.EqualValues(t, tls.VersionTLS13, tc.MinVersion)
+	assert.EqualValues(t, tls.VersionTLS13, tc.MaxVersion)
+	assert.Len(t, tc.CipherSuites, 1)
+	assert.Len(t, tc.CurvePreferences, 1)
+	assert.True(t, tc.SessionTicketsDisabled)
+	assert.False(t, tc.DynamicRecordSizingDisabled)
+	assert.Equal(t, []string{"h2"}, tc.NextProtos)
+	assert.Equal(t, "example.com", tc.ServerName)
+	assert.NotNil(t, tc.ClientSessionCache)
+}

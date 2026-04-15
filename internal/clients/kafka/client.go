@@ -26,22 +26,25 @@ import (
 
 const (
 	// default Secret field names for TLS certificates, like managed by cert-manager
+	defaultCACertificateField         = "ca.crt"
 	defaultClientCertificateKeyField  = "tls.key"
 	defaultClientCertificateCertField = "tls.crt"
+	defaultTLSDialTimeoutSeconds      = 10
 
-	errCannotParse                    = "cannot parse credentials"
-	errMissingSASLMechanism           = "SASL mechanism is required"
-	errMissingSASLCredentials         = "SASL username and password are required"
-	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
-	errCannotReadClientCertSecret     = "cannot read client cert secret"
-	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
-	errCannotReadClientCertFile       = "cannot read client cert file"
-	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
-	errCannotReadCACertSecret         = "cannot read CA cert secret"
-	errCannotReadCACertFile           = "cannot read CA cert file"
 	errCannotAppendCACert             = "cannot append CA certificate to pool"
-
-	defaultCACertificateField = "ca.crt"
+	errCannotParse                    = "cannot parse credentials"
+	errCannotReadCACertFile           = "cannot read CA cert file"
+	errCannotReadCACertSecret         = "cannot read CA cert secret"
+	errCannotReadClientCertFile       = "cannot read client cert file"
+	errCannotReadClientCertSecret     = "cannot read client cert secret"
+	errInvalidCipherSuite             = "invalid cipher suite"
+	errInvalidCurve                   = "invalid curve preference"
+	errInvalidTLSVersion              = "invalid TLS version"
+	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
+	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
+	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
+	errMissingSASLCredentials         = "SASL username and password are required"
+	errMissingSASLMechanism           = "SASL mechanism is required"
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
@@ -80,7 +83,12 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 			}.AsMechanism()
 		case "aws-msk-iam":
 			mechanism = kaws.ManagedStreamingIAM(authenticateAwsIam)
-			opts = append(opts, kgo.Dialer((&tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}).DialContext))
+			// AWS-MSK-IAM uses TLS implicitly; set dialer with timeout
+			dialTimeout := defaultTLSDialTimeoutSeconds
+			if kc.TLS != nil && kc.TLS.DialTimeoutSeconds > 0 {
+				dialTimeout = kc.TLS.DialTimeoutSeconds
+			}
+			opts = append(opts, buildTLSDialer(dialTimeout))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
@@ -93,9 +101,15 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	}
 
 	if kc.TLS != nil {
+		// Set explicit TLS dialer with timeout for all TLS connections
+		opts = append(opts, buildTLSDialer(kc.TLS.DialTimeoutSeconds))
+
 		tc := new(tls.Config)
 		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
 		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
+			return nil, err
+		}
+		if err := configureTLSAdvanced(kc.TLS, tc); err != nil {
 			return nil, err
 		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
@@ -318,4 +332,137 @@ func valueOrDefault(value, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// TLS version lookup map
+var tlsVersions = map[string]uint16{
+	"TLS12": tls.VersionTLS12,
+	"TLS13": tls.VersionTLS13,
+}
+
+// TLS curve preference lookup map
+var tlsCurves = map[string]tls.CurveID{
+	"P256":   tls.CurveP256,
+	"P384":   tls.CurveP384,
+	"P521":   tls.CurveP521,
+	"X25519": tls.X25519,
+}
+
+// buildCipherSuiteMap creates a map of cipher suite names to their IDs
+// from both standard and insecure cipher suites
+func buildCipherSuiteMap() map[string]uint16 {
+	m := make(map[string]uint16)
+	for _, cs := range tls.CipherSuites() {
+		m[cs.Name] = cs.ID
+	}
+	for _, cs := range tls.InsecureCipherSuites() {
+		m[cs.Name] = cs.ID
+	}
+	return m
+}
+
+// buildTLSDialer creates a TLS dialer with the specified timeout
+func buildTLSDialer(timeoutSeconds int) kgo.Opt {
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = defaultTLSDialTimeoutSeconds
+	}
+	return kgo.Dialer((&tls.Dialer{
+		NetDialer: &net.Dialer{Timeout: time.Duration(timeoutSeconds) * time.Second},
+	}).DialContext)
+}
+
+// configureTLSVersions sets MinVersion and MaxVersion constraints
+func configureTLSVersions(t *TLS, tc *tls.Config) error {
+	if t.MinVersion != "" {
+		version, ok := tlsVersions[t.MinVersion]
+		if !ok {
+			return fmt.Errorf("%s %q: valid values are TLS12, TLS13", errInvalidTLSVersion, t.MinVersion)
+		}
+		tc.MinVersion = version
+	}
+
+	if t.MaxVersion != "" {
+		version, ok := tlsVersions[t.MaxVersion]
+		if !ok {
+			return fmt.Errorf("%s %q: valid values are TLS12, TLS13", errInvalidTLSVersion, t.MaxVersion)
+		}
+		tc.MaxVersion = version
+	}
+
+	return nil
+}
+
+// configureCipherSuites sets the allowed cipher suites
+func configureCipherSuites(t *TLS, tc *tls.Config) error {
+	if len(t.CipherSuites) > 0 {
+		cipherMap := buildCipherSuiteMap()
+		suites := make([]uint16, 0, len(t.CipherSuites))
+		for _, name := range t.CipherSuites {
+			id, ok := cipherMap[name]
+			if !ok {
+				return fmt.Errorf("%s %q", errInvalidCipherSuite, name)
+			}
+			suites = append(suites, id)
+		}
+		tc.CipherSuites = suites
+	}
+	return nil
+}
+
+// configureCurvePreferences sets the elliptic curve preferences
+func configureCurvePreferences(t *TLS, tc *tls.Config) error {
+	if len(t.CurvePreferences) > 0 {
+		curves := make([]tls.CurveID, 0, len(t.CurvePreferences))
+		for _, name := range t.CurvePreferences {
+			curve, ok := tlsCurves[name]
+			if !ok {
+				return fmt.Errorf("%s %q: valid values are P256, P384, P521, X25519", errInvalidCurve, name)
+			}
+			curves = append(curves, curve)
+		}
+		tc.CurvePreferences = curves
+	}
+	return nil
+}
+
+// configureTLSAdvanced configures advanced TLS options in the tls.Config
+func configureTLSAdvanced(t *TLS, tc *tls.Config) error {
+	if t == nil {
+		return nil
+	}
+
+	if err := configureTLSVersions(t, tc); err != nil {
+		return err
+	}
+
+	if err := configureCipherSuites(t, tc); err != nil {
+		return err
+	}
+
+	if err := configureCurvePreferences(t, tc); err != nil {
+		return err
+	}
+
+	// Configure session ticket handling
+	tc.SessionTicketsDisabled = t.SessionTicketsDisabled
+
+	// Configure dynamic record sizing
+	tc.DynamicRecordSizingDisabled = t.DynamicRecordSizingDisabled
+
+	// Configure ALPN protocols
+	if len(t.NextProtos) > 0 {
+		tc.NextProtos = t.NextProtos
+	}
+
+	// Configure SNI server name
+	if t.ServerName != "" {
+		tc.ServerName = t.ServerName
+	}
+
+	// Configure session cache
+	if t.ClientSessionCacheCapacity > 0 {
+		tc.ClientSessionCache = tls.NewLRUClientSessionCache(t.ClientSessionCacheCapacity)
+	}
+
+	return nil
 }
