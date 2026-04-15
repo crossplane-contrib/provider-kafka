@@ -342,9 +342,3 @@ Push image:
 ```console
 make push
 ```
-
-Build binary:
-
-```console
-make build
-```
