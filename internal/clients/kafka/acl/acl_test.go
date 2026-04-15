@@ -6,12 +6,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/util/json"
+
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-
-	"github.com/google/go-cmp/cmp"
-
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
@@ -50,7 +49,6 @@ func TestCompareAcls(t *testing.T) {
 		args args
 		want bool
 	}{
-
 		{
 			name: "PassCompare",
 			args: args{

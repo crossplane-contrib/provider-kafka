@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,6 +37,14 @@ const (
 	errMissingSASLCredentials         = "SASL username and password are required"
 	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
+	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
+	errCannotReadClientCertFile       = "cannot read client cert file"
+	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
+	errCannotReadCACertSecret         = "cannot read CA cert secret"
+	errCannotReadCACertFile           = "cannot read CA cert file"
+	errCannotAppendCACert             = "cannot append CA certificate to pool"
+
+	defaultCACertificateField = "ca.crt"
 )
 
 // NewAdminClient creates a new AdminClient with supplied credentials
@@ -135,11 +144,30 @@ func authenticateAwsIam(ctx context.Context, roleArn string) (a kaws.Auth, err e
 
 // Add options to TLS config for client certificate (if configured)
 func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
-	sr := kc.TLS.ClientCertificateSecretRef
+	// Validate that both clientCertificateSecretRef and clientCertificatePath are not both set.
+	// In Go TLS, GetClientCertificate (used for file-based certs) takes precedence over Certificates (used for secret-based certs),
+	// so setting both would silently ignore the secret-based certificate.
+	if kc.TLS.ClientCertificateSecretRef != nil && kc.TLS.ClientCertificatePath != nil {
+		return errors.New("cannot specify both clientCertificateSecretRef and clientCertificatePath: " +
+			"use clientCertificateSecretRef for static certs or clientCertificatePath for certificates with rotation support")
+	}
+
+	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	if err := configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc); err != nil {
+		return err
+	}
+	if err := configureCACertificateSecretRef(ctx, kc.TLS.CACertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	return configureCACertificateFile(kc.TLS.CACertificateFile, tc)
+}
+
+func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSecretRef, kube client.Client, tc *tls.Config) error {
 	if sr == nil {
 		return nil
 	}
-
 	if sr.Name == "" || sr.Namespace == "" {
 		return errors.New(errMissingClientCertSecretRefKeys)
 	}
@@ -151,13 +179,149 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 
 	kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
 	cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
-	kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
+
+	certPEM, certOk := secret.Data[cf]
+
+	if !certOk || len(certPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate field %q in secret %s/%s", cf, sr.Namespace, sr.Name)
+	}
+
+	keyPEM, keyOk := secret.Data[kf]
+
+	if !keyOk || len(keyPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate key field %q in secret %s/%s", kf, sr.Namespace, sr.Name)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return fmt.Errorf("invalid key pair, using fields %q/%q from secret %q in namespace %q: %w",
 			cf, kf, sr.Name, sr.Namespace, err)
 	}
 
 	tc.Certificates = append(tc.Certificates, kp)
+	return nil
+}
+
+func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) error {
+	if fr == nil {
+		return nil
+	}
+	if fr.KeyFile == "" || fr.CertFile == "" {
+		return errors.New(errMissingClientCertFileKeys)
+	}
+
+	// Validate files exist and form valid key pair on initial load
+	if err := validateClientCertificatePath(fr); err != nil {
+		return err
+	}
+
+	// Use GetClientCertificate callback to support certificate rotation.
+	// This allows certificates mounted via cert-manager or CSI to be reloaded
+	// on each TLS handshake without restarting the provider.
+	tc.GetClientCertificate = func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		return loadClientCertificate(fr)
+	}
+
+	return nil
+}
+
+func validateClientCertificatePath(fr *ClientCertificatePath) error {
+	// Validate that files exist and can be read initially
+	if _, err := os.Stat(fr.CertFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	if _, err := os.Stat(fr.KeyFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	// Validate that cert and key form a valid pair
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
+		return fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
+	}
+	return nil
+}
+
+func loadClientCertificate(fr *ClientCertificatePath) (*tls.Certificate, error) {
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
+	}
+	return &kp, nil
+}
+
+func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecretRef, kube client.Client, tc *tls.Config) error {
+	if sr == nil {
+		return nil
+	}
+	if sr.Name == "" || sr.Namespace == "" {
+		return errors.New(errMissingCACertSecretRefKeys)
+	}
+
+	secret := &corev1.Secret{}
+	if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
+		return fmt.Errorf("%s: %w", errCannotReadCACertSecret, err)
+	}
+
+	field := valueOrDefault(sr.CAField, defaultCACertificateField)
+	caPEM, ok := secret.Data[field]
+	if !ok || len(caPEM) == 0 {
+		return fmt.Errorf("missing or empty CA certificate field %q in secret %s/%s", field, sr.Namespace, sr.Name)
+	}
+	return appendCACert(caPEM, tc)
+}
+
+func configureCACertificateFile(caFile string, tc *tls.Config) error {
+	if caFile == "" {
+		return nil
+	}
+
+	caPEM, err := os.ReadFile(caFile) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadCACertFile, caFile, err)
+	}
+
+	return appendCACert(caPEM, tc)
+}
+
+func appendCACert(caPEM []byte, tc *tls.Config) error {
+	var pool *x509.CertPool
+
+	// Reuse existing pool if already initialized
+	if tc.RootCAs != nil {
+		pool = tc.RootCAs
+	} else {
+		// Initialize from system roots if available
+		var err error
+		pool, err = x509.SystemCertPool()
+		if err != nil {
+			// Fallback to empty pool if system roots unavailable
+			pool = x509.NewCertPool()
+		}
+	}
+
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return errors.New(errCannotAppendCACert)
+	}
+	tc.RootCAs = pool
 	return nil
 }
 

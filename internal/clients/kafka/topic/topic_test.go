@@ -6,17 +6,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/twmb/franz-go/pkg/kadm"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
 
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
 func TestCreate(t *testing.T) {
-
 	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {
@@ -89,7 +88,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-
 	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {
@@ -320,13 +318,11 @@ func TestIsUpToDate(t *testing.T) {
 			if diff := cmp.Diff(tt.want, isUpToDate); diff != "" {
 				t.Errorf("IsUpToDate() = -want +got")
 			}
-
 		})
 	}
 }
 
 func TestCreateDuplicateTopic(t *testing.T) {
-
 	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	fmt.Printf("------Checking duplicate topic creation logic------")
@@ -413,7 +409,6 @@ func TestCreateDuplicateTopic(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-
 	newAc, _ := kafka.NewAdminClient(context.Background(), dataTesting, nil)
 
 	type args struct {

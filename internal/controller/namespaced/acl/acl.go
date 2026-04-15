@@ -22,15 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/twmb/franz-go/pkg/kadm"
-
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -41,9 +32,15 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
 const (
@@ -215,7 +212,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
-
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
 	}
@@ -241,7 +237,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
@@ -261,12 +256,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-
 	return managed.ExternalUpdate{}, errors.New(errUpdateNotSupported)
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	cr.Status.SetConditions(v1.Deleting())
 	if !ok {

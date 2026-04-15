@@ -21,12 +21,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
