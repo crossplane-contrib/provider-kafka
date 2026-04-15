@@ -12,7 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
@@ -79,7 +82,9 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 				Pass: kc.SASL.Password,
 			}.AsMechanism()
 		case "aws-msk-iam":
-			mechanism = kaws.ManagedStreamingIAM(authenticateAwsIam)
+			mechanism = kaws.ManagedStreamingIAM(func(ctx context.Context) (kaws.Auth, error) {
+				return authenticateAwsIam(ctx, kc.SASL.RoleArn)
+			})
 			opts = append(opts, kgo.Dialer((&tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}).DialContext))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
@@ -108,10 +113,18 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	return kadm.NewClient(c), nil
 }
 
-func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
+func authenticateAwsIam(ctx context.Context, roleArn string) (a kaws.Auth, err error) {
 	s, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return kaws.Auth{}, err
+	}
+
+	if roleArn != "" {
+		stsClient := sts.NewFromConfig(s)
+		provider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(o *stscreds.AssumeRoleOptions) {
+			o.RoleSessionName = "crossplane-provider-kafka"
+		})
+		s.Credentials = aws.NewCredentialsCache(provider)
 	}
 
 	v, err := s.Credentials.Retrieve(ctx)

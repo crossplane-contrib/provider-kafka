@@ -10,6 +10,7 @@ type Config struct {
 // SASL is an sasl option
 type SASL struct {
 	Mechanism string `json:"mechanism"`
+	RoleArn   string `json:"roleArn"`
 	Username  string `json:"username"`
 	Password  string `json:"password"` //nolint:gosec
 }
