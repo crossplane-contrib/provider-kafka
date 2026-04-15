@@ -39,7 +39,6 @@ const (
 
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
-
 	td, err := client.ListTopics(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errCannotListTopics, err)
@@ -78,12 +77,10 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 		ts.Config[value.Key] = value.Value
 	}
 	return &ts, nil
-
 }
 
 // Create creates the topic from Kafka side
 func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
-
 	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, topic.Config, topic.Name)
 	if err != nil {
 		return err
@@ -102,7 +99,6 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 
 // Delete deletes the topic from Kafka side
 func Delete(ctx context.Context, client *kadm.Client, name string) error {
-
 	td, err := client.DeleteTopics(ctx, name)
 	if err != nil {
 		return err
@@ -175,7 +171,6 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 
 // UpdateReplicationFactor is not supported in Kafka. A user is given an error message
 func UpdateReplicationFactor() error {
-
 	return errors.New("updating replication factor is not supported")
 }
 

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kmsg"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
@@ -188,7 +188,6 @@ func Generate(params *v1alpha1.AccessControlListParameters) *AccessControlList {
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
 // supplied Kafka ACLs.
 func IsUpToDate(in *v1alpha1.AccessControlListParameters, observed *AccessControlList) bool {
-
 	if in.ResourceType != observed.ResourceType {
 		return false
 	}

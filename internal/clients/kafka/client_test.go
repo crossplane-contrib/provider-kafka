@@ -41,7 +41,6 @@ func TestNewAdminClient_ValidCredentials(t *testing.T) {
 	brokers, err := client.ListBrokers(ctx)
 	require.NoError(t, err, "expected no error listing brokers, got: %v", err)
 	assert.NotEmpty(t, brokers, "expected non-empty list of brokers")
-
 }
 
 func TestNewAdminClient_WrongCredentials(t *testing.T) {
@@ -426,9 +425,9 @@ func TestConfigureFilePathCertificate_CallbackSupportsCertificateRotation(t *tes
 
 	// Simulate certificate rotation: write new cert/key to files
 	certPEM2, keyPEM2 := generateTestCertificate(t)
-	err = os.WriteFile(certFile.Name(), certPEM2, 0644)
+	err = os.WriteFile(certFile.Name(), certPEM2, 0o644)
 	require.NoError(t, err)
-	err = os.WriteFile(keyFile.Name(), keyPEM2, 0644)
+	err = os.WriteFile(keyFile.Name(), keyPEM2, 0o644)
 	require.NoError(t, err)
 
 	// Verify callback returns the new cert (proves it's reloading from disk)
