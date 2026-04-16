@@ -13,7 +13,7 @@ type ClientCertificatePath struct {
 	CertFile string `json:"certFile"`
 }
 
-// ClientCertificateSecretRef is a TLS option for enable mTLS
+// ClientCertificateSecretRef is a TLS option for enabling mTLS
 type ClientCertificateSecretRef struct {
 	CertField string `json:"certField,omitempty"`
 	KeyField  string `json:"keyField,omitempty"`

@@ -631,14 +631,28 @@ func TestConfigureTLSAdvanced_CipherSuites_Valid(t *testing.T) {
 	tc := &tls.Config{}
 	tlsConfig := &TLS{
 		CipherSuites: []string{
-			"TLS_AES_128_GCM_SHA256",
-			"TLS_AES_256_GCM_SHA384",
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		},
 	}
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for valid cipher suites")
 	require.Len(t, tc.CipherSuites, 2, "expected 2 cipher suites to be configured")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_TLS13_Rejected tests that TLS 1.3 cipher suites are explicitly rejected
+func TestConfigureTLSAdvanced_CipherSuites_TLS13_Rejected(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{CipherSuites: []string{"TLS_AES_128_GCM_SHA256"}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for TLS 1.3 cipher suite")
+	require.ErrorContains(t, err, errInvalidCipherSuite)
+	require.ErrorContains(t, err, "TLS_AES_128_GCM_SHA256")
+	require.ErrorContains(t, err, "TLS 1.3")
+	require.ErrorContains(t, err, "not configurable")
 }
 
 // TestConfigureTLSAdvanced_CipherSuites_Invalid tests invalid cipher suite
@@ -855,9 +869,9 @@ func TestConfigureTLSAdvanced_Combined(t *testing.T) {
 	t.Parallel()
 	tc := &tls.Config{}
 	tlsConfig := &TLS{
-		MinVersion:                  "TLS13",
+		MinVersion:                  "TLS12",
 		MaxVersion:                  "TLS13",
-		CipherSuites:                []string{"TLS_AES_128_GCM_SHA256"},
+		CipherSuites:                []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
 		CurvePreferences:            []string{"X25519"},
 		SessionTicketsDisabled:      true,
 		DynamicRecordSizingDisabled: false,
@@ -868,7 +882,7 @@ func TestConfigureTLSAdvanced_Combined(t *testing.T) {
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for combined config")
-	assert.EqualValues(t, tls.VersionTLS13, tc.MinVersion)
+	assert.EqualValues(t, tls.VersionTLS12, tc.MinVersion)
 	assert.EqualValues(t, tls.VersionTLS13, tc.MaxVersion)
 	assert.Len(t, tc.CipherSuites, 1)
 	assert.Len(t, tc.CurvePreferences, 1)
