@@ -202,7 +202,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extName)
-
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
 	}
