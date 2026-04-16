@@ -612,6 +612,19 @@ func TestConfigureTLSAdvanced_MaxVersion_Invalid(t *testing.T) {
 	require.ErrorContains(t, err, "TLS11")
 }
 
+// TestConfigureTLSAdvanced_MinVersionGreaterThanMaxVersion tests error when MinVersion > MaxVersion
+func TestConfigureTLSAdvanced_MinVersionGreaterThanMaxVersion(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{MinVersion: "TLS13", MaxVersion: "TLS12"}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error when MinVersion > MaxVersion")
+	require.ErrorContains(t, err, "MinVersion")
+	require.ErrorContains(t, err, "MaxVersion")
+	require.ErrorContains(t, err, "cannot be greater")
+}
+
 // TestConfigureTLSAdvanced_CipherSuites_Valid tests valid cipher suite configuration
 func TestConfigureTLSAdvanced_CipherSuites_Valid(t *testing.T) {
 	t.Parallel()
@@ -638,6 +651,19 @@ func TestConfigureTLSAdvanced_CipherSuites_Invalid(t *testing.T) {
 	require.Error(t, err, "expected error for invalid cipher suite")
 	require.ErrorContains(t, err, errInvalidCipherSuite)
 	require.ErrorContains(t, err, "INVALID_CIPHER_SUITE")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_InsecureRejected tests that insecure cipher suites are rejected
+func TestConfigureTLSAdvanced_CipherSuites_InsecureRejected(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	// TLS_RSA_WITH_AES_128_CBC_SHA is an insecure cipher suite from tls.InsecureCipherSuites()
+	tlsConfig := &TLS{CipherSuites: []string{"TLS_RSA_WITH_AES_128_CBC_SHA"}}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for insecure cipher suite")
+	require.ErrorContains(t, err, errInvalidCipherSuite)
+	// Insecure suites are no longer allowed, only those from tls.CipherSuites()
 }
 
 // TestConfigureTLSAdvanced_CipherSuites_EmptyList tests empty cipher suite list is no-op
@@ -809,7 +835,7 @@ func TestConfigureTLSAdvanced_DialTimeout(t *testing.T) {
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error")
-	// DialTimeoutSeconds is applied via buildTLSDialer in NewAdminClient, not directly in configureTLSAdvanced
+	// DialTimeoutSeconds is applied via kgo.DialTimeout in NewAdminClient, not directly in configureTLSAdvanced
 	// So we just verify configureTLSAdvanced handles it without error
 }
 
@@ -821,7 +847,7 @@ func TestConfigureTLSAdvanced_DialTimeout_Zero(t *testing.T) {
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for zero timeout")
-	// Zero or negative timeout is handled by buildTLSDialer which defaults to 10 seconds
+	// Zero or negative timeout is handled by NewAdminClient which defaults to 10 seconds
 }
 
 // TestConfigureTLSAdvanced_Combined tests multiple TLS options together

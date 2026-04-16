@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -83,12 +82,6 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 			}.AsMechanism()
 		case "aws-msk-iam":
 			mechanism = kaws.ManagedStreamingIAM(authenticateAwsIam)
-			// AWS-MSK-IAM uses TLS implicitly; set dialer with timeout
-			dialTimeout := defaultTLSDialTimeoutSeconds
-			if kc.TLS != nil && kc.TLS.DialTimeoutSeconds > 0 {
-				dialTimeout = kc.TLS.DialTimeoutSeconds
-			}
-			opts = append(opts, buildTLSDialer(dialTimeout))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
@@ -100,10 +93,21 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		opts = append(opts, kgo.SASL(mechanism))
 	}
 
-	if kc.TLS != nil {
-		// Set explicit TLS dialer with timeout for all TLS connections
-		opts = append(opts, buildTLSDialer(kc.TLS.DialTimeoutSeconds))
+	// Determine dial timeout and whether TLS is needed
+	dialTimeout := defaultTLSDialTimeoutSeconds
+	if kc.TLS != nil && kc.TLS.DialTimeoutSeconds > 0 {
+		dialTimeout = kc.TLS.DialTimeoutSeconds
+	}
 
+	isAwsMskIam := kc.SASL != nil && strings.EqualFold(kc.SASL.Mechanism, "aws-msk-iam")
+
+	// Set dial timeout if TLS or AWS-MSK-IAM (which requires TLS)
+	if kc.TLS != nil || isAwsMskIam {
+		opts = append(opts, kgo.DialTimeout(time.Duration(dialTimeout)*time.Second))
+	}
+
+	// Configure TLS
+	if kc.TLS != nil {
 		tc := new(tls.Config)
 		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
 		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
@@ -113,6 +117,9 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 			return nil, err
 		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
+	} else if isAwsMskIam {
+		// AWS-MSK-IAM requires TLS; enable with default config
+		opts = append(opts, kgo.DialTLS())
 	}
 
 	c, err := kgo.NewClient(opts...)
@@ -349,26 +356,13 @@ var tlsCurves = map[string]tls.CurveID{
 }
 
 // buildCipherSuiteMap creates a map of cipher suite names to their IDs
-// from both standard and insecure cipher suites
+// Only includes secure cipher suites from tls.CipherSuites()
 func buildCipherSuiteMap() map[string]uint16 {
 	m := make(map[string]uint16)
 	for _, cs := range tls.CipherSuites() {
 		m[cs.Name] = cs.ID
 	}
-	for _, cs := range tls.InsecureCipherSuites() {
-		m[cs.Name] = cs.ID
-	}
 	return m
-}
-
-// buildTLSDialer creates a TLS dialer with the specified timeout
-func buildTLSDialer(timeoutSeconds int) kgo.Opt {
-	if timeoutSeconds <= 0 {
-		timeoutSeconds = defaultTLSDialTimeoutSeconds
-	}
-	return kgo.Dialer((&tls.Dialer{
-		NetDialer: &net.Dialer{Timeout: time.Duration(timeoutSeconds) * time.Second},
-	}).DialContext)
 }
 
 // configureTLSVersions sets MinVersion and MaxVersion constraints
@@ -387,6 +381,11 @@ func configureTLSVersions(t *TLS, tc *tls.Config) error {
 			return fmt.Errorf("%s %q: valid values are TLS12, TLS13", errInvalidTLSVersion, t.MaxVersion)
 		}
 		tc.MaxVersion = version
+	}
+
+	// Validate that MinVersion <= MaxVersion when both are set
+	if tc.MinVersion != 0 && tc.MaxVersion != 0 && tc.MinVersion > tc.MaxVersion {
+		return fmt.Errorf("TLS MinVersion (%q) cannot be greater than MaxVersion (%q)", t.MinVersion, t.MaxVersion)
 	}
 
 	return nil
