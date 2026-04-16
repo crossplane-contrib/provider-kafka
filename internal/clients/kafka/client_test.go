@@ -109,6 +109,47 @@ func TestNewAdminClient_MissingSASLConfig(t *testing.T) {
 	require.Error(t, err, "expected error with missing SASL config, got nil")
 }
 
+// TestNewAdminClient_NegativeDialTimeout tests that negative DialTimeoutSeconds is rejected
+func TestNewAdminClient_NegativeDialTimeout(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	brokersFromDataTesting, err := json.Marshal(credentials.Brokers)
+	if err != nil {
+		t.Fatalf("failed to marshal brokers: %v", err)
+	}
+	data := []byte(`{
+		"brokers": ` + string(brokersFromDataTesting) + `,
+		"tls": {
+			"dialTimeoutSeconds": -5
+		}
+	}`)
+	client, err := NewAdminClient(ctx, data, nil)
+	assert.Nil(t, client, "expected client to be nil for negative timeout")
+	require.Error(t, err, "expected error for negative DialTimeoutSeconds")
+	require.ErrorContains(t, err, "invalid dial timeout")
+	require.ErrorContains(t, err, "-5")
+}
+
+// TestNewAdminClient_ZeroDialTimeout tests that zero DialTimeoutSeconds uses default
+func TestNewAdminClient_ZeroDialTimeout(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Use a valid broker address (tests that timeout=0 passes validation, doesn't test connectivity)
+	data := []byte(`{
+		"brokers": ["localhost:9092"],
+		"tls": {
+			"dialTimeoutSeconds": 0
+		}
+	}`)
+	// Should not error on validation; zero should be treated as "use default"
+	_, err := NewAdminClient(ctx, data, nil)
+	require.NoError(t, err, "expected no error for zero DialTimeoutSeconds (should use default)")
+}
+
 // generateTestCertificate generates a self-signed certificate and key pair for testing
 func generateTestCertificate(t *testing.T) (certPEM, keyPEM []byte) {
 	t.Helper()
@@ -655,6 +696,39 @@ func TestConfigureTLSAdvanced_CipherSuites_TLS13_Rejected(t *testing.T) {
 	require.ErrorContains(t, err, "not configurable")
 }
 
+// TestConfigureTLSAdvanced_CipherSuites_MinVersionTLS13_Rejected tests that CipherSuites are rejected when MinVersion forces TLS 1.3
+func TestConfigureTLSAdvanced_CipherSuites_MinVersionTLS13_Rejected(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		MinVersion: "TLS13",
+		CipherSuites: []string{
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		},
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error when CipherSuites are set with MinVersion=TLS13")
+	require.ErrorContains(t, err, "cannot be configured in TLS13")
+}
+
+// TestConfigureTLSAdvanced_CipherSuites_MinVersionTLS12_MaxVersionTLS13_Allowed tests that CipherSuites are allowed with mixed TLS versions
+func TestConfigureTLSAdvanced_CipherSuites_MinVersionTLS12_MaxVersionTLS13_Allowed(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{
+		MinVersion: "TLS12",
+		MaxVersion: "TLS13",
+		CipherSuites: []string{
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		},
+	}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.NoError(t, err, "expected no error for CipherSuites with MinVersion=TLS12 and MaxVersion=TLS13")
+	require.Len(t, tc.CipherSuites, 1, "expected 1 cipher suite to be configured")
+}
+
 // TestConfigureTLSAdvanced_CipherSuites_Invalid tests invalid cipher suite
 func TestConfigureTLSAdvanced_CipherSuites_Invalid(t *testing.T) {
 	t.Parallel()
@@ -839,6 +913,18 @@ func TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Zero(t *testing.T) {
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error")
 	assert.Nil(t, tc.ClientSessionCache, "expected ClientSessionCache to remain nil")
+}
+
+// TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Negative tests negative capacity is rejected
+func TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Negative(t *testing.T) {
+	t.Parallel()
+	tc := &tls.Config{}
+	tlsConfig := &TLS{ClientSessionCacheCapacity: -10}
+
+	err := configureTLSAdvanced(tlsConfig, tc)
+	require.Error(t, err, "expected error for negative ClientSessionCacheCapacity")
+	require.ErrorContains(t, err, "invalid client session cache capacity")
+	require.ErrorContains(t, err, "-10")
 }
 
 // TestConfigureTLSAdvanced_DialTimeout tests dial timeout configuration

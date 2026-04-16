@@ -37,7 +37,10 @@ const (
 	errCannotReadClientCertFile       = "cannot read client cert file"
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
 	errInvalidCipherSuite             = "invalid cipher suite"
+	errInvalidCipherSuiteTLS13        = "cipherSuites cannot be configured in TLS13"
+	errInvalidClientSessionCache      = "invalid client session cache capacity: must be >= 0"
 	errInvalidCurve                   = "invalid curve preference"
+	errInvalidDialTimeout             = "invalid dial timeout: must be >= 0"
 	errInvalidTLSVersion              = "invalid TLS version"
 	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
 	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
@@ -52,6 +55,11 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	if err := json.Unmarshal(data, &kc); err != nil {
 		return nil, fmt.Errorf("%s: %w", errCannotParse, err)
+	}
+
+	// Validate TLS configuration if provided
+	if kc.TLS != nil && kc.TLS.DialTimeoutSeconds < 0 {
+		return nil, fmt.Errorf("%s (received: %d)", errInvalidDialTimeout, kc.TLS.DialTimeoutSeconds)
 	}
 
 	// Validate SASL configuration if provided
@@ -404,6 +412,11 @@ func configureTLSVersions(t *TLS, tc *tls.Config) error {
 // configureCipherSuites sets the allowed cipher suites
 func configureCipherSuites(t *TLS, tc *tls.Config) error {
 	if len(t.CipherSuites) > 0 {
+		// Check if MinVersion forces TLS 1.3 only (making CipherSuites ineffective)
+		if tc.MinVersion == tls.VersionTLS13 {
+			return errors.New(errInvalidCipherSuiteTLS13)
+		}
+
 		cipherMap := buildCipherSuiteMap()
 		suites := make([]uint16, 0, len(t.CipherSuites))
 		for _, name := range t.CipherSuites {
@@ -473,6 +486,9 @@ func configureTLSAdvanced(t *TLS, tc *tls.Config) error {
 	}
 
 	// Configure session cache
+	if t.ClientSessionCacheCapacity < 0 {
+		return fmt.Errorf("%s (received: %d)", errInvalidClientSessionCache, t.ClientSessionCacheCapacity)
+	}
 	if t.ClientSessionCacheCapacity > 0 {
 		tc.ClientSessionCache = tls.NewLRUClientSessionCache(t.ClientSessionCacheCapacity)
 	}
