@@ -49,6 +49,40 @@ const (
 	errMissingSASLMechanism           = "SASL mechanism is required"
 )
 
+// cipherSuiteMap caches the mapping of cipher suite names to IDs.
+// Only includes secure cipher suites from tls.CipherSuites() (TLS 1.0-1.2 only).
+var cipherSuiteMap = func() map[string]uint16 {
+	m := make(map[string]uint16)
+	for _, cs := range tls.CipherSuites() {
+		m[cs.Name] = cs.ID
+	}
+	return m
+}()
+
+// TLS 1.3 cipher suite names that are not user-configurable in Go's tls.Config.CipherSuites
+// CipherSuites field only applies to TLS 1.0-1.2; TLS 1.3 cipher selection is automatic.
+var tls13CipherSuites = map[string]bool{
+	"TLS_AES_128_GCM_SHA256":       true,
+	"TLS_AES_256_GCM_SHA384":       true,
+	"TLS_CHACHA20_POLY1305_SHA256": true,
+	"TLS_AES_128_CCM_SHA256":       true,
+	"TLS_AES_128_CCM_8_SHA256":     true,
+}
+
+// TLS curve preference lookup map
+var tlsCurves = map[string]tls.CurveID{
+	"P256":   tls.CurveP256,
+	"P384":   tls.CurveP384,
+	"P521":   tls.CurveP521,
+	"X25519": tls.X25519,
+}
+
+// TLS version lookup map
+var tlsVersions = map[string]uint16{
+	"TLS12": tls.VersionTLS12,
+	"TLS13": tls.VersionTLS13,
+}
+
 // NewAdminClient creates a new AdminClient with supplied credentials
 func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) { // nolint: gocyclo
 	kc := Config{}
@@ -349,40 +383,6 @@ func valueOrDefault(value, defaultValue string) string {
 	return defaultValue
 }
 
-// TLS version lookup map
-var tlsVersions = map[string]uint16{
-	"TLS12": tls.VersionTLS12,
-	"TLS13": tls.VersionTLS13,
-}
-
-// TLS curve preference lookup map
-var tlsCurves = map[string]tls.CurveID{
-	"P256":   tls.CurveP256,
-	"P384":   tls.CurveP384,
-	"P521":   tls.CurveP521,
-	"X25519": tls.X25519,
-}
-
-// TLS 1.3 cipher suite names that are not user-configurable in Go's tls.Config.CipherSuites
-// CipherSuites field only applies to TLS 1.0-1.2; TLS 1.3 cipher selection is automatic.
-var tls13CipherSuites = map[string]bool{
-	"TLS_AES_128_GCM_SHA256":       true,
-	"TLS_AES_256_GCM_SHA384":       true,
-	"TLS_CHACHA20_POLY1305_SHA256": true,
-	"TLS_AES_128_CCM_SHA256":       true,
-	"TLS_AES_128_CCM_8_SHA256":     true,
-}
-
-// buildCipherSuiteMap creates a map of cipher suite names to their IDs
-// Only includes secure cipher suites from tls.CipherSuites()
-func buildCipherSuiteMap() map[string]uint16 {
-	m := make(map[string]uint16)
-	for _, cs := range tls.CipherSuites() {
-		m[cs.Name] = cs.ID
-	}
-	return m
-}
-
 // configureTLSVersions sets MinVersion and MaxVersion constraints
 func configureTLSVersions(t *TLS, tc *tls.Config) error {
 	if t.MinVersion != "" {
@@ -417,14 +417,13 @@ func configureCipherSuites(t *TLS, tc *tls.Config) error {
 			return errors.New(errInvalidCipherSuiteTLS13)
 		}
 
-		cipherMap := buildCipherSuiteMap()
 		suites := make([]uint16, 0, len(t.CipherSuites))
 		for _, name := range t.CipherSuites {
 			// Check if this is a TLS 1.3 suite (which cannot be configured in Go)
 			if tls13CipherSuites[name] {
 				return fmt.Errorf("%s %q: TLS 1.3 cipher suites are not configurable in Go; they are automatically selected based on protocol negotiation", errInvalidCipherSuite, name)
 			}
-			id, ok := cipherMap[name]
+			id, ok := cipherSuiteMap[name]
 			if !ok {
 				return fmt.Errorf("%s %q: valid values are from tls.CipherSuites() (TLS 1.0-1.2 only)", errInvalidCipherSuite, name)
 			}
