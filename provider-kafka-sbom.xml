@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:604ebdc9-2f1b-421a-8296-263fb4ff1b4c" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:664558a5-e422-4ceb-ba10-7e931e7fd290" version="1">
   <metadata>
-    <timestamp>2026-03-11T00:06:47+01:00</timestamp>
+    <timestamp>2026-04-14T16:21:17+02:00</timestamp>
     <tools>
       <tool>
         <vendor>CycloneDX</vendor>
         <name>cyclonedx-gomod</name>
         <version>v1.10.0</version>
         <hashes>
-          <hash alg="MD5">1c99ca8ffc534dd91832e800f16affb6</hash>
-          <hash alg="SHA-1">6b7a278f0d89c315d8e822ffd0ee02efea5dc2ad</hash>
-          <hash alg="SHA-256">c506aa7b358a4c2923a95230bd44a8d6427291cf53d18b48eaf80cb5e488a03f</hash>
-          <hash alg="SHA-384">80ac928ba89af130282fae9c72a87fcaa9bfbb962fc6e98dd4c56c63f252faec149e1e7922d639e26c887d5ed620b553</hash>
-          <hash alg="SHA-512">dbb878ee25bbcf2ca446e1bff4fe3ef746d3d239dcbe536b5a2603a596e5462e2fca2ba5eb9f866fa2d1ff5daf605a14f2ea39ad7653781cebda5a1786b27343</hash>
+          <hash alg="MD5">16cd5ea350bf6e2460fa1f849fcaf622</hash>
+          <hash alg="SHA-1">0b36630e7a8bc26363aa27e1fb6de8160b7ca5bd</hash>
+          <hash alg="SHA-256">049d1d161ae7b8c6dccfa0aa4c9960ebd35a56282608479ce3b3d72f035d5a5c</hash>
+          <hash alg="SHA-384">0e556f615486884dc83e6a7d72a84eb7f82705ab28d98508a3e2d9a283143dcb6eb66dbca504ddb22b3f19be88982a3d</hash>
+          <hash alg="SHA-512">79bd317280bfdc0679b650631ef83a6ad7cf4411254229f98b80dfd4b8fbd91680c0ccfce4184ddac48ef87da5436fc0f62f5c9512b018888f432f7af95da665</hash>
         </hashes>
         <externalReferences>
           <reference type="vcs">
@@ -24,10 +24,10 @@
         </externalReferences>
       </tool>
     </tools>
-    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?type=module" type="application">
+    <component bom-ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.1-0.20260310123021-15a7d4c4def8?type=module" type="application">
       <name>github.com/crossplane-contrib/provider-kafka</name>
-      <version>v1.1.0</version>
-      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <version>v1.1.1-0.20260310123021-15a7d4c4def8</version>
+      <purl>pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.1-0.20260310123021-15a7d4c4def8?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/crossplane-contrib/provider-kafka</url>
@@ -59,14 +59,14 @@
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/alecthomas/kong@v1.14.0?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/alecthomas/kong@v1.15.0?type=module" type="library">
       <name>github.com/alecthomas/kong</name>
-      <version>v1.14.0</version>
+      <version>v1.15.0</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">8058045195aed99999f948726756c386ebad6ca3759d3b494f0875f56b27db5b</hash>
+        <hash alg="SHA-256">05526cb4a6e93bbdf32a9988bbe9bf68b46b3665b0c573c81933629fd5662d52</hash>
       </hashes>
-      <purl>pkg:golang/github.com/alecthomas/kong@v1.14.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/alecthomas/kong@v1.15.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/alecthomas/kong</url>
@@ -87,182 +87,182 @@
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2</name>
-      <version>v1.41.3</version>
+      <version>v1.41.5</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">e2443f7dadb62a30edd77402cb5f9b6000ef760731a5f1f5f1fd333f9e369190</hash>
+        <hash alg="SHA-256">763e64a296f052c55454580ee058b90484f7b785b2a880e318a09a9e09d5ff26</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.11?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.14?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/config</name>
-      <version>v1.32.11</version>
+      <version>v1.32.14</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">7edc48e6c833f23664724b941d77c2ff031473cbb77c6d6f412d2996bd85d99b</hash>
+        <hash alg="SHA-256">a29548468fd96db23c388a9238a9a915a63b2307c550e0825c1b14a493b00dd2</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.11?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.14?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/config</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.11?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.14?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/credentials</name>
-      <version>v1.19.11</version>
+      <version>v1.19.14</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">35d57c73009c017ac25b2c40aede7c06bbd927da59f4585ff70e948795b75327</hash>
+        <hash alg="SHA-256">9fe51c196008647917cd8b7ceee30506ffe5f131d810ba17ea055c52f825e9f2</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.11?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.14?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/credentials</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.19?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.21?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/feature/ec2/imds</name>
-      <version>v1.18.19</version>
+      <version>v1.18.21</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">20d52f2719a17446d5ba52581c8d3ad64e1356e4b78f3ced84dbe3aaf56f4ca3</hash>
+        <hash alg="SHA-256">3544b72b80530c0ad0a8dbb68a1ef27832da4b76e61c3d189ddb40e943fcf388</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.19?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.21?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/feature/ec2/imds</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/internal/configsources</name>
-      <version>v1.4.19</version>
+      <version>v1.4.21</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">fec1027f2ab625389f308d893f26786dd44defbcc99abe92ad2d5e2f76ae8080</hash>
+        <hash alg="SHA-256">46083ac2f8e3b57f1b34772f8bd3a75d6c1c1346b6bc6a5bc26b4808eb2f71fe</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/internal/configsources</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/internal/endpoints/v2</name>
-      <version>v2.7.19</version>
+      <version>v2.7.21</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">016789324df719305fe89db45c97baa99a11489a3459f521b0c7542a1a0e0d71</hash>
+        <hash alg="SHA-256">3c480656d3e807a353a4fac182a484e6113fa38ec88fdaa4fd211915b50e7bd0</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/internal/endpoints</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.5?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.6?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/internal/ini</name>
-      <version>v1.8.5</version>
+      <version>v1.8.6</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">7251d4e5f9bffe4592d42d8782d816c5f41b15bc786faaf1fb98f38605fd1eb2</hash>
+        <hash alg="SHA-256">a98438a734363b3e96a50f13dc7bc61e7672740ef63272ee14af6d2709ab6c7c</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.5?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.6?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/internal/ini</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding</name>
-      <version>v1.13.6</version>
+      <version>v1.13.7</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">5c0abadad05324fffce65143e68a8e39eed86205b163d2ef5aaf299720ef0d58</hash>
+        <hash alg="SHA-256">e449e22a12d97b8c732fb6be7d4dc2dad7d43789d622a94b7ac7eb8e4b8f1536</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/internal/presigned-url</name>
-      <version>v1.13.19</version>
+      <version>v1.13.21</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">5f54e8c3bb2e664f540891c4d48c3d18c649265d1d0272975cfd4d6920c7c26c</hash>
+        <hash alg="SHA-256">737d7ffd1df180824c482f12ea1115abedfc0dcbd4960158d0533a992239a2da</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/internal/presigned-url</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.7?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.9?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/signin</name>
-      <version>v1.0.7</version>
+      <version>v1.0.9</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">6367005e50a51ec5e490ebd66455c04ebdf86f4871c65a1e42efe9019cf6ae8c</hash>
+        <hash alg="SHA-256">40a647d12d7bf200a614482cb7c84dd26097d4ac4b80704a298fc22eac0ff258</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.7?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.9?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/signin</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.12?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.15?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/sso</name>
-      <version>v1.30.12</version>
+      <version>v1.30.15</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">892b2f07d12d434f58aec988738e077aa971e41c8612baa13cad5940ba6989ab</hash>
+        <hash alg="SHA-256">945775f99484609658beff5dea45f386466ed3bb22ddff8643501a6306b62d43</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.12?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.15?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/sso</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.16?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.19?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/ssooidc</name>
-      <version>v1.35.16</version>
+      <version>v1.35.19</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">12751d52a44fd42373b760e457aeed271e970cde3195f0459be6f378d39055bd</hash>
+        <hash alg="SHA-256">773ced4356267cfaf176b3a2b9944c17a7ee3b05a55a90f64ad34b4dc78aa72b</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.16?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.19?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/ssooidc</url>
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.8?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.10?type=module" type="library">
       <name>github.com/aws/aws-sdk-go-v2/service/sts</name>
-      <version>v1.41.8</version>
+      <version>v1.41.10</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">5d04d04c5ef9be7ba0d935d2f26ec25497c2da79e260f6673b50f8369efad4ea</hash>
+        <hash alg="SHA-256">a7ca20bef2ee81c47fccb0574d7ad3923d1160151d12b6cc9c0145a75d8b9bf5</hash>
       </hashes>
-      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.8?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.10?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/aws/aws-sdk-go-v2/service/sts</url>
@@ -1025,14 +1025,14 @@
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?type=module" type="library">
+    <component bom-ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?type=module" type="library">
       <name>github.com/twmb/franz-go/pkg/kmsg</name>
-      <version>v1.12.0</version>
+      <version>v1.13.1</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">09b6ad0fb7abb352b30cd809a8f6ca3aad01cff58b05db131fbe7083379568f7</hash>
+        <hash alg="SHA-256">7c6e6422dc32b13939517a95c1beb8129404cb74f2745def6182b6d67510f9b2</hash>
       </hashes>
-      <purl>pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?goarch=amd64&amp;goos=linux&amp;type=module</purl>
       <externalReferences>
         <reference type="vcs">
           <url>https://github.com/twmb/franz-go/pkg/kmsg</url>
@@ -1238,14 +1238,14 @@
       </hashes>
       <purl>pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module" type="library">
+    <component bom-ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module" type="library">
       <name>google.golang.org/grpc</name>
-      <version>v1.79.2</version>
+      <version>v1.80.0</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">7d1303f78b36b484e9c891ad0419fb32432c78da4e654f19c600b730c05a5d15</hash>
+        <hash alg="SHA-256">5ebea6d9699664b113bd436f21499e0f93806a0330dc588a98c953755896b073</hash>
       </hashes>
-      <purl>pkg:golang/google.golang.org/grpc@v1.79.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/google.golang.org/grpc@v1.80.0?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
     <component bom-ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module" type="library">
       <name>google.golang.org/protobuf</name>
@@ -1312,59 +1312,59 @@
         </reference>
       </externalReferences>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/api@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/api@v0.35.3?type=module" type="library">
       <name>k8s.io/api</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">b56ee659cd91a715bb1d2e02a115e1b581d2ce67b53cdd548c61c9d5b76bb5dc</hash>
+        <hash alg="SHA-256">a40d9f88173af8df4f0dfed202296e286101b9272c4f3776b980640394733564</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/api@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/api@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module" type="library">
       <name>k8s.io/apiextensions-apiserver</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">8b24ad5c7a0966c5173e1fe7140b230b6f6b8c959d4a05261b55e9029136f5cd</hash>
+        <hash alg="SHA-256">d9f4148443bb3f5eec8a3ca56ddc2dd2705d5cfd13bc7ac78f429ea870fc1625</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module" type="library">
       <name>k8s.io/apimachinery</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">36ab0cfe699903bb075b4d8967d453b64df02274606d5c4bf0c3dfcd200d00af</hash>
+        <hash alg="SHA-256">31e694c10095ded8ca3f86dcc161a067f729fefa6c467433a8ee89ead272a05f</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/apimachinery@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/apimachinery@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module" type="library">
       <name>k8s.io/client-go</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">6147cf79f746240e1a9630dd6b201791cf7c0e73e421eb4c9783eb297f7b5bda</hash>
+        <hash alg="SHA-256">b359596e9378b88e88c5e4ccd9ca5db6bc0771238130bd4e0cd4c209fb0fd698</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/client-go@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/client-go@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/code-generator@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/code-generator@v0.35.3?type=module" type="library">
       <name>k8s.io/code-generator</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">dfcef8b306ced9cdba5564dfea5283e0d586c8721fc817930a4edc6821b74ee5</hash>
+        <hash alg="SHA-256">3431822e4126e87a3ae704dd49ed84804ae69adb2b7b338fc3039c86535ce854</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/code-generator@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/code-generator@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
-    <component bom-ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module" type="library">
+    <component bom-ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module" type="library">
       <name>k8s.io/component-base</name>
-      <version>v0.35.2</version>
+      <version>v0.35.3</version>
       <scope>required</scope>
       <hashes>
-        <hash alg="SHA-256">6ed811faa36ba56b914aebd64a7418b19cbcf327f9815c1e9afcf4cb0efda467</hash>
+        <hash alg="SHA-256">99b29bce820ccbb243592ff0a99a1b616d490d5467fd12916a83101cff5ce0fd</hash>
       </hashes>
-      <purl>pkg:golang/k8s.io/component-base@v0.35.2?goarch=amd64&amp;goos=linux&amp;type=module</purl>
+      <purl>pkg:golang/k8s.io/component-base@v0.35.3?goarch=amd64&amp;goos=linux&amp;type=module</purl>
     </component>
     <component bom-ref="pkg:golang/k8s.io/gengo/v2@v2.0.0-20251215205346-5ee0d033ba5b?type=module" type="library">
       <name>k8s.io/gengo/v2</name>
@@ -1458,20 +1458,20 @@
     </component>
   </components>
   <dependencies>
-    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.0?type=module">
-      <dependency ref="pkg:golang/github.com/alecthomas/kong@v1.14.0?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.11?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/crossplane-contrib/provider-kafka@v1.1.1-0.20260310123021-15a7d4c4def8?type=module">
+      <dependency ref="pkg:golang/github.com/alecthomas/kong@v1.15.0?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.14?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/crossplane/crossplane-runtime/v2@v2.2.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/google/go-cmp@v0.7.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/stretchr/testify@v1.11.1?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/twmb/franz-go@v1.20.7?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kadm@v1.17.2?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/controller-runtime@v0.23.3?type=module"></dependency>
     </dependency>
     <dependency ref="pkg:golang/dario.cat/mergo@v1.0.2?type=module"></dependency>
@@ -1481,85 +1481,85 @@
       <dependency ref="pkg:golang/github.com/xhit/go-str2duration/v2@v2.1.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/alecthomas/kong@v1.14.0?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/alecthomas/kong@v1.15.0?type=module"></dependency>
     <dependency ref="pkg:golang/github.com/alecthomas/units@v0.0.0-20240927000941-0f3dac36c52b?type=module">
       <dependency ref="pkg:golang/github.com/stretchr/testify@v1.11.1?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module">
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module">
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.11?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.11?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.5?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.7?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.12?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.16?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.8?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/config@v1.32.14?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.14?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.6?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.9?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.15?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.19?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.10?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.11?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.7?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.12?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.16?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.8?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/credentials@v1.19.14?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.9?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.15?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.19?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.10?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.19?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/feature/ec2/imds@v1.18.21?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.5?type=module"></dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?type=module">
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/ini@v1.8.6?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?type=module">
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.7?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/signin@v1.0.9?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.12?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sso@v1.30.15?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.16?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/ssooidc@v1.35.19?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.8?type=module">
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.3?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.19?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.6?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.19?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/sts@v1.41.10?type=module">
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2@v1.41.5?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.4.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.7.21?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding@v1.13.7?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.13.21?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
     </dependency>
     <dependency ref="pkg:golang/github.com/aws/smithy-go@v1.24.2?type=module"></dependency>
@@ -1628,18 +1628,18 @@
       <dependency ref="pkg:golang/golang.org/x/tools@v0.41.0?type=module"></dependency>
       <dependency ref="pkg:golang/gomodules.xyz/jsonpatch/v2@v2.5.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/evanphx/json-patch.v4@v4.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v2@v2.4.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/gengo/v2@v2.0.0-20251215205346-5ee0d033ba5b?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
@@ -1670,8 +1670,8 @@
       <dependency ref="pkg:golang/golang.org/x/text@v0.34.0?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/tools@v0.41.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/utils@v0.0.0-20260108192941-914a6e750570?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/json@v0.0.0-20250730193827-2d320260d730?type=module"></dependency>
@@ -1843,17 +1843,17 @@
     <dependency ref="pkg:golang/github.com/twmb/franz-go@v1.20.7?type=module">
       <dependency ref="pkg:golang/github.com/klauspost/compress@v1.18.4?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/pierrec/lz4/v4@v4.1.25?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/crypto@v0.48.0?type=module"></dependency>
     </dependency>
     <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kadm@v1.17.2?type=module">
       <dependency ref="pkg:golang/github.com/klauspost/compress@v1.18.4?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/pierrec/lz4/v4@v4.1.25?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/twmb/franz-go@v1.20.7?type=module"></dependency>
-      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?type=module"></dependency>
+      <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/crypto@v0.48.0?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.12.0?type=module"></dependency>
+    <dependency ref="pkg:golang/github.com/twmb/franz-go/pkg/kmsg@v1.13.1?type=module"></dependency>
     <dependency ref="pkg:golang/github.com/x448/float16@v0.8.4?type=module"></dependency>
     <dependency ref="pkg:golang/github.com/xhit/go-str2duration/v2@v2.1.0?type=module"></dependency>
     <dependency ref="pkg:golang/go.opentelemetry.io/otel@v1.40.0?type=module">
@@ -1930,7 +1930,7 @@
     <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module">
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module">
+    <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module">
       <dependency ref="pkg:golang/github.com/cespare/xxhash/v2@v2.3.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-logr/logr@v1.4.3?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/google/go-cmp@v0.7.0?type=module"></dependency>
@@ -1952,7 +1952,7 @@
     <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
     <dependency ref="pkg:golang/gopkg.in/yaml.v2@v2.4.0?type=module"></dependency>
     <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-    <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/fxamacker/cbor/v2@v2.9.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-logr/logr@v1.4.3?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/google/go-cmp@v0.7.0?type=module"></dependency>
@@ -1965,7 +1965,7 @@
       <dependency ref="pkg:golang/golang.org/x/net@v0.49.0?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/text@v0.34.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/utils@v0.0.0-20260108192941-914a6e750570?type=module"></dependency>
@@ -1974,7 +1974,7 @@
       <dependency ref="pkg:golang/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/yaml@v1.6.0?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/beorn7/perks@v1.0.1?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/blang/semver/v4@v4.0.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/cespare/xxhash/v2@v2.3.0?type=module"></dependency>
@@ -2019,16 +2019,16 @@
       <dependency ref="pkg:golang/golang.org/x/time@v0.14.0?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/tools@v0.41.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/evanphx/json-patch.v4@v4.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/gengo/v2@v2.0.0-20251215205346-5ee0d033ba5b?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
@@ -2038,7 +2038,7 @@
       <dependency ref="pkg:golang/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/yaml@v1.6.0?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/fxamacker/cbor/v2@v2.9.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-logr/logr@v1.4.3?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-openapi/jsonpointer@v0.22.4?type=module"></dependency>
@@ -2070,7 +2070,7 @@
       <dependency ref="pkg:golang/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/yaml@v1.6.0?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/emicklei/go-restful/v3@v3.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/fxamacker/cbor/v2@v2.9.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-logr/logr@v1.4.3?type=module"></dependency>
@@ -2100,8 +2100,8 @@
       <dependency ref="pkg:golang/gopkg.in/evanphx/json-patch.v4@v4.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/utils@v0.0.0-20260108192941-914a6e750570?type=module"></dependency>
@@ -2110,7 +2110,7 @@
       <dependency ref="pkg:golang/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/yaml@v1.6.0?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/emicklei/go-restful/v3@v3.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/fxamacker/cbor/v2@v2.9.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/go-logr/logr@v1.4.3?type=module"></dependency>
@@ -2134,7 +2134,7 @@
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/gengo/v2@v2.0.0-20251215205346-5ee0d033ba5b?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
@@ -2143,7 +2143,7 @@
       <dependency ref="pkg:golang/sigs.k8s.io/randfill@v1.0.0?type=module"></dependency>
       <dependency ref="pkg:golang/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482?type=module"></dependency>
     </dependency>
-    <dependency ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module">
+    <dependency ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module">
       <dependency ref="pkg:golang/github.com/beorn7/perks@v1.0.1?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/blang/semver/v4@v4.0.0?type=module"></dependency>
       <dependency ref="pkg:golang/github.com/cespare/xxhash/v2@v2.3.0?type=module"></dependency>
@@ -2183,14 +2183,14 @@
       <dependency ref="pkg:golang/golang.org/x/text@v0.34.0?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/time@v0.14.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/evanphx/json-patch.v4@v4.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/utils@v0.0.0-20260108192941-914a6e750570?type=module"></dependency>
@@ -2294,16 +2294,16 @@
       <dependency ref="pkg:golang/golang.org/x/tools@v0.41.0?type=module"></dependency>
       <dependency ref="pkg:golang/gomodules.xyz/jsonpatch/v2@v2.5.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/evanphx/json-patch.v4@v4.13.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/utils@v0.0.0-20260108192941-914a6e750570?type=module"></dependency>
@@ -2355,17 +2355,17 @@
       <dependency ref="pkg:golang/golang.org/x/time@v0.14.0?type=module"></dependency>
       <dependency ref="pkg:golang/golang.org/x/tools@v0.41.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260203192932-546029d2fa20?type=module"></dependency>
-      <dependency ref="pkg:golang/google.golang.org/grpc@v1.79.2?type=module"></dependency>
+      <dependency ref="pkg:golang/google.golang.org/grpc@v1.80.0?type=module"></dependency>
       <dependency ref="pkg:golang/google.golang.org/protobuf@v1.36.11?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/inf.v0@v0.9.1?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v2@v2.4.0?type=module"></dependency>
       <dependency ref="pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/api@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.2?type=module"></dependency>
-      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.2?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/api@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apiextensions-apiserver@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/apimachinery@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/client-go@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/code-generator@v0.35.3?type=module"></dependency>
+      <dependency ref="pkg:golang/k8s.io/component-base@v0.35.3?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/gengo/v2@v2.0.0-20251215205346-5ee0d033ba5b?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/klog/v2@v2.130.1?type=module"></dependency>
       <dependency ref="pkg:golang/k8s.io/kube-openapi@v0.0.0-20260127142750-a19766b6e2d4?type=module"></dependency>

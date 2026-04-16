@@ -22,15 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/twmb/franz-go/pkg/kadm"
-
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -41,19 +32,25 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
 const (
-	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
-	errTrackPCUsage         = "cannot track ProviderConfig usage"
-	errGetPC                = "cannot get ProviderConfig"
 	errGetCPC               = "cannot get ClusterProviderConfig"
 	errGetCreds             = "cannot get credentials"
+	errGetPC                = "cannot get ProviderConfig"
 	errListACL              = "cannot List ACLs"
 	errNewClient            = "cannot create new Service"
+	errNotAccessControlList = "managed resource is not an AccessControlList custom resource"
+	errTrackPCUsage         = "cannot track ProviderConfig usage"
 	errUpdateNotSupported   = "updates are not supported"
 )
 
@@ -116,11 +113,11 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
+	cache        kafka.ClientCache
 	kube         client.Client
-	usage        *resource.ProviderConfigUsageTracker
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
-	cachedClient *kadm.Client
+	usage        *resource.ProviderConfigUsageTracker
 }
 
 // Connect typically produces an ExternalClient by:
@@ -166,11 +163,12 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
 	}
 
-	svc, err := c.newServiceFn(ctx, data, c.kube)
+	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+		return c.newServiceFn(ctx, data, c.kube)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errNewClient, err)
 	}
-	c.cachedClient = svc
 
 	return &external{kafkaClient: svc, log: c.log}, nil
 }
@@ -182,10 +180,7 @@ type external struct {
 	log         logging.Logger
 }
 
-func (c *external) Disconnect(ctx context.Context) error {
-	if c.kafkaClient != nil {
-		c.kafkaClient.Close()
-	}
+func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
 	return nil
 }
@@ -202,9 +197,16 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	extname, _ := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	compare := acl.CompareAcls(*extname, *acl.Generate(&cr.Spec.ForProvider))
-	diff := acl.Diff(*extname, *acl.Generate(&cr.Spec.ForProvider))
+	extname, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
+	if err != nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: %w", err)
+	}
+	if extname == nil {
+		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: nil result")
+	}
+	generated := acl.Generate(&cr.Spec.ForProvider)
+	compare := acl.CompareAcls(*extname, *generated)
+	diff := acl.Diff(*extname, *generated)
 
 	if !compare {
 		err := strings.Join(diff, " ")
@@ -215,7 +217,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	ae, err := acl.List(ctx, c.kafkaClient, extname)
-
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
 	}
@@ -241,7 +242,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
@@ -252,21 +252,17 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, fmt.Errorf("could not convert external name to JSON: %w", err)
 	}
-	if meta.GetExternalName(cr) == "" {
-		meta.SetExternalName(cr, extname)
-		return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
-	}
-
+	// Always set the external name to the JSON form to ensure it's valid,
+	// even if it was previously set to a non-JSON value (e.g., by default initializers).
+	meta.SetExternalName(cr, extname)
 	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-
 	return managed.ExternalUpdate{}, errors.New(errUpdateNotSupported)
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	cr.Status.SetConditions(v1.Deleting())
 	if !ok {

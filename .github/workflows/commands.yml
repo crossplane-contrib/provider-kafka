@@ -19,7 +19,7 @@ jobs:
         allow-edits: "false"
         permission-level: write
     - name: Handle Command
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         POINTS: ${{ steps.command.outputs.command-arguments }}
       with:
@@ -85,8 +85,7 @@ jobs:
         fetch-depth: 0
 
     - name: Open Backport PR
-      uses: zeebe-io/backport-action@4aaf0e03a94ff0a619c9a511b61aeb42adea5b02 # v4.2.0
+      uses: zeebe-io/backport-action@3c06f323a58619da1e8522229ebc8d5de2633e46 # v4.3.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         github_workspace: ${{ github.workspace }}
-        version: v0.0.4

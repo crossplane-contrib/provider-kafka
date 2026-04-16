@@ -3,10 +3,10 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -25,15 +25,63 @@ import (
 
 const (
 	// default Secret field names for TLS certificates, like managed by cert-manager
+	defaultCACertificateField         = "ca.crt"
 	defaultClientCertificateKeyField  = "tls.key"
 	defaultClientCertificateCertField = "tls.crt"
+	defaultTLSDialTimeoutSeconds      = 10
 
+	errCannotAppendCACert             = "cannot append CA certificate to pool"
 	errCannotParse                    = "cannot parse credentials"
-	errMissingSASLMechanism           = "SASL mechanism is required"
-	errMissingSASLCredentials         = "SASL username and password are required"
-	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
+	errCannotReadCACertFile           = "cannot read CA cert file"
+	errCannotReadCACertSecret         = "cannot read CA cert secret"
+	errCannotReadClientCertFile       = "cannot read client cert file"
 	errCannotReadClientCertSecret     = "cannot read client cert secret"
+	errInvalidCipherSuite             = "invalid cipher suite"
+	errInvalidCipherSuiteTLS13        = "cipherSuites cannot be configured in TLS13"
+	errInvalidClientSessionCache      = "invalid client session cache capacity: must be >= 0"
+	errInvalidCurve                   = "invalid curve preference"
+	errInvalidDialTimeout             = "invalid dial timeout: must be >= 0"
+	errInvalidTLSVersion              = "invalid TLS version"
+	errMissingCACertSecretRefKeys     = "missing CA cert ref secret name or namespace"
+	errMissingClientCertFileKeys      = "missing client certificate keyFile or certFile"
+	errMissingClientCertSecretRefKeys = "missing client cert ref secret name or namespace"
+	errMissingSASLCredentials         = "SASL username and password are required"
+	errMissingSASLMechanism           = "SASL mechanism is required"
 )
+
+// cipherSuiteMap caches the mapping of cipher suite names to IDs.
+// Only includes secure cipher suites from tls.CipherSuites() (TLS 1.0-1.2 only).
+var cipherSuiteMap = func() map[string]uint16 {
+	m := make(map[string]uint16)
+	for _, cs := range tls.CipherSuites() {
+		m[cs.Name] = cs.ID
+	}
+	return m
+}()
+
+// TLS 1.3 cipher suite names that are not user-configurable in Go's tls.Config.CipherSuites
+// CipherSuites field only applies to TLS 1.0-1.2; TLS 1.3 cipher selection is automatic.
+var tls13CipherSuites = map[string]bool{
+	"TLS_AES_128_GCM_SHA256":       true,
+	"TLS_AES_256_GCM_SHA384":       true,
+	"TLS_CHACHA20_POLY1305_SHA256": true,
+	"TLS_AES_128_CCM_SHA256":       true,
+	"TLS_AES_128_CCM_8_SHA256":     true,
+}
+
+// TLS curve preference lookup map
+var tlsCurves = map[string]tls.CurveID{
+	"P256":   tls.CurveP256,
+	"P384":   tls.CurveP384,
+	"P521":   tls.CurveP521,
+	"X25519": tls.X25519,
+}
+
+// TLS version lookup map
+var tlsVersions = map[string]uint16{
+	"TLS12": tls.VersionTLS12,
+	"TLS13": tls.VersionTLS13,
+}
 
 // NewAdminClient creates a new AdminClient with supplied credentials
 func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) { // nolint: gocyclo
@@ -41,6 +89,11 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	if err := json.Unmarshal(data, &kc); err != nil {
 		return nil, fmt.Errorf("%s: %w", errCannotParse, err)
+	}
+
+	// Validate TLS configuration if provided
+	if kc.TLS != nil && kc.TLS.DialTimeoutSeconds < 0 {
+		return nil, fmt.Errorf("%s (received: %d)", errInvalidDialTimeout, kc.TLS.DialTimeoutSeconds)
 	}
 
 	// Validate SASL configuration if provided
@@ -71,7 +124,6 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 			}.AsMechanism()
 		case "aws-msk-iam":
 			mechanism = kaws.ManagedStreamingIAM(authenticateAwsIam)
-			opts = append(opts, kgo.Dialer((&tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}).DialContext))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
@@ -83,13 +135,33 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		opts = append(opts, kgo.SASL(mechanism))
 	}
 
+	// Determine dial timeout and whether TLS is needed
+	dialTimeout := defaultTLSDialTimeoutSeconds
+	if kc.TLS != nil && kc.TLS.DialTimeoutSeconds > 0 {
+		dialTimeout = kc.TLS.DialTimeoutSeconds
+	}
+
+	isAwsMskIam := kc.SASL != nil && strings.EqualFold(kc.SASL.Mechanism, "aws-msk-iam")
+
+	// Set dial timeout if TLS or AWS-MSK-IAM (which requires TLS)
+	if kc.TLS != nil || isAwsMskIam {
+		opts = append(opts, kgo.DialTimeout(time.Duration(dialTimeout)*time.Second))
+	}
+
+	// Configure TLS
 	if kc.TLS != nil {
 		tc := new(tls.Config)
 		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
 		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
 			return nil, err
 		}
+		if err := configureTLSAdvanced(kc.TLS, tc); err != nil {
+			return nil, err
+		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
+	} else if isAwsMskIam {
+		// AWS-MSK-IAM requires TLS; enable with default config
+		opts = append(opts, kgo.DialTLS())
 	}
 
 	c, err := kgo.NewClient(opts...)
@@ -122,11 +194,30 @@ func authenticateAwsIam(ctx context.Context) (a kaws.Auth, err error) {
 
 // Add options to TLS config for client certificate (if configured)
 func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
-	sr := kc.TLS.ClientCertificateSecretRef
+	// Validate that both clientCertificateSecretRef and clientCertificatePath are not both set.
+	// In Go TLS, GetClientCertificate (used for file-based certs) takes precedence over Certificates (used for secret-based certs),
+	// so setting both would silently ignore the secret-based certificate.
+	if kc.TLS.ClientCertificateSecretRef != nil && kc.TLS.ClientCertificatePath != nil {
+		return errors.New("cannot specify both clientCertificateSecretRef and clientCertificatePath: " +
+			"use clientCertificateSecretRef for static certs or clientCertificatePath for certificates with rotation support")
+	}
+
+	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	if err := configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc); err != nil {
+		return err
+	}
+	if err := configureCACertificateSecretRef(ctx, kc.TLS.CACertificateSecretRef, kube, tc); err != nil {
+		return err
+	}
+	return configureCACertificateFile(kc.TLS.CACertificateFile, tc)
+}
+
+func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSecretRef, kube client.Client, tc *tls.Config) error {
 	if sr == nil {
 		return nil
 	}
-
 	if sr.Name == "" || sr.Namespace == "" {
 		return errors.New(errMissingClientCertSecretRefKeys)
 	}
@@ -138,7 +229,20 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 
 	kf := valueOrDefault(sr.KeyField, defaultClientCertificateKeyField)
 	cf := valueOrDefault(sr.CertField, defaultClientCertificateCertField)
-	kp, err := tls.X509KeyPair(secret.Data[cf], secret.Data[kf])
+
+	certPEM, certOk := secret.Data[cf]
+
+	if !certOk || len(certPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate field %q in secret %s/%s", cf, sr.Namespace, sr.Name)
+	}
+
+	keyPEM, keyOk := secret.Data[kf]
+
+	if !keyOk || len(keyPEM) == 0 {
+		return fmt.Errorf("missing or empty client certificate key field %q in secret %s/%s", kf, sr.Namespace, sr.Name)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return fmt.Errorf("invalid key pair, using fields %q/%q from secret %q in namespace %q: %w",
 			cf, kf, sr.Name, sr.Namespace, err)
@@ -148,10 +252,245 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 	return nil
 }
 
+func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) error {
+	if fr == nil {
+		return nil
+	}
+	if fr.KeyFile == "" || fr.CertFile == "" {
+		return errors.New(errMissingClientCertFileKeys)
+	}
+
+	// Validate files exist and form valid key pair on initial load
+	if err := validateClientCertificatePath(fr); err != nil {
+		return err
+	}
+
+	// Use GetClientCertificate callback to support certificate rotation.
+	// This allows certificates mounted via cert-manager or CSI to be reloaded
+	// on each TLS handshake without restarting the provider.
+	tc.GetClientCertificate = func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		return loadClientCertificate(fr)
+	}
+
+	return nil
+}
+
+func validateClientCertificatePath(fr *ClientCertificatePath) error {
+	// Validate that files exist and can be read initially
+	if _, err := os.Stat(fr.CertFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	if _, err := os.Stat(fr.KeyFile); err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	// Validate that cert and key form a valid pair
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
+		return fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
+	}
+	return nil
+}
+
+func loadClientCertificate(fr *ClientCertificatePath) (*tls.Certificate, error) {
+	certPEM, err := os.ReadFile(fr.CertFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
+	}
+	keyPEM, err := os.ReadFile(fr.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
+	}
+
+	kp, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("invalid key pair, using cert file %q and key file %q: %w",
+			fr.CertFile, fr.KeyFile, err)
+	}
+	return &kp, nil
+}
+
+func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecretRef, kube client.Client, tc *tls.Config) error {
+	if sr == nil {
+		return nil
+	}
+	if sr.Name == "" || sr.Namespace == "" {
+		return errors.New(errMissingCACertSecretRefKeys)
+	}
+
+	secret := &corev1.Secret{}
+	if err := kube.Get(ctx, types.NamespacedName{Namespace: sr.Namespace, Name: sr.Name}, secret); err != nil {
+		return fmt.Errorf("%s: %w", errCannotReadCACertSecret, err)
+	}
+
+	field := valueOrDefault(sr.CAField, defaultCACertificateField)
+	caPEM, ok := secret.Data[field]
+	if !ok || len(caPEM) == 0 {
+		return fmt.Errorf("missing or empty CA certificate field %q in secret %s/%s", field, sr.Namespace, sr.Name)
+	}
+	return appendCACert(caPEM, tc)
+}
+
+func configureCACertificateFile(caFile string, tc *tls.Config) error {
+	if caFile == "" {
+		return nil
+	}
+
+	caPEM, err := os.ReadFile(caFile) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("%s %q: %w", errCannotReadCACertFile, caFile, err)
+	}
+
+	return appendCACert(caPEM, tc)
+}
+
+func appendCACert(caPEM []byte, tc *tls.Config) error {
+	var pool *x509.CertPool
+
+	// Reuse existing pool if already initialized
+	if tc.RootCAs != nil {
+		pool = tc.RootCAs
+	} else {
+		// Initialize from system roots if available
+		var err error
+		pool, err = x509.SystemCertPool()
+		if err != nil {
+			// Fallback to empty pool if system roots unavailable
+			pool = x509.NewCertPool()
+		}
+	}
+
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return errors.New(errCannotAppendCACert)
+	}
+	tc.RootCAs = pool
+	return nil
+}
+
 // Helper method to return default if value string is empty.
 func valueOrDefault(value, defaultValue string) string {
 	if value != "" {
 		return value
 	}
 	return defaultValue
+}
+
+// configureTLSVersions sets MinVersion and MaxVersion constraints
+func configureTLSVersions(t *TLS, tc *tls.Config) error {
+	if t.MinVersion != "" {
+		version, ok := tlsVersions[t.MinVersion]
+		if !ok {
+			return fmt.Errorf("%s %q: valid values are TLS12, TLS13", errInvalidTLSVersion, t.MinVersion)
+		}
+		tc.MinVersion = version
+	}
+
+	if t.MaxVersion != "" {
+		version, ok := tlsVersions[t.MaxVersion]
+		if !ok {
+			return fmt.Errorf("%s %q: valid values are TLS12, TLS13", errInvalidTLSVersion, t.MaxVersion)
+		}
+		tc.MaxVersion = version
+	}
+
+	// Validate that MinVersion <= MaxVersion when both are set
+	if tc.MinVersion != 0 && tc.MaxVersion != 0 && tc.MinVersion > tc.MaxVersion {
+		return fmt.Errorf("TLS MinVersion (%q) cannot be greater than MaxVersion (%q)", t.MinVersion, t.MaxVersion)
+	}
+
+	return nil
+}
+
+// configureCipherSuites sets the allowed cipher suites
+func configureCipherSuites(t *TLS, tc *tls.Config) error {
+	if len(t.CipherSuites) > 0 {
+		// Check if MinVersion forces TLS 1.3 only (making CipherSuites ineffective)
+		if tc.MinVersion == tls.VersionTLS13 {
+			return errors.New(errInvalidCipherSuiteTLS13)
+		}
+
+		suites := make([]uint16, 0, len(t.CipherSuites))
+		for _, name := range t.CipherSuites {
+			// Check if this is a TLS 1.3 suite (which cannot be configured in Go)
+			if tls13CipherSuites[name] {
+				return fmt.Errorf("%s %q: TLS 1.3 cipher suites are not configurable in Go; they are automatically selected based on protocol negotiation", errInvalidCipherSuite, name)
+			}
+			id, ok := cipherSuiteMap[name]
+			if !ok {
+				return fmt.Errorf("%s %q: valid values are from tls.CipherSuites() (TLS 1.0-1.2 only)", errInvalidCipherSuite, name)
+			}
+			suites = append(suites, id)
+		}
+		tc.CipherSuites = suites
+	}
+	return nil
+}
+
+// configureCurvePreferences sets the elliptic curve preferences
+func configureCurvePreferences(t *TLS, tc *tls.Config) error {
+	if len(t.CurvePreferences) > 0 {
+		curves := make([]tls.CurveID, 0, len(t.CurvePreferences))
+		for _, name := range t.CurvePreferences {
+			curve, ok := tlsCurves[name]
+			if !ok {
+				return fmt.Errorf("%s %q: valid values are P256, P384, P521, X25519", errInvalidCurve, name)
+			}
+			curves = append(curves, curve)
+		}
+		tc.CurvePreferences = curves
+	}
+	return nil
+}
+
+// configureTLSAdvanced configures advanced TLS options in the tls.Config
+func configureTLSAdvanced(t *TLS, tc *tls.Config) error {
+	if t == nil {
+		return nil
+	}
+
+	if err := configureTLSVersions(t, tc); err != nil {
+		return err
+	}
+
+	if err := configureCipherSuites(t, tc); err != nil {
+		return err
+	}
+
+	if err := configureCurvePreferences(t, tc); err != nil {
+		return err
+	}
+
+	// Configure session ticket handling
+	tc.SessionTicketsDisabled = t.SessionTicketsDisabled
+
+	// Configure dynamic record sizing
+	tc.DynamicRecordSizingDisabled = t.DynamicRecordSizingDisabled
+
+	// Configure ALPN protocols
+	if len(t.NextProtos) > 0 {
+		tc.NextProtos = t.NextProtos
+	}
+
+	// Configure SNI server name
+	if t.ServerName != "" {
+		tc.ServerName = t.ServerName
+	}
+
+	// Configure session cache
+	if t.ClientSessionCacheCapacity < 0 {
+		return fmt.Errorf("%s (received: %d)", errInvalidClientSessionCache, t.ClientSessionCacheCapacity)
+	}
+	if t.ClientSessionCacheCapacity > 0 {
+		tc.ClientSessionCache = tls.NewLRUClientSessionCache(t.ClientSessionCacheCapacity)
+	}
+
+	return nil
 }
