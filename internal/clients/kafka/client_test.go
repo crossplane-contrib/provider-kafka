@@ -927,8 +927,8 @@ func TestConfigureTLSAdvanced_ClientSessionCacheCapacity_Negative(t *testing.T) 
 	require.ErrorContains(t, err, "-10")
 }
 
-// TestConfigureTLSAdvanced_DialTimeout tests dial timeout configuration
-func TestConfigureTLSAdvanced_DialTimeout(t *testing.T) {
+// TestConfigureTLSAdvanced_DialTimeout_Ignored tests that DialTimeoutSeconds is ignored by configureTLSAdvanced without error.
+func TestConfigureTLSAdvanced_DialTimeout_Ignored(t *testing.T) {
 	t.Parallel()
 	tc := &tls.Config{}
 	tlsConfig := &TLS{DialTimeoutSeconds: 30}
@@ -936,18 +936,18 @@ func TestConfigureTLSAdvanced_DialTimeout(t *testing.T) {
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error")
 	// DialTimeoutSeconds is applied via kgo.DialTimeout in NewAdminClient, not directly in configureTLSAdvanced
-	// So we just verify configureTLSAdvanced handles it without error
+	// S// This test only verifies configureTLSAdvanced accepts the field without error.
 }
 
-// TestConfigureTLSAdvanced_DialTimeout_Zero tests zero timeout defaults to 10 seconds
-func TestConfigureTLSAdvanced_DialTimeout_Zero(t *testing.T) {
+// TestConfigureTLSAdvanced_DialTimeout_Zero_Ignored tests that a zero DialTimeoutSeconds is ignored by configureTLSAdvanced without error.
+func TestConfigureTLSAdvanced_DialTimeout_Zero_Ignored(t *testing.T) {
 	t.Parallel()
 	tc := &tls.Config{}
 	tlsConfig := &TLS{DialTimeoutSeconds: 0}
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for zero timeout")
-	// Zero or negative timeout is handled by NewAdminClient which defaults to 10 seconds
+	// Zero or negative timeout defaulting is handled by NewAdminClient, not configureTLSAdvanced.
 }
 
 // TestConfigureTLSAdvanced_Combined tests multiple TLS options together
