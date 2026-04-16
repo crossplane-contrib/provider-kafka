@@ -32,7 +32,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"

@@ -1,5 +1,27 @@
 version: "2"
 
+run:
+  timeout: 10m
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gofumpt
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/crossplane-contrib/provider-kafka
+  exclusions:
+    generated: lax
+    paths:
+      - zz_\..+\.go$
+      - third_party$
+      - builtin$
+      - examples$
+
 linters:
   enable:
     - asasalint
@@ -91,19 +113,19 @@ linters:
         text: (unnamedResult|exitAfterDefer)
       - linters:
           - gocritic
-        text: '(hugeParam|rangeValCopy):'
+        text: "(hugeParam|rangeValCopy):"
       - linters:
           - staticcheck
-        text: 'SA3000:'
+        text: "SA3000:"
       - linters:
           - gosec
-        text: 'G101:'
+        text: "G101:"
       - linters:
           - gosec
-        text: 'G104:'
+        text: "G104:"
       - linters:
           - gosec
-        text: 'G115:'
+        text: "G115:"
     paths:
       - zz_\..+\.go$
       - third_party$
@@ -113,20 +135,3 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  settings:
-    gofmt:
-      simplify: true
-    goimports:
-      local-prefixes:
-        - github.com/crossplane-contrib/provider-kafka
-  exclusions:
-    generated: lax
-    paths:
-      - zz_\..+\.go$
-      - third_party$
-      - builtin$
-      - examples$

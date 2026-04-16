@@ -32,7 +32,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -77,7 +76,8 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: kafka.NewAdminClient}),
+			newServiceFn: kafka.NewAdminClient,
+		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // crossplane-runtime doesn't support new events API yet

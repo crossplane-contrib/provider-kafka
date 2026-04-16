@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kmsg"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
 
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
@@ -25,15 +25,12 @@ type AccessControlList struct {
 	ResourcePatternTypeFilter string `json:"ResourcePatternTypeFilter"`
 }
 
-// List lists all the ACLs in Kafka
-func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) { //nolint:gocyclo
-
+// buildACLBuilder constructs an ACLBuilder from an AccessControlList.
+func buildACLBuilder(accessControlList *AccessControlList) (*kadm.ACLBuilder, error) {
 	o, err := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
 	if err != nil {
 		return nil, fmt.Errorf("did not return ACL Operation: %w", err)
 	}
-
-	ao := []kadm.ACLOperation{o}
 
 	rpt, err := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
 	if err != nil {
@@ -41,7 +38,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	}
 
 	b := kadm.ACLBuilder{}
-	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
+	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(o).ResourcePatternType(rpt)
 
 	switch accessControlList.ResourceType {
 	case "Topic":
@@ -54,6 +51,16 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 		ab = ab.Clusters()
 	case "Any":
 		ab = ab.AnyResource(accessControlList.ResourceName)
+	}
+
+	return ab, nil
+}
+
+// List lists all the ACLs in Kafka
+func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
+	ab, err := buildACLBuilder(accessControlList)
+	if err != nil {
+		return nil, err
 	}
 
 	resp, err := cl.DescribeACLs(ctx, ab)
@@ -77,26 +84,9 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 // Create creates an ACL from the Kafka side
 func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-
-	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
-	ao := []kadm.ACLOperation{o}
-
-	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
-
-	b := kadm.ACLBuilder{}
-	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
-
-	switch accessControlList.ResourceType {
-	case "Topic":
-		ab = ab.Topics(accessControlList.ResourceName)
-	case "Group":
-		ab = ab.Groups(accessControlList.ResourceName)
-	case "TransactionalID":
-		ab = ab.TransactionalIDs(accessControlList.ResourceName)
-	case "Cluster":
-		ab = ab.Clusters()
-	case "Any":
-		ab = ab.AnyResource(accessControlList.ResourceName)
+	ab, err := buildACLBuilder(accessControlList)
+	if err != nil {
+		return err
 	}
 
 	resp, err := cl.CreateACLs(ctx, ab)
@@ -113,49 +103,25 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	return nil
 }
 
-// Delete creates an ACL from the Kafka side
+// Delete deletes an ACL from the Kafka side
 func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
-
-	o, _ := kmsg.ParseACLOperation(strings.ToLower(accessControlList.ResourceOperation))
-	ao := []kadm.ACLOperation{o}
-
-	rpt, _ := kmsg.ParseACLResourcePatternType(strings.ToLower(accessControlList.ResourcePatternTypeFilter))
-
-	b := kadm.ACLBuilder{}
-	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(ao[0]).ResourcePatternType(rpt)
-
-	switch accessControlList.ResourceType {
-	case "Topic":
-		ab = ab.Topics(accessControlList.ResourceName)
-	case "Group":
-		ab = ab.Groups(accessControlList.ResourceName)
-	case "TransactionalID":
-		ab = ab.TransactionalIDs(accessControlList.ResourceName)
-	case "Cluster":
-		ab = ab.Clusters()
-	case "Any":
-		ab = ab.AnyResource(accessControlList.ResourceName)
-	}
-
-	resp, err := cl.DeleteACLs(ctx, ab)
+	ab, err := buildACLBuilder(accessControlList)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Delete Response:", resp)
-
-	return nil
+	_, err = cl.DeleteACLs(ctx, ab)
+	return err
 }
 
 // ConvertToJSON performs a json marshalling for ACLs
 func ConvertToJSON(acl *AccessControlList) (string, error) {
 	j, err := json.Marshal(acl)
 	if err != nil {
-		return "", fmt.Errorf("could not unmarshal ACL from JSON: %w", err)
+		return "", fmt.Errorf("could not marshal ACL to JSON: %w", err)
 	}
-	name := string(j)
 
-	return name, nil
+	return string(j), nil
 }
 
 // ConvertFromJSON performs a json unmarshalling for ACLs
@@ -222,7 +188,6 @@ func Generate(params *v1alpha1.AccessControlListParameters) *AccessControlList {
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
 // supplied Kafka ACLs.
 func IsUpToDate(in *v1alpha1.AccessControlListParameters, observed *AccessControlList) bool {
-
 	if in.ResourceType != observed.ResourceType {
 		return false
 	}

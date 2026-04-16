@@ -22,28 +22,25 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/twmb/franz-go/pkg/kadm"
-
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
 )
 
 const (
@@ -64,7 +61,8 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		managed.WithExternalConnector(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: kafka.NewAdminClient}),
+			newServiceFn: kafka.NewAdminClient,
+		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // crossplane-runtime doesn't support new events API yet
@@ -230,7 +228,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
@@ -248,12 +245,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-
 	return managed.ExternalUpdate{}, errors.New(errUpdateNotSupported)
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	cr.Status.SetConditions(v1.Deleting())
 	if !ok {
