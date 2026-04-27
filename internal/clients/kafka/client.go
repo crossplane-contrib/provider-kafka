@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -130,7 +129,6 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 			mechanism = kaws.ManagedStreamingIAM(func(ctx context.Context) (kaws.Auth, error) {
 				return authenticateAwsIam(ctx, kc.SASL.RoleArn)
 			})
-			opts = append(opts, kgo.Dialer((&tls.Dialer{NetDialer: &net.Dialer{Timeout: time.Duration(kc.TLS.DialTimeoutSeconds) * time.Second}}).DialContext))
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
