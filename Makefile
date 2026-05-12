@@ -111,7 +111,7 @@ go.mod.cachedir:
 # as including the k8s_tools machinery prior to the xpkg machinery sets UP to
 # point to tool cache.
 build.init: $(CROSSPLANE_CLI)
-build.done: xpkg.extensions
+build.done: xpkg.append
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
