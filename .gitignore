@@ -12,3 +12,4 @@ kc.json
 .idea/
 kaf.yaml
 local-test-scripts/*
+/extensions

@@ -17,8 +17,8 @@ PLATFORMS ?= linux_amd64 linux_arm64
 
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
-GO_REQUIRED_VERSION ?= 1.26.2
-GOLANGCILINT_VERSION = 2.11.4
+GO_REQUIRED_VERSION ?= 1.26.3
+GOLANGCILINT_VERSION = 2.12.2
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -32,9 +32,10 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 KIND_VERSION = v0.31.0
 KUBECTL_VERSION = v1.35.0
 UP_CHANNEL = stable
-UP_VERSION = v0.37.0
-CROSSPLANE_CLI_VERSION = v2.2.0
-CROSSPLANE_VERSION = 2.2.0
+UP_VERSION = v0.46.0
+UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
+CROSSPLANE_CLI_VERSION = v2.2.1
+CROSSPLANE_VERSION = 2.2.1
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -61,6 +62,30 @@ XPKGS = $(PROJECT_NAME)
 # we ensure image is present in daemon.
 xpkg.build.provider-kafka: do.build.images
 
+# ====================================================================================
+# Package Extensions (readme, SBOM)
+# See: https://docs.upbound.io/manuals/marketplace/packages/#add-documentation-icons-and-other-assets-to-your-package
+
+EXTENSIONS_DIR := $(ROOT_DIR)/extensions
+
+$(UP):
+	@$(INFO) installing up $(UP_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@curl -fsSLo $(UP) https://cli.upbound.io/$(UP_CHANNEL)/$(UP_VERSION)/bin/$(SAFEHOSTPLATFORM)/up || $(FAIL)
+	@chmod +x $(UP)
+	@$(OK) installing up $(UP_VERSION)
+
+xpkg.extensions: sbom
+	@$(INFO) Preparing package extensions
+	@mkdir -p $(EXTENSIONS_DIR)/readme
+	@cp $(ROOT_DIR)/README.md $(EXTENSIONS_DIR)/readme/readme.md
+	@$(OK) Package extensions prepared at $(EXTENSIONS_DIR)
+
+xpkg.append: xpkg.extensions $(UP)
+	@$(INFO) Appending extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
+	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
+	@$(OK) Appended extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
+
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
@@ -86,6 +111,7 @@ go.mod.cachedir:
 # as including the k8s_tools machinery prior to the xpkg machinery sets UP to
 # point to tool cache.
 build.init: $(CROSSPLANE_CLI)
+build.done: xpkg.extensions
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
@@ -221,11 +247,21 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 
-sbom:
-	@$(INFO) Generating SBOM
-	@$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
-	@cyclonedx-gomod mod -output provider-kafka-sbom.xml -output-version 1.6
-	@$(OK) SBOM generated at provider-kafka-sbom.xml
+SYFT_VERSION ?= 1.44.0
+SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
+
+$(SYFT):
+	@$(INFO) installing syft $(SYFT_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $(TOOLS_HOST_DIR) v$(SYFT_VERSION) || $(FAIL)
+	@mv $(TOOLS_HOST_DIR)/syft $(SYFT)
+	@$(OK) installing syft $(SYFT_VERSION)
+
+sbom: $(SYFT)
+	@$(INFO) Generating SPDX SBOM
+	@mkdir -p $(EXTENSIONS_DIR)/sbom
+	@$(SYFT) scan dir:. --source-name $(PROJECT_NAME) --source-version $(VERSION) -o spdx-json=$(EXTENSIONS_DIR)/sbom/sbom.spdx.json
+	@$(OK) SBOM generated at $(EXTENSIONS_DIR)/sbom/sbom.spdx.json
 	
 test: unit-tests.init unit-tests.run unit-tests.done
 
@@ -240,4 +276,4 @@ unit-tests.done: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
 	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
 
-.PHONY: dev kind-setup kind-kafka-setup review sbom test
+.PHONY: dev kind-setup kind-kafka-setup review sbom test xpkg.extensions xpkg.append
