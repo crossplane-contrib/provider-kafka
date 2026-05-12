@@ -82,9 +82,9 @@ xpkg.extensions: sbom
 	@$(OK) Package extensions prepared at $(EXTENSIONS_DIR)
 
 xpkg.append: xpkg.extensions $(UP)
-	@$(INFO) Appending extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
-	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
-	@$(OK) Appended extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
+	@$(INFO) Appending extensions to $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION)
+	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
+	@$(OK) Appended extensions to $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION)
 
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
