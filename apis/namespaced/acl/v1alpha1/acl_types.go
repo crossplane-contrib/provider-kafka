@@ -22,6 +22,7 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	xpv2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -74,5 +75,8 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&AccessControlList{}, &AccessControlListList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(SchemeGroupVersion, &AccessControlList{}, &AccessControlListList{})
+		return nil
+	})
 }
