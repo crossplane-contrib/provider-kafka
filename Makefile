@@ -71,7 +71,7 @@ EXTENSIONS_DIR := $(ROOT_DIR)/extensions
 $(UP):
 	@$(INFO) installing up $(UP_VERSION)
 	@mkdir -p $(TOOLS_HOST_DIR)
-	@curl -fsSLo $(UP) https://cli.upbound.io/$(UP_CHANNEL)/$(UP_VERSION)/bin/$(SAFEHOSTPLATFORM)/up || $(FAIL)
+	@curl -fsSLo $(UP) https://cli.upbound.io/$(UP_CHANNEL)/$(UP_VERSION)/bin/$(SAFEHOST_PLATFORM)/up || $(FAIL)
 	@chmod +x $(UP)
 	@$(OK) installing up $(UP_VERSION)
 
