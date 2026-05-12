@@ -26,6 +26,7 @@ jobs:
       XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
 
   add-extensions:
+    needs: publish-provider-package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,7 +34,7 @@ jobs:
         with:
           submodules: true
       - name: Append extensions
-        run: make xpkg.append
+        run: make xpkg.append VERSION=${{ inputs.version }}
     env:
       XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
       XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
