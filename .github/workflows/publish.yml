@@ -26,6 +26,7 @@ jobs:
       XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
 
   add-extensions:
+    needs: publish-provider-package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
