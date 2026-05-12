@@ -17,8 +17,8 @@ PLATFORMS ?= linux_amd64 linux_arm64
 
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
-GO_REQUIRED_VERSION ?= 1.26.2
-GOLANGCILINT_VERSION = 2.11.4
+GO_REQUIRED_VERSION ?= 1.26.3
+GOLANGCILINT_VERSION = 2.12.2
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -32,10 +32,10 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 KIND_VERSION = v0.31.0
 KUBECTL_VERSION = v1.35.0
 UP_CHANNEL = stable
-UP_VERSION = v0.44.3
+UP_VERSION = v0.46.0
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
-CROSSPLANE_CLI_VERSION = v2.2.0
-CROSSPLANE_VERSION = 2.2.0
+CROSSPLANE_CLI_VERSION = v2.2.1
+CROSSPLANE_VERSION = 2.2.1
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -247,7 +247,7 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 
-SYFT_VERSION ?= 1.26.1
+SYFT_VERSION ?= 1.44.0
 SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 
 $(SYFT):
