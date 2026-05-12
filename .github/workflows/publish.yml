@@ -24,3 +24,16 @@ jobs:
       GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
       XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
       XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
+
+  add-extensions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+      - name: Append extensions
+        run: make xpkg.append
+    env:
+      XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
+      XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
