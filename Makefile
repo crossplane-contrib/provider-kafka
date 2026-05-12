@@ -82,9 +82,9 @@ xpkg.extensions: sbom
 	@$(OK) Package extensions prepared at $(EXTENSIONS_DIR)
 
 xpkg.append: xpkg.extensions $(UP)
-	@$(INFO) Appending extensions to $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION)
-	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
-	@$(OK) Appended extensions to $(REGISTRY_ORGS)/$(PROJECT_NAME):$(VERSION)
+	@$(INFO) Appending extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
+	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
+	@$(OK) Appended extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
 
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
@@ -111,7 +111,6 @@ go.mod.cachedir:
 # as including the k8s_tools machinery prior to the xpkg machinery sets UP to
 # point to tool cache.
 build.init: $(CROSSPLANE_CLI)
-build.done: xpkg.append
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
