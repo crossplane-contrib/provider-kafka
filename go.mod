@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
-	github.com/crossplane/crossplane-runtime/v2 v2.2.0
+	github.com/crossplane/crossplane-runtime/v2 v2.2.1
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
 	github.com/twmb/franz-go v1.21.1
