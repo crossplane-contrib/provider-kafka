@@ -611,7 +611,7 @@ func TestConfigureTLSAdvanced_NilReference(t *testing.T) {
 func TestConfigureTLSAdvanced_MinVersion_Valid(t *testing.T) {
 	t.Parallel()
 	tc := &tls.Config{}
-	tlsConfig := &TLS{MinVersion: "TLS13"}
+	tlsConfig := &TLS{MinVersion: tlsVersion13}
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for valid TLS version")
@@ -634,7 +634,7 @@ func TestConfigureTLSAdvanced_MinVersion_Invalid(t *testing.T) {
 func TestConfigureTLSAdvanced_MaxVersion_Valid(t *testing.T) {
 	t.Parallel()
 	tc := &tls.Config{}
-	tlsConfig := &TLS{MaxVersion: "TLS12"}
+	tlsConfig := &TLS{MaxVersion: tlsVersion12}
 
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for valid TLS version")
