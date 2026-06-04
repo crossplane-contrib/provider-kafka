@@ -29,8 +29,8 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 # ====================================================================================
 # Setup Kubernetes tools
 
-KIND_VERSION = v0.31.0
-KUBECTL_VERSION = v1.35.0
+KIND_VERSION = v0.32.0
+KUBECTL_VERSION = v1.36.1
 UP_CHANNEL = stable
 UP_VERSION = v0.48.1
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
@@ -224,6 +224,8 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafka/dev --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkauser/user --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkatopic/pre-existing --timeout=300s
+	@$(INFO) Waiting for Kafka broker to be fully initialized...
+	@for i in $$(seq 1 30); do $(KUBECTL) -n kafka-cluster exec kafka-dev-0 -- bash -c 'echo "test" | kafka-console-producer.sh --broker-list localhost:9092 --topic pre-existing' > /dev/null 2>&1 && break || sleep 2; done
 	@$(INFO) Getting service IP and port
 	@KIND_NODE_IP=$$($(KIND) get nodes --name=$(KIND_CLUSTER_NAME) | \
 	xargs $(KUBECTL) get node -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}') && \
