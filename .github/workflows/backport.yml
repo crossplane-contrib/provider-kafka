@@ -7,7 +7,8 @@ on:
   # be able to review PRs before this runs makes this fairly safe.
   # https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
   pull_request_target:
-    types: [closed]
+    types:
+      - closed
   # See also commands.yml for the /backport triggered variant of this workflow.
 
 jobs:
