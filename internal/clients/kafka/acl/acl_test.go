@@ -16,20 +16,20 @@ import (
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
 var baseACL = AccessControlList{
-	ResourceName:              "acl1",
-	ResourceType:              "Topic",
-	ResourcePrincipal:         "User:Ken",
+	ResourceName:              kafka.TestACLName,
+	ResourceType:              kafka.ACLResourceTypeTopic,
+	ResourcePrincipal:         kafka.TestACLPrincipal,
 	ResourceHost:              "*",
-	ResourceOperation:         "AlterConfigs",
-	ResourcePermissionType:    "Allow",
-	ResourcePatternTypeFilter: "Literal",
+	ResourceOperation:         kafka.ACLOperationAlterConfigs,
+	ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+	ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 }
 
-var baseJSONACL = `{	
+var baseJSONACL = `{
 		"ResourceName": "acl1",
 		"ResourceType": "Topic",
 		"ResourcePrincipal": "User:Ken",
-		"ResourceHost": "*", 
+		"ResourceHost": "*",
 		"ResourceOperation": "AlterConfigs",
 		"ResourcePermissionType": "Allow",
 		"ResourcePatternTypeFilter": "Literal"
@@ -54,13 +54,13 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
-					ResourceType:              "Topic",
-					ResourcePrincipal:         "User:Ken",
+					ResourceName:              kafka.TestACLName,
+					ResourceType:              kafka.ACLResourceTypeTopic,
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "*",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: true,
@@ -71,12 +71,12 @@ func TestCompareAcls(t *testing.T) {
 				extname: aclTesting,
 				observed: AccessControlList{
 					ResourceName:              "acl10",
-					ResourceType:              "Topic",
-					ResourcePrincipal:         "User:Ken",
+					ResourceType:              kafka.ACLResourceTypeTopic,
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "*",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: false,
@@ -86,13 +86,13 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
+					ResourceName:              kafka.TestACLName,
 					ResourceType:              "Topical",
-					ResourcePrincipal:         "User:Ken",
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "*",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: false,
@@ -102,13 +102,13 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
-					ResourceType:              "Topic",
+					ResourceName:              kafka.TestACLName,
+					ResourceType:              kafka.ACLResourceTypeTopic,
 					ResourcePrincipal:         "User:NotKen",
 					ResourceHost:              "*",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: false,
@@ -118,13 +118,13 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
-					ResourceType:              "Topic",
-					ResourcePrincipal:         "User:Ken",
+					ResourceName:              kafka.TestACLName,
+					ResourceType:              kafka.ACLResourceTypeTopic,
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "acme.com",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: false,
@@ -134,13 +134,13 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
-					ResourceType:              "Topic",
-					ResourcePrincipal:         "User:Ken",
+					ResourceName:              kafka.TestACLName,
+					ResourceType:              kafka.ACLResourceTypeTopic,
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "*",
-					ResourceOperation:         "Read",
-					ResourcePermissionType:    "Allow",
-					ResourcePatternTypeFilter: "Literal",
+					ResourceOperation:         kafka.ACLOperationRead,
+					ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+					ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 				},
 			},
 			want: false,
@@ -150,12 +150,12 @@ func TestCompareAcls(t *testing.T) {
 			args: args{
 				extname: aclTesting,
 				observed: AccessControlList{
-					ResourceName:              "acl1",
-					ResourceType:              "Topic",
-					ResourcePrincipal:         "User:Ken",
+					ResourceName:              kafka.TestACLName,
+					ResourceType:              kafka.ACLResourceTypeTopic,
+					ResourcePrincipal:         kafka.TestACLPrincipal,
 					ResourceHost:              "*",
-					ResourceOperation:         "AlterConfigs",
-					ResourcePermissionType:    "Write",
+					ResourceOperation:         kafka.ACLOperationAlterConfigs,
+					ResourcePermissionType:    kafka.ACLOperationWrite,
 					ResourcePatternTypeFilter: "Any",
 				},
 			},
@@ -268,12 +268,12 @@ func TestCreate(t *testing.T) {
 
 	testACL := &AccessControlList{
 		ResourceName:              "test-acl-create-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:user",
 		ResourceHost:              "*",
-		ResourceOperation:         "Read",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationRead,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	err = Create(ctx, newAc, testACL)
@@ -300,12 +300,12 @@ func TestDelete(t *testing.T) {
 
 	testACL := &AccessControlList{
 		ResourceName:              "test-acl-delete-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:user",
 		ResourceHost:              "*",
-		ResourceOperation:         "Write",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationWrite,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	// Create first, then delete
@@ -323,23 +323,23 @@ func TestDelete(t *testing.T) {
 func TestGenerate(t *testing.T) {
 	params := &v1alpha1.AccessControlListParameters{
 		ResourceName:              "my-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:alice",
 		ResourceHost:              "*",
-		ResourceOperation:         "Read",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationRead,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	got := Generate(params)
 	want := &AccessControlList{
 		ResourceName:              "my-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:alice",
 		ResourceHost:              "*",
-		ResourceOperation:         "Read",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationRead,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -357,44 +357,44 @@ func TestIsUpToDate(t *testing.T) {
 		{
 			name: "UpToDate",
 			in: &v1alpha1.AccessControlListParameters{
-				ResourceName:              "acl1",
-				ResourceType:              "Topic",
-				ResourcePrincipal:         "User:Ken",
+				ResourceName:              kafka.TestACLName,
+				ResourceType:              kafka.ACLResourceTypeTopic,
+				ResourcePrincipal:         kafka.TestACLPrincipal,
 				ResourceHost:              "*",
-				ResourceOperation:         "AlterConfigs",
-				ResourcePermissionType:    "Allow",
-				ResourcePatternTypeFilter: "Literal",
+				ResourceOperation:         kafka.ACLOperationAlterConfigs,
+				ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+				ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 			},
 			obs: &AccessControlList{
-				ResourceName:              "acl1",
-				ResourceType:              "Topic",
-				ResourcePrincipal:         "User:Ken",
+				ResourceName:              kafka.TestACLName,
+				ResourceType:              kafka.ACLResourceTypeTopic,
+				ResourcePrincipal:         kafka.TestACLPrincipal,
 				ResourceHost:              "*",
-				ResourceOperation:         "AlterConfigs",
-				ResourcePermissionType:    "Allow",
-				ResourcePatternTypeFilter: "Literal",
+				ResourceOperation:         kafka.ACLOperationAlterConfigs,
+				ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+				ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 			},
 			want: true,
 		},
 		{
 			name: "DiffOperation",
 			in: &v1alpha1.AccessControlListParameters{
-				ResourceName:              "acl1",
-				ResourceType:              "Topic",
-				ResourcePrincipal:         "User:Ken",
+				ResourceName:              kafka.TestACLName,
+				ResourceType:              kafka.ACLResourceTypeTopic,
+				ResourcePrincipal:         kafka.TestACLPrincipal,
 				ResourceHost:              "*",
-				ResourceOperation:         "Read",
-				ResourcePermissionType:    "Allow",
-				ResourcePatternTypeFilter: "Literal",
+				ResourceOperation:         kafka.ACLOperationRead,
+				ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+				ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 			},
 			obs: &AccessControlList{
-				ResourceName:              "acl1",
-				ResourceType:              "Topic",
-				ResourcePrincipal:         "User:Ken",
+				ResourceName:              kafka.TestACLName,
+				ResourceType:              kafka.ACLResourceTypeTopic,
+				ResourcePrincipal:         kafka.TestACLPrincipal,
 				ResourceHost:              "*",
-				ResourceOperation:         "AlterConfigs",
-				ResourcePermissionType:    "Allow",
-				ResourcePatternTypeFilter: "Literal",
+				ResourceOperation:         kafka.ACLOperationAlterConfigs,
+				ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+				ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 			},
 			want: false,
 		},
@@ -422,12 +422,12 @@ func TestList(t *testing.T) {
 
 	testACL := &AccessControlList{
 		ResourceName:              "test-acl-list-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:user",
 		ResourceHost:              "*",
-		ResourceOperation:         "Describe",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationDescribe,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	// Create the ACL first
@@ -483,12 +483,12 @@ func TestListAtProviderNotFound(t *testing.T) {
 
 	nonExistentACL := &AccessControlList{
 		ResourceName:              "non-existent-acl-topic",
-		ResourceType:              "Topic",
+		ResourceType:              kafka.ACLResourceTypeTopic,
 		ResourcePrincipal:         "User:nobody",
 		ResourceHost:              "*",
-		ResourceOperation:         "Read",
-		ResourcePermissionType:    "Allow",
-		ResourcePatternTypeFilter: "Literal",
+		ResourceOperation:         kafka.ACLOperationRead,
+		ResourcePermissionType:    kafka.ACLPermissionTypeAllow,
+		ResourcePatternTypeFilter: kafka.ACLPatternTypeLiteral,
 	}
 
 	got, err := List(ctx, newAc, nonExistentACL)
