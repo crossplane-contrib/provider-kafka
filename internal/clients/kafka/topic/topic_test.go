@@ -35,7 +35,7 @@ func TestCreate(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "testTopic-1",
+						Name:              kafka.TestTopicName1,
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -106,10 +106,10 @@ func TestGet(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				client: newAc,
-				name:   "testTopic-1",
+				name:   kafka.TestTopicName1,
 			},
 			want: &Topic{
-				Name:              "testTopic-1",
+				Name:              kafka.TestTopicName1,
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            nil,
@@ -124,7 +124,7 @@ func TestGet(t *testing.T) {
 				name:   "testTopic-00",
 			},
 			want: &Topic{
-				Name:              "testTopic-1",
+				Name:              kafka.TestTopicName1,
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            nil,
@@ -344,7 +344,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "testTopic-1",
+						Name:              kafka.TestTopicName1,
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -426,7 +426,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				client: newAc,
-				name:   "testTopic-1",
+				name:   kafka.TestTopicName1,
 			},
 			wantErr: false,
 		},

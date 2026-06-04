@@ -11,6 +11,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kmsg"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
 
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
@@ -41,15 +42,15 @@ func buildACLBuilder(accessControlList *AccessControlList) (*kadm.ACLBuilder, er
 	ab := b.Allow(accessControlList.ResourcePrincipal).AllowHosts(accessControlList.ResourceHost).Operations(o).ResourcePatternType(rpt)
 
 	switch accessControlList.ResourceType {
-	case "Topic":
+	case kafka.ACLResourceTypeTopic:
 		ab = ab.Topics(accessControlList.ResourceName)
-	case "Group":
+	case kafka.ACLResourceTypeGroup:
 		ab = ab.Groups(accessControlList.ResourceName)
-	case "TransactionalID":
+	case kafka.ACLResourceTypeTransactionalID:
 		ab = ab.TransactionalIDs(accessControlList.ResourceName)
-	case "Cluster":
+	case kafka.ACLResourceTypeCluster:
 		ab = ab.Clusters()
-	case "Any":
+	case kafka.ACLResourceTypeAny:
 		ab = ab.AnyResource(accessControlList.ResourceName)
 	}
 
