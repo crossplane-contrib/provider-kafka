@@ -48,9 +48,9 @@ import (
 
 	clusterapis "github.com/crossplane-contrib/provider-kafka/apis/cluster"
 	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
 
