@@ -56,9 +56,14 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		}
 	}
 
+	logLevel, err := parseLogLevel(kc.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(kc.Brokers...),
-		kgo.WithLogger(kgo.BasicLogger(os.Stdout, kgo.LogLevelWarn, nil)),
+		kgo.WithLogger(kgo.BasicLogger(os.Stdout, logLevel, nil)),
 	}
 
 	if kc.SASL != nil {
@@ -352,6 +357,16 @@ func appendCACert(caPEM []byte, tc *tls.Config) error {
 	}
 	tc.RootCAs = pool
 	return nil
+}
+
+func parseLogLevel(level *int) (kgo.LogLevel, error) {
+	if level == nil {
+		return kgo.LogLevel(defaultLogLevel), nil
+	}
+	if *level < int(kgo.LogLevelNone) || *level > int(kgo.LogLevelDebug) {
+		return 0, fmt.Errorf("%s %d: must be between 0 (none) and 4 (debug)", errInvalidLogLevel, *level)
+	}
+	return kgo.LogLevel(*level), nil
 }
 
 // Helper method to return default if value string is empty.

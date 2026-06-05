@@ -1,10 +1,11 @@
 /.cache
 /.work
 /_output
-cover.out
-/bin
+/.claude
 /vendor
 /.vendor-new
+cover.out
+/bin
 .DS_Store
 kc.json
 # ignore IDE folders

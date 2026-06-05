@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 var credentials struct {
@@ -944,6 +945,49 @@ func TestConfigureTLSAdvanced_DialTimeout_Zero_Ignored(t *testing.T) {
 	err := configureTLSAdvanced(tlsConfig, tc)
 	require.NoError(t, err, "expected no error for zero timeout")
 	// Zero or negative timeout defaulting is handled by NewAdminClient, not configureTLSAdvanced.
+}
+
+func TestParseLogLevel_Nil(t *testing.T) {
+	t.Parallel()
+	level, err := parseLogLevel(nil)
+	require.NoError(t, err)
+	assert.Equal(t, kgo.LogLevelWarn, level)
+}
+
+func TestParseLogLevel_Valid(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    int
+		expected kgo.LogLevel
+	}{
+		{0, kgo.LogLevelNone},
+		{1, kgo.LogLevelError},
+		{2, kgo.LogLevelWarn},
+		{3, kgo.LogLevelInfo},
+		{4, kgo.LogLevelDebug},
+	}
+	for _, tt := range tests {
+		v := tt.input
+		level, err := parseLogLevel(&v)
+		require.NoError(t, err)
+		assert.Equal(t, tt.expected, level)
+	}
+}
+
+func TestParseLogLevel_TooLow(t *testing.T) {
+	t.Parallel()
+	v := -1
+	_, err := parseLogLevel(&v)
+	require.Error(t, err)
+	require.ErrorContains(t, err, errInvalidLogLevel)
+}
+
+func TestParseLogLevel_TooHigh(t *testing.T) {
+	t.Parallel()
+	v := 5
+	_, err := parseLogLevel(&v)
+	require.Error(t, err)
+	require.ErrorContains(t, err, errInvalidLogLevel)
 }
 
 // TestConfigureTLSAdvanced_Combined tests multiple TLS options together

@@ -23,6 +23,24 @@ manage [Kafka](https://kafka.apache.org/) resources.
     }
     ```
 
+    **Log Level**: Control the Kafka client log verbosity with the `logLevel`
+    field. Values map to [franz-go log levels](https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#LogLevel):
+
+    | Value | Level   |
+    |-------|---------|
+    | `0`   | None    |
+    | `1`   | Error   |
+    | `2`   | Warn *(default)* |
+    | `3`   | Info    |
+    | `4`   | Debug   |
+
+    ```json
+    {
+      "brokers": ["..."],
+      "logLevel": 4
+    }
+    ```
+
     See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
     (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
