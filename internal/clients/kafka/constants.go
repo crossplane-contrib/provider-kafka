@@ -34,10 +34,7 @@ const (
 	tlsVersion12 = "TLS12"
 	tlsVersion13 = "TLS13"
 
-	defaultLogLevel = 2
-
-	errInvalidLogLevel                = "invalid log level"
-	errMissingBrokers                 = "at least one broker address is required"
+	errMissingBrokers = "at least one broker address is required"
 	errCannotAppendCACert             = "cannot append CA certificate to pool"
 	errCannotParse                    = "cannot parse credentials"
 	errCannotReadCACertFile           = "cannot read CA cert file"

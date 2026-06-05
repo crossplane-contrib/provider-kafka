@@ -78,6 +78,7 @@ func main() {
 		// *very* verbose even at info level, so we only provide it a real
 		// logger when we're running in debug mode.
 		ctrl.SetLogger(zl)
+		kafka.LogLevel = kgo.LogLevelDebug
 	} else {
 		// Setting the controller-runtime logger to a no-op logger by default. This
 		// is not really needed, but otherwise we get a warning from the

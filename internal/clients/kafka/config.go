@@ -23,9 +23,8 @@ type ClientCertificateSecretRef struct {
 
 // Config is a Kafka client configuration
 type Config struct {
-	Brokers  []string `json:"brokers"`
-	LogLevel *int     `json:"logLevel,omitempty"`
-	SASL     *SASL    `json:"sasl,omitempty"`
+	Brokers []string `json:"brokers"`
+	SASL    *SASL    `json:"sasl,omitempty"`
 	TLS      *TLS     `json:"tls,omitempty"`
 }
 
