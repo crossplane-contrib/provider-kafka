@@ -58,7 +58,10 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	}
 
 	if kc.SASL != nil {
-		var mechanism sasl.Mechanism
+		var (
+			mechanism sasl.Mechanism
+			err       error
+		)
 		switch name := kc.SASL.Mechanism; strings.ToLower(name) {
 		case "plain":
 			mechanism = plain.Auth{
@@ -66,9 +69,10 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 				Pass: kc.SASL.Password,
 			}.AsMechanism()
 		case "aws-msk-iam":
-			mechanism = kaws.ManagedStreamingIAM(func(ctx context.Context) (kaws.Auth, error) {
-				return authenticateAwsIam(ctx, kc.SASL.RoleArn)
-			})
+			mechanism, err = newAwsMskIamMechanism(ctx, kc.SASL)
+			if err != nil {
+				return nil, err
+			}
 		case "scram-sha-512":
 			mechanism = scram.Auth{
 				User: kc.SASL.Username,
@@ -116,36 +120,8 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	return kadm.NewClient(c), nil
 }
 
-func authenticateAwsIam(ctx context.Context, roleArn string) (a kaws.Auth, err error) {
-	s, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return kaws.Auth{}, err
-	}
-
-	if roleArn != "" {
-		stsClient := sts.NewFromConfig(s)
-		provider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(o *stscreds.AssumeRoleOptions) {
-			o.RoleSessionName = "crossplane-provider-kafka"
-		})
-		s.Credentials = aws.NewCredentialsCache(provider)
-	}
-
-	v, err := s.Credentials.Retrieve(ctx)
-	if err != nil {
-		return kaws.Auth{}, err
-	}
-
-	a = kaws.Auth{
-		AccessKey:    v.AccessKeyID,
-		SecretKey:    v.SecretAccessKey,
-		SessionToken: v.SessionToken,
-		UserAgent:    "crossplane-provider-kafka",
-	}
-
-	return a, nil
-}
-
-// Add options to TLS config for client certificate (if configured)
+// configureClientCertificate sets up client certificate authentication in the TLS config,
+// supporting both Kubernetes Secret references and on-disk file paths.
 func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
 	// Validate that both clientCertificateSecretRef and clientCertificatePath are not both set.
 	// In Go TLS, GetClientCertificate (used for file-based certs) takes precedence over Certificates (used for secret-based certs),
@@ -167,6 +143,8 @@ func configureClientCertificate(ctx context.Context, kc Config, kube client.Clie
 	return configureCACertificateFile(kc.TLS.CACertificateFile, tc)
 }
 
+// configureSecretRefCertificate loads a client certificate key pair from a Kubernetes Secret
+// and appends it to the TLS config.
 func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSecretRef, kube client.Client, tc *tls.Config) error {
 	if sr == nil {
 		return nil
@@ -205,6 +183,8 @@ func configureSecretRefCertificate(ctx context.Context, sr *ClientCertificateSec
 	return nil
 }
 
+// configureFilePathCertificate sets up TLS client certificate from on-disk files with
+// automatic rotation support via the GetClientCertificate callback.
 func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) error {
 	if fr == nil {
 		return nil
@@ -228,6 +208,49 @@ func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) err
 	return nil
 }
 
+// newAwsMskIamMechanism builds a SASL mechanism for AWS MSK IAM authentication.
+// AWS config and credentials cache are constructed once and captured by the
+// returned closure, so they persist across SASL handshakes for the lifetime
+// of the Kafka client. When a roleArn is configured, credentials are fetched
+// via chained AssumeRole with a configurable early-refresh window
+// (IAMCredentialsDuration) to avoid latency spikes at expiry.
+func newAwsMskIamMechanism(ctx context.Context, saslCfg *SASL) (sasl.Mechanism, error) {
+	awsCfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot load AWS config: %w", err)
+	}
+	creds := awsCfg.Credentials
+	if saslCfg.RoleArn != "" {
+		provider := stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsCfg), saslCfg.RoleArn,
+			func(o *stscreds.AssumeRoleOptions) {
+				o.RoleSessionName = "crossplane-provider-kafka"
+			})
+		expiryWindow := defaultIAMCredentialsExpiryWindow
+		if saslCfg.IAMCredentialsDuration != "" {
+			if d, err := time.ParseDuration(saslCfg.IAMCredentialsDuration); err == nil && d <= 15*time.Minute {
+				expiryWindow = d
+			}
+		}
+		creds = aws.NewCredentialsCache(provider,
+			func(o *aws.CredentialsCacheOptions) {
+				o.ExpiryWindow = expiryWindow
+			})
+	}
+	return kaws.ManagedStreamingIAM(func(ctx context.Context) (kaws.Auth, error) {
+		v, err := creds.Retrieve(ctx)
+		if err != nil {
+			return kaws.Auth{}, err
+		}
+		return kaws.Auth{
+			AccessKey:    v.AccessKeyID,
+			SecretKey:    v.SecretAccessKey,
+			SessionToken: v.SessionToken,
+			UserAgent:    "crossplane-provider-kafka",
+		}, nil
+	}), nil
+}
+
+// validateClientCertificatePath checks that cert and key files exist on disk and form a valid pair.
 func validateClientCertificatePath(fr *ClientCertificatePath) error {
 	// Validate that files exist and can be read initially
 	if _, err := os.Stat(fr.CertFile); err != nil {
@@ -253,6 +276,8 @@ func validateClientCertificatePath(fr *ClientCertificatePath) error {
 	return nil
 }
 
+// loadClientCertificate reads a certificate key pair from disk, called on each TLS handshake
+// to support certificate rotation without restart.
 func loadClientCertificate(fr *ClientCertificatePath) (*tls.Certificate, error) {
 	certPEM, err := os.ReadFile(fr.CertFile)
 	if err != nil {
@@ -271,6 +296,8 @@ func loadClientCertificate(fr *ClientCertificatePath) (*tls.Certificate, error) 
 	return &kp, nil
 }
 
+// configureCACertificateSecretRef loads a CA certificate from a Kubernetes Secret and appends
+// it to the TLS root CA pool.
 func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecretRef, kube client.Client, tc *tls.Config) error {
 	if sr == nil {
 		return nil
@@ -292,6 +319,8 @@ func configureCACertificateSecretRef(ctx context.Context, sr *CACertificateSecre
 	return appendCACert(caPEM, tc)
 }
 
+// configureCACertificateFile loads a CA certificate from a file path and appends it to the
+// TLS root CA pool.
 func configureCACertificateFile(caFile string, tc *tls.Config) error {
 	if caFile == "" {
 		return nil
@@ -305,6 +334,8 @@ func configureCACertificateFile(caFile string, tc *tls.Config) error {
 	return appendCACert(caPEM, tc)
 }
 
+// appendCACert appends a PEM-encoded CA certificate to the TLS root CA pool,
+// initializing from system roots if the pool does not yet exist.
 func appendCACert(caPEM []byte, tc *tls.Config) error {
 	var pool *x509.CertPool
 

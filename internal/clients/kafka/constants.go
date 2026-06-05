@@ -1,8 +1,13 @@
 package kafka
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+	"time"
+)
 
 const (
+	defaultIAMCredentialsExpiryWindow = 5 * time.Minute
+
 	// ACL resource types
 	ACLResourceTypeTopic           = "Topic"
 	ACLResourceTypeGroup           = "Group"
