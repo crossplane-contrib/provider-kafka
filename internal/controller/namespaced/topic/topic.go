@@ -55,7 +55,7 @@ const (
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
-	cache        kafka.ClientCache
+	cache        *kafka.ClientCache
 	kube         client.Client
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
@@ -75,6 +75,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{
+			cache:        &kafka.ClientCache{},
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			newServiceFn: kafka.NewAdminClient,

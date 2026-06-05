@@ -43,13 +43,9 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errCannotListTopics, err)
 	}
-	if td[name].Err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrTopicDoesNotExist, td[name].Err)
-	}
-
-	t, ok := td[name]
-	if !ok {
-		return nil, errors.New(errNoCreateResponse)
+	t := td[name]
+	if t.Err != nil {
+		return nil, fmt.Errorf("%s: %w", ErrTopicDoesNotExist, t.Err)
 	}
 
 	tc, err := client.DescribeTopicConfigs(ctx, name)
@@ -117,7 +113,6 @@ func Delete(ctx context.Context, client *kadm.Client, name string) error {
 
 // Update determines if a Topic Partition or a Topic Admin Config update needs to be called and routes properly
 func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
-	// First Get existing Topic
 	existing, err := Get(ctx, client, desired.Name)
 	if err != nil {
 		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
@@ -127,7 +122,7 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	}
 
 	if desired.Partitions != existing.Partitions {
-		return UpdatePartitions(ctx, client, desired)
+		return updatePartitions(ctx, client, desired, existing)
 	}
 
 	if desired.ReplicationFactor != existing.ReplicationFactor {
@@ -135,41 +130,29 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 	}
 
 	if desired.Config != nil {
-		return UpdateConfigs(ctx, client, desired)
+		return updateConfigs(ctx, client, desired, existing)
 	}
 
 	return nil
 }
 
-// UpdatePartitions updates a topic Partition count in Kafka
-func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) error {
-	// First Get existing Topic
-	existing, err := Get(ctx, client, desired.Name)
+// updatePartitions updates a topic Partition count in Kafka, reusing the already-fetched existing topic.
+func updatePartitions(ctx context.Context, client *kadm.Client, desired *Topic, existing *Topic) error {
+	if desired.Partitions < existing.Partitions {
+		return fmt.Errorf("cannot decrease topic partitions from %d to %d: Kafka does not support reducing the number of partitions",
+			existing.Partitions, desired.Partitions)
+	}
+	resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
 	if err != nil {
-		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
+		return fmt.Errorf("cannot update topic partitions: %w", err)
 	}
-	if existing == nil {
-		return errors.New(ErrTopicDoesNotExist)
+	r, err := resp.On(desired.Name, nil)
+	if err != nil {
+		return fmt.Errorf("cannot find topic in update partitions result: %w", err)
 	}
-
-	if desired.Partitions != existing.Partitions {
-		if desired.Partitions < existing.Partitions {
-			return fmt.Errorf("cannot decrease topic partitions from %d to %d: Kafka does not support reducing the number of partitions",
-				existing.Partitions, desired.Partitions)
-		}
-		resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
-		if err != nil {
-			return fmt.Errorf("cannot update topic partitions: %w", err)
-		}
-		r, err := resp.On(desired.Name, nil)
-		if err != nil {
-			return fmt.Errorf("cannot find topic in update partitions result: %w", err)
-		}
-		if r.Err != nil {
-			return fmt.Errorf("error in update partitions result: %w", r.Err)
-		}
+	if r.Err != nil {
+		return fmt.Errorf("error in update partitions result: %w", r.Err)
 	}
-
 	return nil
 }
 
@@ -178,40 +161,28 @@ func UpdateReplicationFactor() error {
 	return errors.New("updating replication factor is not supported")
 }
 
-// UpdateConfigs updates an optional topic Admin Configuration in Kafka
-func UpdateConfigs(ctx context.Context, client *kadm.Client, desired *Topic) error {
-	// First Get existing Topic
-	existing, err := Get(ctx, client, desired.Name)
-	if err != nil {
-		return fmt.Errorf("%s: %w", errCannotGetTopic, err)
-	}
-	if existing == nil {
-		return errors.New(ErrTopicDoesNotExist)
-	}
-
-	if desired.Config != nil {
-		configs := desired.Config
-		existingConfig := existing.Config
-
-		for key, value := range configs {
-			ev := existingConfig[key]
-			if stringValue(value) != stringValue(ev) {
-				s := kadm.AlterConfig{
-					Op:    kadm.SetConfig, // Op is the incremental alter operation to perform.
-					Name:  key,            // Name is the name of the config to alter.
-					Value: value,          // Value is the value to use when altering, if any.
-				}
-				r, err := client.AlterTopicConfigs(ctx, []kadm.AlterConfig{s}, desired.Name)
-				if err != nil {
-					return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, err)
-				}
-				if r[0].Err != nil {
-					return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, r[0].Err)
-				}
-			}
+// updateConfigs updates topic config keys that differ, batching all changes into a single Kafka call.
+func updateConfigs(ctx context.Context, client *kadm.Client, desired *Topic, existing *Topic) error {
+	var changes []kadm.AlterConfig
+	for key, value := range desired.Config {
+		if stringValue(value) != stringValue(existing.Config[key]) {
+			changes = append(changes, kadm.AlterConfig{
+				Op:    kadm.SetConfig,
+				Name:  key,
+				Value: value,
+			})
 		}
 	}
-
+	if len(changes) == 0 {
+		return nil
+	}
+	r, err := client.AlterTopicConfigs(ctx, changes, desired.Name)
+	if err != nil {
+		return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, err)
+	}
+	if len(r) > 0 && r[0].Err != nil {
+		return fmt.Errorf("%s: %w", errCannotUpdateTopicConfigs, r[0].Err)
+	}
 	return nil
 }
 

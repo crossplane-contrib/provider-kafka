@@ -1,9 +1,9 @@
 <!--
-Thank you for helping to improve Crossplane!
+Thank you for helping to improve provider-kafka!
 
-Please read through https://git.io/fj2m9 if this is your first time opening a
-Crossplane pull request. Find us in https://slack.crossplane.io/messages/dev if
-you need any help contributing.
+Please read through Crossplane's [contribution process] if this is your
+first time opening a provider-kafka pull request.
+Find us in https://slack.crossplane.io/ if you need any help contributing.
 -->
 
 ### Description of your changes
@@ -12,7 +12,7 @@ you need any help contributing.
 Briefly describe what this pull request does. Be sure to direct your reviewers'
 attention to anything that needs special consideration.
 
-We love pull requests that resolve an open Crossplane issue. If yours does, you
+We love pull requests that resolve an open provider-kafka issue. If yours does, you
 can uncomment the below line to indicate which issue your PR fixes, for example
 "Fixes #500":
 

@@ -115,12 +115,8 @@ func TestNewAdminClient_NegativeDialTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	brokersFromDataTesting, err := json.Marshal(credentials.Brokers)
-	if err != nil {
-		t.Fatalf("failed to marshal brokers: %v", err)
-	}
 	data := []byte(`{
-		"brokers": ` + string(brokersFromDataTesting) + `,
+		"brokers": ["localhost:9092"],
 		"tls": {
 			"dialTimeoutSeconds": -5
 		}
