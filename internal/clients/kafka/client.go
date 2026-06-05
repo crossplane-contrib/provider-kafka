@@ -213,7 +213,7 @@ func configureFilePathCertificate(fr *ClientCertificatePath, tc *tls.Config) err
 // returned closure, so they persist across SASL handshakes for the lifetime
 // of the Kafka client. When a roleArn is configured, credentials are fetched
 // via chained AssumeRole with a configurable early-refresh window
-// (IAMCredentialsDuration) to avoid latency spikes at expiry.
+// (IAMCredentialsExpiryWindow) to avoid latency spikes at expiry.
 func newAwsMskIamMechanism(ctx context.Context, saslCfg *SASL) (sasl.Mechanism, error) {
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -226,8 +226,8 @@ func newAwsMskIamMechanism(ctx context.Context, saslCfg *SASL) (sasl.Mechanism, 
 				o.RoleSessionName = "crossplane-provider-kafka"
 			})
 		expiryWindow := defaultIAMCredentialsExpiryWindow
-		if saslCfg.IAMCredentialsDuration != "" {
-			if d, err := time.ParseDuration(saslCfg.IAMCredentialsDuration); err == nil && d <= 15*time.Minute {
+		if saslCfg.IAMCredentialsExpiryWindow != "" {
+			if d, err := time.ParseDuration(saslCfg.IAMCredentialsExpiryWindow); err == nil && d <= 15*time.Minute {
 				expiryWindow = d
 			}
 		}
