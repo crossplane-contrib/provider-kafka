@@ -32,8 +32,12 @@ type Config struct {
 type SASL struct {
 	Mechanism string `json:"mechanism"`
 	RoleArn   string `json:"roleArn"`
-	Username  string `json:"username"`
-	Password  string `json:"password"` //nolint:gosec
+	// IAMCredentialsExpiryWindow controls how early cached STS credentials are refreshed
+	// before expiry. Uses Go time.Duration format (e.g. "5m", "30s"). Defaults to "5m",
+	// maximum "15m".
+	IAMCredentialsExpiryWindow string `json:"iamCredentialsExpiryWindow,omitempty"`
+	Username                   string `json:"username"`
+	Password                   string `json:"password"` //nolint:gosec
 }
 
 // TLS is an option for enabling encryption in transit.

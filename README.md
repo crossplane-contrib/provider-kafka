@@ -92,8 +92,19 @@ manage [Kafka](https://kafka.apache.org/) resources.
     the certificate/key from `clientCertificateSecretRef` will be used.
 
     **AWS MSK IAM**: When using `aws-msk-iam`, the provider uses the default AWS
-    credential chain (environment variables, IRSA, etc.). The IAM role needs at
-    minimum the following permissions to manage topics:
+    credential chain (environment variables, IRSA, etc.). For cross-account
+    access, set `roleArn` to chain an `AssumeRole` call on top of the default
+    credentials.
+
+    The optional `iamCredentialsExpiryWindow` field controls how early cached STS
+    credentials are refreshed **before** they expire (Go `time.Duration`
+    format, e.g. `"5m"`, `"30s"`). For example, with the default `"5m"` and
+    `AssumeRole`'s 15-minute credential lifetime, credentials are refreshed at
+    the 10-minute mark. Defaults to `"5m"`, maximum `"15m"`. Values that are
+    invalid or exceed the maximum are silently ignored and the default is used
+    instead.
+
+    The IAM role needs at minimum the following permissions to manage topics:
 
       ```json
       {
