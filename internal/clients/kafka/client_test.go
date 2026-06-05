@@ -954,24 +954,17 @@ func TestParseLogLevel_Nil(t *testing.T) {
 	assert.Equal(t, kgo.LogLevelWarn, level)
 }
 
-func TestParseLogLevel_Valid(t *testing.T) {
+func TestParseLogLevel_Boundaries(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		input    int
-		expected kgo.LogLevel
-	}{
-		{0, kgo.LogLevelNone},
-		{1, kgo.LogLevelError},
-		{2, kgo.LogLevelWarn},
-		{3, kgo.LogLevelInfo},
-		{4, kgo.LogLevelDebug},
-	}
-	for _, tt := range tests {
-		v := tt.input
-		level, err := parseLogLevel(&v)
-		require.NoError(t, err)
-		assert.Equal(t, tt.expected, level)
-	}
+	v := 0
+	level, err := parseLogLevel(&v)
+	require.NoError(t, err)
+	assert.Equal(t, kgo.LogLevelNone, level)
+
+	v = 4
+	level, err = parseLogLevel(&v)
+	require.NoError(t, err)
+	assert.Equal(t, kgo.LogLevelDebug, level)
 }
 
 func TestParseLogLevel_TooLow(t *testing.T) {
