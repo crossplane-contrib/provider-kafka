@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// LogLevel controls the franz-go client log verbosity. Set before starting
-// controllers — defaults to LogLevelWarn.
+// LogLevel controls the franz-go client log verbosity.
+// Set before starting controllers; defaults to LogLevelWarn.
 var LogLevel = kgo.LogLevelWarn
 
 // NewAdminClient creates a new AdminClient with supplied credentials
