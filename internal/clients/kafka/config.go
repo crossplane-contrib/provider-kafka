@@ -25,7 +25,7 @@ type ClientCertificateSecretRef struct {
 type Config struct {
 	Brokers []string `json:"brokers"`
 	SASL    *SASL    `json:"sasl,omitempty"`
-	TLS      *TLS     `json:"tls,omitempty"`
+	TLS     *TLS     `json:"tls,omitempty"`
 }
 
 // SASL is an sasl option
