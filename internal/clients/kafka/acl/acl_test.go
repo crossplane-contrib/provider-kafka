@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -439,10 +440,17 @@ func TestList(t *testing.T) {
 		_ = Delete(ctx, newAc, testACL)
 	})
 
-	// List and verify all fields needed for atProvider population
-	got, err := List(ctx, newAc, testACL)
-	if err != nil {
-		t.Fatalf("List() error = %v", err)
+	// ACLs may not be immediately visible after creation; retry briefly.
+	var got *AccessControlList
+	for range 10 {
+		got, err = List(ctx, newAc, testACL)
+		if err != nil {
+			t.Fatalf("List() error = %v", err)
+		}
+		if got != nil {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 	if got == nil {
 		t.Fatal("List() returned nil, expected ACL")
