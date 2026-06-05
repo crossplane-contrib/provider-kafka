@@ -153,6 +153,10 @@ func UpdatePartitions(ctx context.Context, client *kadm.Client, desired *Topic) 
 	}
 
 	if desired.Partitions != existing.Partitions {
+		if desired.Partitions < existing.Partitions {
+			return fmt.Errorf("cannot decrease topic partitions from %d to %d: Kafka does not support reducing the number of partitions",
+				existing.Partitions, desired.Partitions)
+		}
 		resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
 		if err != nil {
 			return fmt.Errorf("cannot update topic partitions: %w", err)

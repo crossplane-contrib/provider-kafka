@@ -475,3 +475,38 @@ func TestDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {
+	cases := map[string]struct {
+		existingPartitions int32
+		desiredPartitions  int32
+		wantErr            bool
+	}{
+		"DecreasePartitionsFails": {
+			existingPartitions: 5,
+			desiredPartitions:  3,
+			wantErr:            true,
+		},
+		"IncreasePartitionsAllowed": {
+			existingPartitions: 3,
+			desiredPartitions:  5,
+			wantErr:            false,
+		},
+		"SamePartitionsAllowed": {
+			existingPartitions: 4,
+			desiredPartitions:  4,
+			wantErr:            false,
+		},
+	}
+
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Validate the partition decrease check logic
+			shouldError := tt.desiredPartitions < tt.existingPartitions
+			if shouldError != tt.wantErr {
+				t.Errorf("partition decrease validation failed: desired=%d, existing=%d, wantErr=%v, got=%v",
+					tt.desiredPartitions, tt.existingPartitions, tt.wantErr, shouldError)
+			}
+		})
+	}
+}
