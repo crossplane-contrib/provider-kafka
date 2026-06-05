@@ -33,6 +33,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	authv1 "k8s.io/api/authorization/v1"
@@ -49,6 +50,7 @@ import (
 	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
 

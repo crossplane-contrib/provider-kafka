@@ -92,12 +92,12 @@ Conventional Commits: `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scop
 ## Architecture Notes
 
 - **Two scopes**: cluster-scoped and namespace-scoped resources. Parallel API/controller trees.
-- **Provider config secret**: JSON blob with `brokers`, optional `sasl`, optional `tls`, optional `logLevel`. Schema defined in `internal/clients/kafka/config.go`.
+- **Provider config secret**: JSON blob with `brokers`, optional `sasl`, optional `tls`. Schema defined in `internal/clients/kafka/config.go`.
 - **SASL mechanisms**: PLAIN, SCRAM-SHA-512, AWS-MSK-IAM
 - **TLS**: Full config — custom CA (secret ref or file), mTLS (secret ref or file path with rotation), cipher suites, TLS version constraints, curve preferences
 - **AWS MSK IAM**: Uses default AWS credential chain. Optional `roleArn` for cross-account AssumeRole. Credentials cached with configurable expiry window.
 - **Client caching**: `cache.go` caches kadm.Client instances to avoid reconnecting on every reconcile
-- **Log level**: Configurable via `logLevel` field in provider config (0=none, 1=error, 2=warn (default), 3=info, 4=debug). Maps to franz-go kgo.LogLevel.
+- **Log level**: `--debug` CLI flag sets franz-go kafka client to debug level (default: warn). Controlled via `kafka.LogLevel` package var, set in `main.go`.
 
 ## Testing Patterns
 
