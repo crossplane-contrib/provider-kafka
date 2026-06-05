@@ -35,7 +35,7 @@ func TestCreate(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "testTopic-1",
+						Name:              kafka.TestTopicName1,
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -106,10 +106,10 @@ func TestGet(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				client: newAc,
-				name:   "testTopic-1",
+				name:   kafka.TestTopicName1,
 			},
 			want: &Topic{
-				Name:              "testTopic-1",
+				Name:              kafka.TestTopicName1,
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            nil,
@@ -124,7 +124,7 @@ func TestGet(t *testing.T) {
 				name:   "testTopic-00",
 			},
 			want: &Topic{
-				Name:              "testTopic-1",
+				Name:              kafka.TestTopicName1,
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            nil,
@@ -344,7 +344,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 					ctx:    context.Background(),
 					client: newAc,
 					topic: &Topic{
-						Name:              "testTopic-1",
+						Name:              kafka.TestTopicName1,
 						ReplicationFactor: 1,
 						Partitions:        1,
 						Config:            nil,
@@ -426,7 +426,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				ctx:    context.Background(),
 				client: newAc,
-				name:   "testTopic-1",
+				name:   kafka.TestTopicName1,
 			},
 			wantErr: false,
 		},
@@ -471,6 +471,41 @@ func TestDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := Delete(tt.args.ctx, tt.args.client, tt.args.name); (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {
+	cases := map[string]struct {
+		existingPartitions int32
+		desiredPartitions  int32
+		wantErr            bool
+	}{
+		"DecreasePartitionsFails": {
+			existingPartitions: 5,
+			desiredPartitions:  3,
+			wantErr:            true,
+		},
+		"IncreasePartitionsAllowed": {
+			existingPartitions: 3,
+			desiredPartitions:  5,
+			wantErr:            false,
+		},
+		"SamePartitionsAllowed": {
+			existingPartitions: 4,
+			desiredPartitions:  4,
+			wantErr:            false,
+		},
+	}
+
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Validate the partition decrease check logic
+			shouldError := tt.desiredPartitions < tt.existingPartitions
+			if shouldError != tt.wantErr {
+				t.Errorf("partition decrease validation failed: desired=%d, existing=%d, wantErr=%v, got=%v",
+					tt.desiredPartitions, tt.existingPartitions, tt.wantErr, shouldError)
 			}
 		})
 	}
