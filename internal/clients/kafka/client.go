@@ -26,6 +26,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// LogLevel controls the franz-go client log verbosity.
+// Set before starting controllers; defaults to LogLevelWarn.
+var LogLevel = kgo.LogLevelWarn
+
 // NewAdminClient creates a new AdminClient with supplied credentials
 func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm.Client, error) { // nolint: gocyclo
 	kc := Config{}
@@ -58,7 +62,7 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(kc.Brokers...),
-		kgo.WithLogger(kgo.BasicLogger(os.Stdout, kgo.LogLevelWarn, nil)),
+		kgo.WithLogger(kgo.BasicLogger(os.Stdout, LogLevel, nil)),
 	}
 
 	if kc.SASL != nil {

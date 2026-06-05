@@ -33,6 +33,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	authv1 "k8s.io/api/authorization/v1"
@@ -47,6 +48,7 @@ import (
 
 	clusterapis "github.com/crossplane-contrib/provider-kafka/apis/cluster"
 	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
 	"github.com/crossplane-contrib/provider-kafka/internal/version"
@@ -78,6 +80,7 @@ func main() {
 		// *very* verbose even at info level, so we only provide it a real
 		// logger when we're running in debug mode.
 		ctrl.SetLogger(zl)
+		kafka.LogLevel = kgo.LogLevelDebug
 	} else {
 		// Setting the controller-runtime logger to a no-op logger by default. This
 		// is not really needed, but otherwise we get a warning from the

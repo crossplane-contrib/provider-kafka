@@ -26,6 +26,10 @@ manage [Kafka](https://kafka.apache.org/) resources.
     See [providerconfig](examples/namespaced/providerconfig/) for more credential examples
     (SCRAM-SHA-512, AWS MSK IAM, TLS/mTLS).
 
+    **Debug logging**: Pass `--debug` (or `-d`) to enable verbose logging for both
+    the controller-runtime and the Kafka client (franz-go). Without it, the Kafka
+    client logs at warn level.
+
     **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
     skip server certificate verification.
 
