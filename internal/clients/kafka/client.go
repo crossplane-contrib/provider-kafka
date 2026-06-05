@@ -34,6 +34,10 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		return nil, fmt.Errorf("%s: %w", errCannotParse, err)
 	}
 
+	if len(kc.Brokers) == 0 {
+		return nil, errors.New(errMissingBrokers)
+	}
+
 	// Validate TLS configuration if provided
 	if kc.TLS != nil && kc.TLS.DialTimeoutSeconds < 0 {
 		return nil, fmt.Errorf("%s (received: %d)", errInvalidDialTimeout, kc.TLS.DialTimeoutSeconds)
@@ -250,17 +254,8 @@ func newAwsMskIamMechanism(ctx context.Context, saslCfg *SASL) (sasl.Mechanism, 
 	}), nil
 }
 
-// validateClientCertificatePath checks that cert and key files exist on disk and form a valid pair.
+// validateClientCertificatePath checks that cert and key files can be read and form a valid pair.
 func validateClientCertificatePath(fr *ClientCertificatePath) error {
-	// Validate that files exist and can be read initially
-	if _, err := os.Stat(fr.CertFile); err != nil {
-		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)
-	}
-	if _, err := os.Stat(fr.KeyFile); err != nil {
-		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.KeyFile, err)
-	}
-
-	// Validate that cert and key form a valid pair
 	certPEM, err := os.ReadFile(fr.CertFile)
 	if err != nil {
 		return fmt.Errorf("%s %q: %w", errCannotReadClientCertFile, fr.CertFile, err)

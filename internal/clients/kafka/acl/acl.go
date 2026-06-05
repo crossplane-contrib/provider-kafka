@@ -66,9 +66,9 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 
 	resp, err := cl.DescribeACLs(ctx, ab)
 	if err != nil {
-		return nil, fmt.Errorf("describe ACLs response is empty: %w", err)
+		return nil, fmt.Errorf("describe ACLs failed: %w", err)
 	}
-	if exists := resp[0].Described; len(exists) == 0 {
+	if len(resp) == 0 || len(resp[0].Described) == 0 {
 		return nil, nil
 	}
 
@@ -94,11 +94,8 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	if err != nil {
 		return err
 	}
-	if resp != nil {
-		a := resp[0].Principal
-		if len(a) == 0 {
-			return errors.New("no create response for acl")
-		}
+	if len(resp) == 0 || len(resp[0].Principal) == 0 {
+		return errors.New("no create response for acl")
 	}
 
 	return nil

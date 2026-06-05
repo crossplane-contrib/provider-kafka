@@ -34,6 +34,7 @@ const (
 	tlsVersion12 = "TLS12"
 	tlsVersion13 = "TLS13"
 
+	errMissingBrokers                 = "at least one broker address is required"
 	errCannotAppendCACert             = "cannot append CA certificate to pool"
 	errCannotParse                    = "cannot parse credentials"
 	errCannotReadCACertFile           = "cannot read CA cert file"
