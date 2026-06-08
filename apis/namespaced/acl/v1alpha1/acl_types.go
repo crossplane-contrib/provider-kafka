@@ -36,7 +36,7 @@ type AccessControlListSpec struct {
 // A AccessControlListStatus represents the observed state of a AccessControlList.
 type AccessControlListStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
-	AtProvider          common.AccessControlListObservation `json:"atProvider,omitempty"`
+	AtProvider                 common.AccessControlListObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

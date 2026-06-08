@@ -30,13 +30,13 @@ import (
 // A TopicSpec defines the desired state of a Topic.
 type TopicSpec struct {
 	xpv2.ClusterManagedResourceSpec `json:",inline"`
-	ForProvider       common.TopicParameters `json:"forProvider"`
+	ForProvider                     common.TopicParameters `json:"forProvider"`
 }
 
 // A TopicStatus represents the observed state of a Topic.
 type TopicStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
-	AtProvider          common.TopicObservation `json:"atProvider,omitempty"`
+	AtProvider                 common.TopicObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

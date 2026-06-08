@@ -30,13 +30,13 @@ import (
 // An AccessControlListSpec defines the desired state of an AccessControlList
 type AccessControlListSpec struct {
 	xpv2.ClusterManagedResourceSpec `json:",inline"`
-	ForProvider       common.AccessControlListParameters `json:"forProvider"`
+	ForProvider                     common.AccessControlListParameters `json:"forProvider"`
 }
 
 // A AccessControlListStatus represents the observed state of a AccessControlList.
 type AccessControlListStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
-	AtProvider          common.AccessControlListObservation `json:"atProvider,omitempty"`
+	AtProvider                 common.AccessControlListObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -36,7 +36,7 @@ type TopicSpec struct {
 // A TopicStatus represents the observed state of a Topic.
 type TopicStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
-	AtProvider          common.TopicObservation `json:"atProvider,omitempty"`
+	AtProvider                 common.TopicObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

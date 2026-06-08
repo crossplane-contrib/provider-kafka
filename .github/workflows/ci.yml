@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Common versions
-  GOLANGCI_VERSION: "v2.12.2"
   DOCKER_BUILDX_VERSION: "v0.33.0"
 
   # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
@@ -54,6 +52,12 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Detect golangci-lint version
+        id: golangci-lint-version
+        run: |
+          VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' Makefile)
+          echo "version=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
+
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
@@ -63,7 +67,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
-          version: ${{ env.GOLANGCI_VERSION }}
+          version: ${{ steps.golangci-lint-version.outputs.version }}
           args: --timeout 10m0s
 
   check-diff:
