@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
@@ -32,6 +31,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -202,7 +202,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
 	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
 	cr.Status.AtProvider.Config = tpc.Config
-	cr.Status.SetConditions(v1.Available())
+	cr.Status.SetConditions(xpv2.Available())
 
 	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)
 
@@ -232,7 +232,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
-	cr.Status.SetConditions(v1.Deleting())
+	cr.Status.SetConditions(xpv2.Deleting())
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotTopic)
 	}

@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"reflect"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,14 +29,14 @@ import (
 
 // An AccessControlListSpec defines the desired state of an AccessControlList
 type AccessControlListSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       common.AccessControlListParameters `json:"forProvider"`
+	xpv2.ClusterManagedResourceSpec `json:",inline"`
+	ForProvider                     common.AccessControlListParameters `json:"forProvider"`
 }
 
 // A AccessControlListStatus represents the observed state of a AccessControlList.
 type AccessControlListStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          common.AccessControlListObservation `json:"atProvider,omitempty"`
+	xpv2.ManagedResourceStatus `json:",inline"`
+	AtProvider                 common.AccessControlListObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true

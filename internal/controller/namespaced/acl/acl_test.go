@@ -21,10 +21,10 @@ import (
 	"errors"
 	"testing"
 
-	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
@@ -111,7 +111,7 @@ func TestPopulateACLAtProvider(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			cr := &v1alpha1.AccessControlList{}
-			cr.Status.SetConditions(v1.Available())
+			cr.Status.SetConditions(xpv2.Available())
 
 			cr.Status.AtProvider.ResourceName = tc.observed.ResourceName
 			cr.Status.AtProvider.ResourceType = tc.observed.ResourceType
