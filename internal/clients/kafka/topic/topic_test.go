@@ -13,6 +13,8 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
 
+const configKeyRetentionMs = "retention.ms"
+
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
 func TestCreate(t *testing.T) {
@@ -183,7 +185,7 @@ func TestGetAtProviderFields(t *testing.T) {
 		Name:              topicName,
 		ReplicationFactor: 1,
 		Partitions:        2,
-		Config:            map[string]*string{"retention.ms": &retentionMs},
+		Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
 	})
 	if err != nil {
 		t.Fatalf("failed to create topic: %v", err)
@@ -213,7 +215,7 @@ func TestGetAtProviderFields(t *testing.T) {
 	if got.Config == nil {
 		t.Fatal("Config should not be nil")
 	}
-	if v, ok := got.Config["retention.ms"]; !ok {
+	if v, ok := got.Config[configKeyRetentionMs]; !ok {
 		t.Error("Config should contain 'retention.ms' key")
 	} else if v == nil || *v != retentionMs {
 		t.Errorf("Config['retention.ms'] = %v, want %q", v, retentionMs)
@@ -266,57 +268,160 @@ func TestGenerate(t *testing.T) {
 }
 
 func TestIsUpToDate(t *testing.T) {
-	type args struct {
-		in       *v1alpha1.TopicParameters
-		observed *Topic
-	}
+	t.Parallel()
+
+	retentionMs := "86400000"
+	retentionMsDiff := "172800000"
+	segmentBytes := "1073741824"
+	cleanupPolicy := "delete"
 
 	cases := map[string]struct {
-		name string
-		args args
-		want bool
+		in       *v1alpha1.TopicParameters
+		observed *Topic
+		want     bool
 	}{
-		"IsUpToDate": {
-			name: "upToDate",
-			args: args{
-				in: &v1alpha1.TopicParameters{
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
-				observed: &Topic{
-					Name:              "upToDate",
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
+		"BothNilConfigs": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            nil,
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            nil,
 			},
 			want: true,
 		},
 		"DiffReplicationFactor": {
-			name: "repFactorDiff",
-			args: args{
-				in: &v1alpha1.TopicParameters{
-					ReplicationFactor: 2,
-					Partitions:        1,
-					Config:            nil,
-				},
-				observed: &Topic{
-					Name:              "k25",
-					ReplicationFactor: 1,
-					Partitions:        1,
-					Config:            nil,
-				},
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 2,
+				Partitions:        1,
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
 			},
 			want: false,
+		},
+		"DiffPartitions": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        3,
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+			},
+			want: false,
+		},
+		"MatchingConfigs": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			want: true,
+		},
+		"DiffConfigValue": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMsDiff},
+			},
+			want: false,
+		},
+		"SpecHasUnknownKey_NotUpToDate": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config: map[string]*string{
+					configKeyRetentionMs: &retentionMs,
+					"segment.bytes":      &segmentBytes, // broker doesn't return this
+				},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			want: false,
+		},
+		"ObservedHasExtraKeys_ServerDefaults": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config: map[string]*string{
+					configKeyRetentionMs: &retentionMs,
+					"cleanup.policy":     &cleanupPolicy,
+				},
+			},
+			want: true,
+		},
+		"SpecExtraKeys_ButIntersectionDiffers": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config: map[string]*string{
+					configKeyRetentionMs: &retentionMs,
+					"segment.bytes":      &segmentBytes,
+				},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMsDiff},
+			},
+			want: false,
+		},
+		"EmptySpecConfig_ObservedHasConfigs": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			want: true,
+		},
+		"NilSpecConfig_ObservedHasConfigs": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            nil,
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			want: true,
 		},
 	}
 	for name, tt := range cases {
 		t.Run(name, func(t *testing.T) {
-			isUpToDate := IsUpToDate(tt.args.in, tt.args.observed)
-			fmt.Println(isUpToDate)
-			if diff := cmp.Diff(tt.want, isUpToDate); diff != "" {
-				t.Errorf("IsUpToDate() = -want +got")
+			t.Parallel()
+			got := IsUpToDate(tt.in, tt.observed)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("IsUpToDate() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

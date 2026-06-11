@@ -204,24 +204,9 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	return tpc
 }
 
-// LateInitializeSpec fills empty spec fields with the data retrieved from Kafka.
-func LateInitializeSpec(params *v1alpha1.TopicParameters, observed *Topic) bool {
-	lateInitialized := false
-	if params.Config == nil {
-		params.Config = make(map[string]*string, len(observed.Config))
-	}
-
-	for k, v := range observed.Config {
-		if _, ok := params.Config[k]; !ok {
-			lateInitialized = true
-			params.Config[k] = v
-		}
-	}
-	return lateInitialized
-}
-
-// IsUpToDate returns true if the supplied Kubernetes resource differs from the
-// supplied Kafka Topic.
+// IsUpToDate returns true if the supplied Kubernetes resource matches the
+// supplied Kafka Topic. Spec config keys not present in observed or with
+// different values trigger an update. Broker defaults not in spec are ignored.
 func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 	if in.Partitions != int(observed.Partitions) {
 		return false
@@ -229,11 +214,9 @@ func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 	if in.ReplicationFactor != int(observed.ReplicationFactor) {
 		return false
 	}
-	if len(in.Config) != len(observed.Config) {
-		return false
-	}
-	for k, v := range observed.Config {
-		if iv, ok := in.Config[k]; !ok || stringValue(iv) != stringValue(v) {
+	for k, v := range in.Config {
+		observedConfigValue, ok := observed.Config[k]
+		if !ok || stringValue(v) != stringValue(observedConfigValue) {
 			return false
 		}
 	}

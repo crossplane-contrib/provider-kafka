@@ -204,12 +204,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.Config = tpc.Config
 	cr.Status.SetConditions(xpv2.Available())
 
-	lateInitialized := topic.LateInitializeSpec(&cr.Spec.ForProvider, tpc)
-
 	return managed.ExternalObservation{
-		ResourceExists:          true,
-		ResourceUpToDate:        topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
-		ResourceLateInitialized: lateInitialized,
+		ResourceExists:   true,
+		ResourceUpToDate: topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
 	}, nil
 }
 
