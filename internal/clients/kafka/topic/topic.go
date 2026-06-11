@@ -162,16 +162,10 @@ func UpdateReplicationFactor() error {
 }
 
 // updateConfigs updates topic config keys that differ, batching all changes into a single Kafka call.
-// Only configs present in both desired and existing are considered. Keys the broker doesn't
-// return are skipped to avoid INVALID_REQUEST from stale late-initialized entries.
 func updateConfigs(ctx context.Context, client *kadm.Client, desired *Topic, existing *Topic) error {
 	var changes []kadm.AlterConfig
 	for key, value := range desired.Config {
-		obsVal, known := existing.Config[key]
-		if !known {
-			continue
-		}
-		if stringValue(value) != stringValue(obsVal) {
+		if stringValue(value) != stringValue(existing.Config[key]) {
 			changes = append(changes, kadm.AlterConfig{
 				Op:    kadm.SetConfig,
 				Name:  key,
@@ -210,10 +204,9 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	return tpc
 }
 
-// IsUpToDate returns true if the supplied Kubernetes resource differs from the
-// supplied Kafka Topic. Only config keys present in both spec and observed are
-// compared, extra keys on either side are ignored (stale late-init artifacts
-// or unmanaged server defaults).
+// IsUpToDate returns true if the supplied Kubernetes resource matches the
+// supplied Kafka Topic. Spec config keys not present in observed or with
+// different values trigger an update. Broker defaults not in spec are ignored.
 func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 	if in.Partitions != int(observed.Partitions) {
 		return false
@@ -222,7 +215,8 @@ func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 		return false
 	}
 	for k, v := range in.Config {
-		if ov, ok := observed.Config[k]; ok && stringValue(v) != stringValue(ov) {
+		observedConfigValue, ok := observed.Config[k]
+		if !ok || stringValue(v) != stringValue(observedConfigValue) {
 			return false
 		}
 	}

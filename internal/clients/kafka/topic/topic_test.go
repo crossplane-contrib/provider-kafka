@@ -341,13 +341,13 @@ func TestIsUpToDate(t *testing.T) {
 			},
 			want: false,
 		},
-		"SpecHasExtraKeys_StaleLateinit": {
+		"SpecHasUnknownKey_NotUpToDate": {
 			in: &v1alpha1.TopicParameters{
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config: map[string]*string{
 					configKeyRetentionMs: &retentionMs,
-					"segment.bytes":      &segmentBytes, // broker no longer returns this
+					"segment.bytes":      &segmentBytes, // broker doesn't return this
 				},
 			},
 			observed: &Topic{
@@ -355,7 +355,7 @@ func TestIsUpToDate(t *testing.T) {
 				Partitions:        1,
 				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
 			},
-			want: true,
+			want: false,
 		},
 		"ObservedHasExtraKeys_ServerDefaults": {
 			in: &v1alpha1.TopicParameters{
@@ -394,6 +394,19 @@ func TestIsUpToDate(t *testing.T) {
 				ReplicationFactor: 1,
 				Partitions:        1,
 				Config:            map[string]*string{},
+			},
+			observed: &Topic{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
+			},
+			want: true,
+		},
+		"NilSpecConfig_ObservedHasConfigs": {
+			in: &v1alpha1.TopicParameters{
+				ReplicationFactor: 1,
+				Partitions:        1,
+				Config:            nil,
 			},
 			observed: &Topic{
 				ReplicationFactor: 1,

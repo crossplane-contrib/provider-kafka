@@ -34,8 +34,8 @@ KUBECTL_VERSION = v1.36.1
 UP_CHANNEL = stable
 UP_VERSION = v0.48.1
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
-CROSSPLANE_CLI_VERSION = v2.3.1
-CROSSPLANE_VERSION = 2.3.1
+CROSSPLANE_CLI_VERSION = v2.3.2
+CROSSPLANE_VERSION = 2.3.2
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
