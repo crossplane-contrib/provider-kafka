@@ -162,10 +162,16 @@ func UpdateReplicationFactor() error {
 }
 
 // updateConfigs updates topic config keys that differ, batching all changes into a single Kafka call.
+// Only configs present in both desired and existing are considered. Keys the broker doesn't
+// return are skipped to avoid INVALID_REQUEST from stale late-initialized entries.
 func updateConfigs(ctx context.Context, client *kadm.Client, desired *Topic, existing *Topic) error {
 	var changes []kadm.AlterConfig
 	for key, value := range desired.Config {
-		if stringValue(value) != stringValue(existing.Config[key]) {
+		obsVal, known := existing.Config[key]
+		if !known {
+			continue
+		}
+		if stringValue(value) != stringValue(obsVal) {
 			changes = append(changes, kadm.AlterConfig{
 				Op:    kadm.SetConfig,
 				Name:  key,
@@ -204,24 +210,10 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	return tpc
 }
 
-// LateInitializeSpec fills empty spec fields with the data retrieved from Kafka.
-func LateInitializeSpec(params *v1alpha1.TopicParameters, observed *Topic) bool {
-	lateInitialized := false
-	if params.Config == nil {
-		params.Config = make(map[string]*string, len(observed.Config))
-	}
-
-	for k, v := range observed.Config {
-		if _, ok := params.Config[k]; !ok {
-			lateInitialized = true
-			params.Config[k] = v
-		}
-	}
-	return lateInitialized
-}
-
 // IsUpToDate returns true if the supplied Kubernetes resource differs from the
-// supplied Kafka Topic.
+// supplied Kafka Topic. Only config keys present in both spec and observed are
+// compared, extra keys on either side are ignored (stale late-init artifacts
+// or unmanaged server defaults).
 func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 	if in.Partitions != int(observed.Partitions) {
 		return false
@@ -229,11 +221,8 @@ func IsUpToDate(in *v1alpha1.TopicParameters, observed *Topic) bool {
 	if in.ReplicationFactor != int(observed.ReplicationFactor) {
 		return false
 	}
-	if len(in.Config) != len(observed.Config) {
-		return false
-	}
-	for k, v := range observed.Config {
-		if iv, ok := in.Config[k]; !ok || stringValue(iv) != stringValue(v) {
+	for k, v := range in.Config {
+		if ov, ok := observed.Config[k]; ok && stringValue(v) != stringValue(ov) {
 			return false
 		}
 	}
