@@ -22,6 +22,7 @@ import (
 
 	aclv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
 	topicv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
+	userv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
 	kafkav1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 )
 
@@ -31,6 +32,7 @@ func init() {
 		kafkav1alpha1.SchemeBuilder.AddToScheme,
 		topicv1alpha1.SchemeBuilder.AddToScheme,
 		aclv1alpha1.SchemeBuilder.AddToScheme,
+		userv1alpha1.SchemeBuilder.AddToScheme,
 	)
 }
 

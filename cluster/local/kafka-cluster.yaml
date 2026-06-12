@@ -52,6 +52,7 @@ spec:
       min.insync.replicas: 1
       allow.everyone.if.no.acl.found: false
       authorizer.class.name: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+      super.users: User:user
       connections.max.idle.ms: 60000
       connections.max.reauth.ms: 300000
   entityOperator:
