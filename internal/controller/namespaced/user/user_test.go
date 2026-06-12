@@ -82,22 +82,22 @@ func TestResolvePassword(t *testing.T) {
 	}{
 		// Branch 1: explicit PasswordSecretRef — secret is looked up in the CR's own namespace
 		"PasswordSecretRefUsesOwnNamespace": {
-			cr: userWithPasswordRef("my-secret", "team-a", "password"),
+			cr: userWithPasswordRef("my-secret", "team-a", passwordSecretKey),
 			secrets: []runtime.Object{
-				secret("my-secret", "team-a", map[string][]byte{"password": []byte("s3cr3t!")}),
+				secret("my-secret", "team-a", map[string][]byte{passwordSecretKey: []byte("s3cr3t!")}),
 			},
 			wantPw: "s3cr3t!",
 		},
 		"PasswordSecretRefNotFoundInOtherNamespace": {
 			// Secret exists but in a different namespace — must not be found
-			cr: userWithPasswordRef("my-secret", "team-a", "password"),
+			cr: userWithPasswordRef("my-secret", "team-a", passwordSecretKey),
 			secrets: []runtime.Object{
-				secret("my-secret", "other-ns", map[string][]byte{"password": []byte("wrong")}),
+				secret("my-secret", "other-ns", map[string][]byte{passwordSecretKey: []byte("wrong")}),
 			},
 			wantErr: true,
 		},
 		"PasswordSecretRefMissing": {
-			cr:      userWithPasswordRef("missing-secret", "team-a", "password"),
+			cr:      userWithPasswordRef("missing-secret", "team-a", passwordSecretKey),
 			secrets: []runtime.Object{},
 			wantErr: true,
 		},
@@ -106,7 +106,7 @@ func TestResolvePassword(t *testing.T) {
 		"ReuseFromOutputSecretInCRNamespace": {
 			cr: userWithWriteRefInNamespace("out-secret", "team-a"),
 			secrets: []runtime.Object{
-				secret("out-secret", "team-a", map[string][]byte{"password": []byte("kept-password")}),
+				secret("out-secret", "team-a", map[string][]byte{passwordSecretKey: []byte("kept-password")}),
 			},
 			wantPw: "kept-password",
 		},
@@ -115,7 +115,7 @@ func TestResolvePassword(t *testing.T) {
 			cr: userWithWriteRefInNamespace("out-secret", "team-a"),
 			secrets: []runtime.Object{
 				// Secret exists but in a different namespace
-				secret("out-secret", "other-namespace", map[string][]byte{"password": []byte("wrong-ns-password")}),
+				secret("out-secret", "other-namespace", map[string][]byte{passwordSecretKey: []byte("wrong-ns-password")}),
 			},
 			// Secret not found → falls through to auto-generate
 		},
@@ -207,8 +207,8 @@ func TestConnectionDetails(t *testing.T) {
 	if string(got["username"]) != "alice" {
 		t.Errorf("username = %q, want %q", string(got["username"]), "alice")
 	}
-	if string(got["password"]) != "s3cr3t" {
-		t.Errorf("password = %q, want %q", string(got["password"]), "s3cr3t")
+	if string(got[passwordSecretKey]) != "s3cr3t" {
+		t.Errorf("password = %q, want %q", string(got[passwordSecretKey]), "s3cr3t")
 	}
 	if string(got["brokers"]) != "broker1:9092,broker2:9092" {
 		t.Errorf("brokers = %q, want %q", string(got["brokers"]), "broker1:9092,broker2:9092")

@@ -268,5 +268,7 @@ func TestPopulateAtProvider(t *testing.T) {
 }
 
 // Ensure the external type is available to tests in this package (avoids unused import).
-var _ = types.NamespacedName{}
-var _ = xpv2.Available()
+var (
+	_ = types.NamespacedName{}
+	_ = xpv2.Available()
+)

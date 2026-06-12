@@ -61,8 +61,11 @@ const (
 	errObserveUser       = "cannot observe Kafka user"
 )
 
-const passwordAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-const passwordLength = 32
+const (
+	passwordAlphabet  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	passwordLength    = 32
+	passwordSecretKey = "password"
+)
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
@@ -324,7 +327,7 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 		// namespaced: LocalSecretReference has only Name; Secret lives in the CR's namespace
 		err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s)
 		if err == nil {
-			if pw, ok := s.Data["password"]; ok && len(pw) > 0 {
+			if pw, ok := s.Data[passwordSecretKey]; ok && len(pw) > 0 {
 				return string(pw), nil
 			}
 		}
@@ -345,9 +348,9 @@ func desiredMechanisms(mechanisms []string) []string {
 // connectionDetails assembles the managed resource connection detail map.
 func connectionDetails(username, password string, brokers []string) managed.ConnectionDetails {
 	return managed.ConnectionDetails{
-		"username": []byte(username),
-		"password": []byte(password),
-		"brokers":  []byte(strings.Join(brokers, ",")),
+		"username":        []byte(username),
+		passwordSecretKey: []byte(password),
+		"brokers":         []byte(strings.Join(brokers, ",")),
 	}
 }
 

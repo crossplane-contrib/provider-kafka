@@ -62,8 +62,10 @@ const (
 	errObserveUser       = "cannot observe Kafka user"
 )
 
-const passwordAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-const passwordLength = 32
+const (
+	passwordAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	passwordLength   = 32
+)
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {

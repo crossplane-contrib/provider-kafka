@@ -11,6 +11,12 @@ import (
 	"github.com/twmb/franz-go/pkg/kerr"
 )
 
+const (
+	testUserAlice   = "alice"
+	testUserCharlie = "charlie"
+	testPassword    = "secret"
+)
+
 // fakeScramClient implements ScramClient for unit testing.
 type fakeScramClient struct {
 	describeFn func(ctx context.Context, users ...string) (kadm.DescribedUserSCRAMs, error)
@@ -34,11 +40,11 @@ func TestMechanismFromString(t *testing.T) {
 		wantErr bool
 	}{
 		"SHA512": {
-			input: "SCRAM-SHA-512",
+			input: mechanismSHA512,
 			want:  kadm.ScramSha512,
 		},
 		"SHA256": {
-			input: "SCRAM-SHA-256",
+			input: mechanismSHA256,
 			want:  kadm.ScramSha256,
 		},
 		"Unknown": {
@@ -74,28 +80,28 @@ func TestIsUpToDate(t *testing.T) {
 		want     bool
 	}{
 		"MatchSingleMechanism": {
-			observed: []string{"SCRAM-SHA-512"},
-			desired:  []string{"SCRAM-SHA-512"},
+			observed: []string{mechanismSHA512},
+			desired:  []string{mechanismSHA512},
 			want:     true,
 		},
 		"DifferentMechanism": {
-			observed: []string{"SCRAM-SHA-512"},
-			desired:  []string{"SCRAM-SHA-256"},
+			observed: []string{mechanismSHA512},
+			desired:  []string{mechanismSHA256},
 			want:     false,
 		},
 		"OrderInsensitive": {
-			observed: []string{"SCRAM-SHA-256", "SCRAM-SHA-512"},
-			desired:  []string{"SCRAM-SHA-512", "SCRAM-SHA-256"},
+			observed: []string{mechanismSHA256, mechanismSHA512},
+			desired:  []string{mechanismSHA512, mechanismSHA256},
 			want:     true,
 		},
 		"MissingMechanism": {
-			observed: []string{"SCRAM-SHA-512"},
-			desired:  []string{"SCRAM-SHA-512", "SCRAM-SHA-256"},
+			observed: []string{mechanismSHA512},
+			desired:  []string{mechanismSHA512, mechanismSHA256},
 			want:     false,
 		},
 		"ExtraMechanism": {
-			observed: []string{"SCRAM-SHA-512", "SCRAM-SHA-256"},
-			desired:  []string{"SCRAM-SHA-512"},
+			observed: []string{mechanismSHA512, mechanismSHA256},
+			desired:  []string{mechanismSHA512},
 			want:     false,
 		},
 		"BothEmpty": {
@@ -124,11 +130,11 @@ func TestExists(t *testing.T) {
 		wantErr    bool
 	}{
 		"UserExists": {
-			username: "alice",
+			username: testUserAlice,
 			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
 				return kadm.DescribedUserSCRAMs{
-					"alice": {
-						User: "alice",
+					testUserAlice: {
+						User: testUserAlice,
 						CredInfos: []kadm.CredInfo{
 							{Mechanism: kadm.ScramSha512},
 						},
@@ -145,11 +151,11 @@ func TestExists(t *testing.T) {
 			want: false,
 		},
 		"UserResourceNotFound": {
-			username: "charlie",
+			username: testUserCharlie,
 			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
 				return kadm.DescribedUserSCRAMs{
-					"charlie": {
-						User: "charlie",
+					testUserCharlie: {
+						User: testUserCharlie,
 						Err:  kerr.ResourceNotFound,
 					},
 				}, nil
@@ -157,11 +163,11 @@ func TestExists(t *testing.T) {
 			want: false,
 		},
 		"UserWithOtherKafkaError": {
-			username: "charlie",
+			username: testUserCharlie,
 			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
 				return kadm.DescribedUserSCRAMs{
-					"charlie": {
-						User: "charlie",
+					testUserCharlie: {
+						User: testUserCharlie,
 						Err:  errors.New("some other kafka error"),
 					},
 				}, nil
@@ -202,11 +208,11 @@ func TestObservedMechanisms(t *testing.T) {
 		wantErr    bool
 	}{
 		"TwoMechanisms": {
-			username: "alice",
+			username: testUserAlice,
 			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
 				return kadm.DescribedUserSCRAMs{
-					"alice": {
-						User: "alice",
+					testUserAlice: {
+						User: testUserAlice,
 						CredInfos: []kadm.CredInfo{
 							{Mechanism: kadm.ScramSha512},
 							{Mechanism: kadm.ScramSha256},
@@ -214,7 +220,7 @@ func TestObservedMechanisms(t *testing.T) {
 					},
 				}, nil
 			},
-			want: []string{"SCRAM-SHA-512", "SCRAM-SHA-256"},
+			want: []string{mechanismSHA512, mechanismSHA256},
 		},
 		"UserAbsent": {
 			username: "bob",
@@ -259,32 +265,32 @@ func TestUpsert(t *testing.T) {
 		wantErr     bool
 	}{
 		"SingleMechanism": {
-			username:   "alice",
-			password:   "secret",
-			mechanisms: []string{"SCRAM-SHA-512"},
+			username:   testUserAlice,
+			password:   testPassword,
+			mechanisms: []string{mechanismSHA512},
 			wantUpserts: []kadm.UpsertSCRAM{
-				{User: "alice", Mechanism: kadm.ScramSha512, Iterations: defaultScramIterations, Password: "secret"},
+				{User: testUserAlice, Mechanism: kadm.ScramSha512, Iterations: defaultScramIterations, Password: testPassword},
 			},
 		},
 		"BothMechanisms": {
-			username:   "alice",
-			password:   "secret",
-			mechanisms: []string{"SCRAM-SHA-256", "SCRAM-SHA-512"},
+			username:   testUserAlice,
+			password:   testPassword,
+			mechanisms: []string{mechanismSHA256, mechanismSHA512},
 			wantUpserts: []kadm.UpsertSCRAM{
-				{User: "alice", Mechanism: kadm.ScramSha256, Iterations: defaultScramIterations, Password: "secret"},
-				{User: "alice", Mechanism: kadm.ScramSha512, Iterations: defaultScramIterations, Password: "secret"},
+				{User: testUserAlice, Mechanism: kadm.ScramSha256, Iterations: defaultScramIterations, Password: testPassword},
+				{User: testUserAlice, Mechanism: kadm.ScramSha512, Iterations: defaultScramIterations, Password: testPassword},
 			},
 		},
 		"UnknownMechanism": {
-			username:   "alice",
-			password:   "secret",
+			username:   testUserAlice,
+			password:   testPassword,
 			mechanisms: []string{"SCRAM-SHA-999"},
 			wantErr:    true,
 		},
 		"AlterError": {
-			username:   "alice",
-			password:   "secret",
-			mechanisms: []string{"SCRAM-SHA-512"},
+			username:   testUserAlice,
+			password:   testPassword,
+			mechanisms: []string{mechanismSHA512},
 			alterErr:   errors.New("alter failed"),
 			wantErr:    true,
 		},
@@ -326,33 +332,33 @@ func TestDelete(t *testing.T) {
 		wantErr     bool
 	}{
 		"SingleMechanism": {
-			username:   "alice",
-			mechanisms: []string{"SCRAM-SHA-512"},
+			username:   testUserAlice,
+			mechanisms: []string{mechanismSHA512},
 			wantDeletes: []kadm.DeleteSCRAM{
-				{User: "alice", Mechanism: kadm.ScramSha512},
+				{User: testUserAlice, Mechanism: kadm.ScramSha512},
 			},
 		},
 		"BothMechanisms": {
-			username:   "alice",
-			mechanisms: []string{"SCRAM-SHA-256", "SCRAM-SHA-512"},
+			username:   testUserAlice,
+			mechanisms: []string{mechanismSHA256, mechanismSHA512},
 			wantDeletes: []kadm.DeleteSCRAM{
-				{User: "alice", Mechanism: kadm.ScramSha256},
-				{User: "alice", Mechanism: kadm.ScramSha512},
+				{User: testUserAlice, Mechanism: kadm.ScramSha256},
+				{User: testUserAlice, Mechanism: kadm.ScramSha512},
 			},
 		},
 		"EmptyMechanisms": {
-			username:    "alice",
+			username:    testUserAlice,
 			mechanisms:  []string{},
 			wantDeletes: []kadm.DeleteSCRAM{},
 		},
 		"UnknownMechanism": {
-			username:   "alice",
+			username:   testUserAlice,
 			mechanisms: []string{"SCRAM-SHA-999"},
 			wantErr:    true,
 		},
 		"AlterError": {
-			username:   "alice",
-			mechanisms: []string{"SCRAM-SHA-512"},
+			username:   testUserAlice,
+			mechanisms: []string{mechanismSHA512},
 			alterErr:   errors.New("alter failed"),
 			wantErr:    true,
 		},

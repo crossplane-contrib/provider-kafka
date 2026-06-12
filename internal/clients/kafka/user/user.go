@@ -20,6 +20,9 @@ const (
 	// Kafka requires a value between 4096 and 16384; 4096 is the minimum and
 	// matches the server-side default for most distributions.
 	defaultScramIterations = 4096
+
+	mechanismSHA256 = "SCRAM-SHA-256"
+	mechanismSHA512 = "SCRAM-SHA-512"
 )
 
 // ScramClient abstracts the kadm SCRAM operations needed by this package.
@@ -33,9 +36,9 @@ type ScramClient interface {
 // Accepted values: "SCRAM-SHA-256", "SCRAM-SHA-512".
 func MechanismFromString(s string) (kadm.ScramMechanism, error) {
 	switch strings.ToUpper(s) {
-	case "SCRAM-SHA-256":
+	case mechanismSHA256:
 		return kadm.ScramSha256, nil
-	case "SCRAM-SHA-512":
+	case mechanismSHA512:
 		return kadm.ScramSha512, nil
 	default:
 		return 0, fmt.Errorf("%s: %q", errUnknownMechanism, s)
