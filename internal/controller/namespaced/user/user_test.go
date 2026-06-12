@@ -80,16 +80,24 @@ func TestResolvePassword(t *testing.T) {
 		wantPw  string // empty means: assert a 32-char generated password
 		wantErr bool
 	}{
-		// Branch 1: explicit PasswordSecretRef
-		"PasswordSecretRef": {
-			cr: userWithPasswordRef("my-secret", "default", "password"),
+		// Branch 1: explicit PasswordSecretRef — secret is looked up in the CR's own namespace
+		"PasswordSecretRefUsesOwnNamespace": {
+			cr: userWithPasswordRef("my-secret", "team-a", "password"),
 			secrets: []runtime.Object{
-				secret("my-secret", "default", map[string][]byte{"password": []byte("s3cr3t!")}),
+				secret("my-secret", "team-a", map[string][]byte{"password": []byte("s3cr3t!")}),
 			},
 			wantPw: "s3cr3t!",
 		},
+		"PasswordSecretRefNotFoundInOtherNamespace": {
+			// Secret exists but in a different namespace — must not be found
+			cr: userWithPasswordRef("my-secret", "team-a", "password"),
+			secrets: []runtime.Object{
+				secret("my-secret", "other-ns", map[string][]byte{"password": []byte("wrong")}),
+			},
+			wantErr: true,
+		},
 		"PasswordSecretRefMissing": {
-			cr:      userWithPasswordRef("missing-secret", "default", "password"),
+			cr:      userWithPasswordRef("missing-secret", "team-a", "password"),
 			secrets: []runtime.Object{},
 			wantErr: true,
 		},
@@ -168,23 +176,23 @@ func TestDesiredMechanisms(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		params commonv1alpha1.UserParameters
-		want   []string
+		mechanisms []string
+		want       []string
 	}{
 		"ExplicitMechanisms": {
-			params: commonv1alpha1.UserParameters{Mechanisms: []string{"SCRAM-SHA-256"}},
-			want:   []string{"SCRAM-SHA-256"},
+			mechanisms: []string{"SCRAM-SHA-256"},
+			want:       []string{"SCRAM-SHA-256"},
 		},
 		"DefaultMechanism": {
-			params: commonv1alpha1.UserParameters{},
-			want:   []string{"SCRAM-SHA-512"},
+			mechanisms: nil,
+			want:       []string{"SCRAM-SHA-512"},
 		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := desiredMechanisms(tc.params)
+			got := desiredMechanisms(tc.mechanisms)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("desiredMechanisms(): -want, +got:\n%s", diff)
 			}
@@ -209,14 +217,16 @@ func TestConnectionDetails(t *testing.T) {
 
 // helpers
 
-func userWithPasswordRef(name, namespace, key string) *v1alpha1.User {
+func userWithPasswordRef(name, crNamespace, key string) *v1alpha1.User {
 	return &v1alpha1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: crNamespace,
+		},
 		Spec: v1alpha1.UserSpec{
-			ForProvider: commonv1alpha1.UserParameters{
-				PasswordSecretRef: &commonv1alpha1.SecretKeySelector{
-					Name:      name,
-					Namespace: namespace,
-					Key:       key,
+			ForProvider: commonv1alpha1.NamespacedUserParameters{
+				PasswordSecretRef: &commonv1alpha1.NamespacedSecretKeySelector{
+					Name: name,
+					Key:  key,
 				},
 			},
 		},

@@ -43,7 +43,6 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
-	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/user"
 )
@@ -220,7 +219,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.Mechanisms = mechs
 	cr.Status.SetConditions(xpv2.Available())
 
-	desiredMechs := desiredMechanisms(cr.Spec.ForProvider)
+	desiredMechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	obs := managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: user.IsUpToDate(mechs, desiredMechs),
@@ -232,7 +231,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// an unnecessary credential rotation.
 	if ref := cr.Spec.ForProvider.PasswordSecretRef; ref != nil {
 		s := &corev1.Secret{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, s); err != nil {
+		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s); err != nil {
 			return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errGetPasswordSecret, err)
 		}
 		obs.ConnectionDetails = connectionDetails(username, string(s.Data[ref.Key]), c.brokers)
@@ -253,7 +252,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider)
+	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
 		return managed.ExternalCreation{}, fmt.Errorf("%s: %w", errUpsertUser, err)
 	}
@@ -275,7 +274,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider)
+	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
 		return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errUpsertUser, err)
 	}
@@ -295,7 +294,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	username := meta.GetExternalName(cr)
 	mechs := cr.Status.AtProvider.Mechanisms
 	if len(mechs) == 0 {
-		mechs = desiredMechanisms(cr.Spec.ForProvider)
+		mechs = desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	}
 
 	if err := user.Delete(ctx, c.kafkaClient, username, mechs); err != nil {
@@ -313,7 +312,7 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 	// Branch 1: explicit password secret reference
 	if ref := cr.Spec.ForProvider.PasswordSecretRef; ref != nil {
 		s := &corev1.Secret{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, s); err != nil {
+		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s); err != nil {
 			return "", fmt.Errorf("%s: %w", errGetPasswordSecret, err)
 		}
 		return string(s.Data[ref.Key]), nil
@@ -336,9 +335,9 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 }
 
 // desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
-func desiredMechanisms(p commonv1alpha1.UserParameters) []string {
-	if len(p.Mechanisms) > 0 {
-		return p.Mechanisms
+func desiredMechanisms(mechanisms []string) []string {
+	if len(mechanisms) > 0 {
+		return mechanisms
 	}
 	return []string{"SCRAM-SHA-512"}
 }

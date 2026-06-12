@@ -57,7 +57,10 @@ spec:
             description: A UserSpec defines the desired state of a User.
             properties:
               forProvider:
-                description: UserParameters are the configurable fields of a User.
+                description: |-
+                  NamespacedUserParameters are the configurable fields of a namespaced User.
+                  The password Secret reference does not include a namespace — the Secret must
+                  reside in the same namespace as the User resource.
                 properties:
                   mechanisms:
                     default:
@@ -70,10 +73,10 @@ spec:
                     type: array
                   passwordSecretRef:
                     description: |-
-                      PasswordSecretRef is an optional reference to a Kubernetes Secret
-                      containing the user's password. When set, the controller reads the
-                      password from the specified key. When omitted, the controller auto-generates
-                      a secure random password and persists it in the connection Secret.
+                      PasswordSecretRef is an optional reference to a Kubernetes Secret in the
+                      same namespace as this User. When set, the controller reads the password
+                      from the specified key. When omitted, the controller auto-generates a
+                      secure random password and persists it in the connection Secret.
                     properties:
                       key:
                         description: Key is the key within the Secret's data map.
@@ -81,13 +84,9 @@ spec:
                       name:
                         description: Name is the name of the Secret.
                         type: string
-                      namespace:
-                        description: Namespace is the namespace of the Secret.
-                        type: string
                     required:
                     - key
                     - name
-                    - namespace
                     type: object
                 type: object
               managementPolicies:

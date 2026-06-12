@@ -8,6 +8,7 @@ type UserObservation struct {
 }
 
 // SecretKeySelector selects a key from a Kubernetes Secret.
+// Used by cluster-scoped resources where the namespace must be explicit.
 type SecretKeySelector struct {
 	// Name is the name of the Secret.
 	Name string `json:"name"`
@@ -17,7 +18,17 @@ type SecretKeySelector struct {
 	Key string `json:"key"`
 }
 
-// UserParameters are the configurable fields of a User.
+// NamespacedSecretKeySelector selects a key from a Kubernetes Secret in the
+// same namespace as the referencing resource. Cross-namespace references are
+// not permitted for namespace-scoped resources.
+type NamespacedSecretKeySelector struct {
+	// Name is the name of the Secret.
+	Name string `json:"name"`
+	// Key is the key within the Secret's data map.
+	Key string `json:"key"`
+}
+
+// UserParameters are the configurable fields of a cluster-scoped User.
 type UserParameters struct {
 	// Mechanisms lists the SCRAM mechanisms to enroll the user in.
 	// Valid values are SCRAM-SHA-256 and SCRAM-SHA-512.
@@ -31,6 +42,24 @@ type UserParameters struct {
 	// a secure random password and persists it in the connection Secret.
 	// +optional
 	PasswordSecretRef *SecretKeySelector `json:"passwordSecretRef,omitempty"`
+}
+
+// NamespacedUserParameters are the configurable fields of a namespaced User.
+// The password Secret reference does not include a namespace — the Secret must
+// reside in the same namespace as the User resource.
+type NamespacedUserParameters struct {
+	// Mechanisms lists the SCRAM mechanisms to enroll the user in.
+	// Valid values are SCRAM-SHA-256 and SCRAM-SHA-512.
+	// +kubebuilder:default={"SCRAM-SHA-512"}
+	// +optional
+	Mechanisms []string `json:"mechanisms,omitempty"`
+
+	// PasswordSecretRef is an optional reference to a Kubernetes Secret in the
+	// same namespace as this User. When set, the controller reads the password
+	// from the specified key. When omitted, the controller auto-generates a
+	// secure random password and persists it in the connection Secret.
+	// +optional
+	PasswordSecretRef *NamespacedSecretKeySelector `json:"passwordSecretRef,omitempty"`
 }
 
 // DeepCopyInto is a deepcopy function, copying the receiver, writing into out. in must be non-nil.
@@ -89,6 +118,46 @@ func (in *SecretKeySelector) DeepCopy() *SecretKeySelector {
 		return nil
 	}
 	out := new(SecretKeySelector)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is a deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *NamespacedSecretKeySelector) DeepCopyInto(out *NamespacedSecretKeySelector) {
+	*out = *in
+}
+
+// DeepCopy is a deepcopy function, copying the receiver, creating a new NamespacedSecretKeySelector.
+func (in *NamespacedSecretKeySelector) DeepCopy() *NamespacedSecretKeySelector {
+	if in == nil {
+		return nil
+	}
+	out := new(NamespacedSecretKeySelector)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is a deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *NamespacedUserParameters) DeepCopyInto(out *NamespacedUserParameters) {
+	*out = *in
+	if in.Mechanisms != nil {
+		in, out := &in.Mechanisms, &out.Mechanisms
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.PasswordSecretRef != nil {
+		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef
+		*out = new(NamespacedSecretKeySelector)
+		**out = **in
+	}
+}
+
+// DeepCopy is a deepcopy function, copying the receiver, creating a new NamespacedUserParameters.
+func (in *NamespacedUserParameters) DeepCopy() *NamespacedUserParameters {
+	if in == nil {
+		return nil
+	}
+	out := new(NamespacedUserParameters)
 	in.DeepCopyInto(out)
 	return out
 }

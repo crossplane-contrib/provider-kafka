@@ -71,7 +71,8 @@ spec:
                 - Delete
                 type: string
               forProvider:
-                description: UserParameters are the configurable fields of a User.
+                description: UserParameters are the configurable fields of a cluster-scoped
+                  User.
                 properties:
                   mechanisms:
                     default:

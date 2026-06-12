@@ -30,7 +30,7 @@ import (
 // A UserSpec defines the desired state of a User.
 type UserSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
-	ForProvider              common.UserParameters `json:"forProvider"`
+	ForProvider              common.NamespacedUserParameters `json:"forProvider"`
 }
 
 // A UserStatus represents the observed state of a User.
