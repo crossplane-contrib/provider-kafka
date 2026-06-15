@@ -18,7 +18,6 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
 
-
 const configKeyRetentionMs = "retention.ms"
 
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
