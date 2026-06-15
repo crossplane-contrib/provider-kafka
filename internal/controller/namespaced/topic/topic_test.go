@@ -18,6 +18,11 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 )
 
+const (
+	testTopicID     = "abc-123"
+	testRetentionMS = "retention.ms"
+)
+
 func TestObserveWrongType(t *testing.T) {
 	type want struct {
 		o   managed.ExternalObservation
@@ -69,41 +74,41 @@ func TestObserveFirstReconcileNotUpToDate(t *testing.T) {
 			spec: common.TopicParameters{
 				ReplicationFactor: 3,
 				Partitions:        6,
-				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
 			},
 			observed: &topic.Topic{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        6,
-				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
 			},
 			wantUpToDate: false,
 		},
 		"PopulatedID_SpecMatchesObserved": {
 			reason:     "Subsequent reconcile (populated ID) with matching spec should be up-to-date",
-			existingID: "abc-123",
+			existingID: testTopicID,
 			spec: common.TopicParameters{
 				ReplicationFactor: 3,
 				Partitions:        6,
-				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
 			},
 			observed: &topic.Topic{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        6,
-				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
 			},
 			wantUpToDate: true,
 		},
 		"PopulatedID_SpecDiffers": {
 			reason:     "Subsequent reconcile with different spec should not be up-to-date",
-			existingID: "abc-123",
+			existingID: testTopicID,
 			spec: common.TopicParameters{
 				ReplicationFactor: 3,
 				Partitions:        12,
 			},
 			observed: &topic.Topic{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        6,
 			},
@@ -144,7 +149,7 @@ func TestUpdateRepopulatesStatus(t *testing.T) {
 		ReplicationFactor: 3,
 		Partitions:        12,
 		Config: map[string]*string{
-			"retention.ms":   strPtr("86400000"),
+			testRetentionMS:  strPtr("86400000"),
 			"cleanup.policy": strPtr("delete"),
 		},
 	}
@@ -161,7 +166,7 @@ func TestUpdateRepopulatesStatus(t *testing.T) {
 	assert.Equal(t, "topic-uuid-123", cr.Status.AtProvider.ID)
 	assert.Equal(t, 3, cr.Status.AtProvider.ReplicationFactor)
 	assert.Equal(t, 12, cr.Status.AtProvider.Partitions)
-	assert.Equal(t, "86400000", *cr.Status.AtProvider.Config["retention.ms"])
+	assert.Equal(t, "86400000", *cr.Status.AtProvider.Config[testRetentionMS])
 	assert.Equal(t, "delete", *cr.Status.AtProvider.Config["cleanup.policy"])
 }
 
@@ -176,20 +181,20 @@ func TestPopulateTopicAtProvider(t *testing.T) {
 		"AllFieldsPopulated": {
 			reason: "All observed fields should be mapped to atProvider",
 			observed: &topic.Topic{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        12,
 				Config: map[string]*string{
-					"retention.ms":   strPtr("86400000"),
+					testRetentionMS:  strPtr("86400000"),
 					"cleanup.policy": strPtr("delete"),
 				},
 			},
 			want: common.TopicObservation{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        12,
 				Config: map[string]*string{
-					"retention.ms":   strPtr("86400000"),
+					testRetentionMS:  strPtr("86400000"),
 					"cleanup.policy": strPtr("delete"),
 				},
 			},
