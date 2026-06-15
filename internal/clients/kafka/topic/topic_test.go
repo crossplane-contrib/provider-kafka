@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -443,8 +445,8 @@ func TestCreateDuplicateTopic(t *testing.T) {
 			args    args
 			wantErr bool
 		}{
-			"CreateTopicOneExists": {
-				name: "CreateTopicOneExists",
+			"CreateTopicOneExists_Idempotent": {
+				name: "CreateTopicOneExists_Idempotent",
 				args: args{
 					ctx:    context.Background(),
 					client: newAc,
@@ -455,11 +457,11 @@ func TestCreateDuplicateTopic(t *testing.T) {
 						Config:            nil,
 					},
 				},
-				wantErr: true,
+				wantErr: false,
 			},
 
-			"CreateTopicTwoExists": {
-				name: "CreateTopicTwoExists",
+			"CreateTopicTwoExists_Idempotent": {
+				name: "CreateTopicTwoExists_Idempotent",
 				args: args{
 					ctx:    context.Background(),
 					client: newAc,
@@ -470,11 +472,11 @@ func TestCreateDuplicateTopic(t *testing.T) {
 						Config:            nil,
 					},
 				},
-				wantErr: true,
+				wantErr: false,
 			},
 
-			"CreateTopicThreeExists": {
-				name: "CreateTopicThreeExists",
+			"CreateTopicThreeExists_Idempotent": {
+				name: "CreateTopicThreeExists_Idempotent",
 				args: args{
 					ctx:    context.Background(),
 					client: newAc,
@@ -485,7 +487,7 @@ func TestCreateDuplicateTopic(t *testing.T) {
 						Config:            nil,
 					},
 				},
-				wantErr: true,
+				wantErr: false,
 			},
 			"CreateTopicDoesNotExist": {
 				name: "CreateTopicDoesNotExist",
@@ -579,6 +581,91 @@ func TestDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestPreExistingTopicReconcile simulates the provider reconciling a topic that
+// was created externally (e.g. by Strimzi via KafkaTopic CR) and referenced via
+// crossplane.io/external-name annotation. Create must be idempotent (no error),
+// and Get must return all fields needed for status.atProvider population.
+func TestPreExistingTopicReconcile(t *testing.T) {
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
+	}
+
+	ctx := context.Background()
+	client, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	require.NoError(t, err, "failed to create admin client")
+
+	const preExistingTopic = "pre-existing"
+
+	// Create on an already-existing topic must succeed (idempotent)
+	err = Create(ctx, client, &Topic{
+		Name:              preExistingTopic,
+		ReplicationFactor: 1,
+		Partitions:        1,
+	})
+	require.NoError(t, err, "Create on pre-existing topic should be idempotent")
+
+	// Get must return all fields needed for status.atProvider
+	got, err := Get(ctx, client, preExistingTopic)
+	require.NoError(t, err, "Get on pre-existing topic should succeed")
+
+	assert.Equal(t, preExistingTopic, got.Name)
+	assert.NotEmpty(t, got.ID, "ID must be populated for status.atProvider")
+	assert.Equal(t, int32(1), got.Partitions)
+	assert.Equal(t, int16(1), got.ReplicationFactor)
+	assert.NotNil(t, got.Config, "Config must be populated for status.atProvider")
+}
+
+// TestPreExistingTopicUpdateConfig updates a config key on the Strimzi-managed
+// "pre-existing" topic and verifies that a subsequent Get reflects the change
+// in all fields needed for status.atProvider.
+func TestPreExistingTopicUpdateConfig(t *testing.T) {
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
+	}
+
+	ctx := context.Background()
+	client, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	require.NoError(t, err, "failed to create admin client")
+
+	const preExistingTopic = "pre-existing"
+
+	// Read original config to restore after test
+	original, err := Get(ctx, client, preExistingTopic)
+	require.NoError(t, err)
+
+	newRetention := "172800000"
+	err = Update(ctx, client, &Topic{
+		Name:              preExistingTopic,
+		ReplicationFactor: original.ReplicationFactor,
+		Partitions:        original.Partitions,
+		Config:            map[string]*string{configKeyRetentionMs: &newRetention},
+	})
+	require.NoError(t, err, "Update config on pre-existing topic should succeed")
+
+	// Get must reflect the updated config in status.atProvider fields
+	got, err := Get(ctx, client, preExistingTopic)
+	require.NoError(t, err)
+
+	assert.Equal(t, preExistingTopic, got.Name)
+	assert.NotEmpty(t, got.ID, "ID must be populated")
+	assert.Equal(t, original.Partitions, got.Partitions)
+	assert.Equal(t, original.ReplicationFactor, got.ReplicationFactor)
+	require.NotNil(t, got.Config)
+	assert.Equal(t, newRetention, *got.Config[configKeyRetentionMs],
+		"status.atProvider.config should reflect the updated retention.ms")
+
+	// Restore original value
+	t.Cleanup(func() {
+		originalRetention := original.Config[configKeyRetentionMs]
+		_ = Update(ctx, client, &Topic{
+			Name:              preExistingTopic,
+			ReplicationFactor: original.ReplicationFactor,
+			Partitions:        original.Partitions,
+			Config:            map[string]*string{configKeyRetentionMs: originalRetention},
+		})
+	})
 }
 
 func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {

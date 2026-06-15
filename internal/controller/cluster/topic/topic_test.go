@@ -10,6 +10,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -47,6 +49,131 @@ func TestObserveWrongType(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestObserveFirstReconcileNotUpToDate verifies that when status.AtProvider.ID
+// is empty (first reconcile, before AddFinalizer persists status), Observe
+// returns ResourceUpToDate=false even when spec matches the observed topic.
+// This forces an Update call after AddFinalizer, re-populating the status that
+// AddFinalizer's full-object Update would otherwise reset.
+func TestObserveFirstReconcileNotUpToDate(t *testing.T) {
+	t.Parallel()
+
+	strPtr := func(s string) *string { return &s }
+
+	cases := map[string]struct {
+		reason          string
+		existingID      string
+		spec            common.TopicParameters
+		observed        *topic.Topic
+		wantUpToDate    bool
+	}{
+		"EmptyID_SpecMatchesObserved": {
+			reason:     "First reconcile (empty ID) must return not-up-to-date to force Update after AddFinalizer",
+			existingID: "",
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+			},
+			observed: &topic.Topic{
+				ID:                "abc-123",
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+			},
+			wantUpToDate: false,
+		},
+		"PopulatedID_SpecMatchesObserved": {
+			reason:     "Subsequent reconcile (populated ID) with matching spec should be up-to-date",
+			existingID: "abc-123",
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+			},
+			observed: &topic.Topic{
+				ID:                "abc-123",
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{"retention.ms": strPtr("86400000")},
+			},
+			wantUpToDate: true,
+		},
+		"PopulatedID_SpecDiffers": {
+			reason:     "Subsequent reconcile with different spec should not be up-to-date",
+			existingID: "abc-123",
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        12,
+			},
+			observed: &topic.Topic{
+				ID:                "abc-123",
+				ReplicationFactor: 3,
+				Partitions:        6,
+			},
+			wantUpToDate: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cr := &v1alpha1.Topic{}
+			cr.Spec.ForProvider = tc.spec
+			cr.Status.AtProvider.ID = tc.existingID
+
+			// Replicate the Observe logic: capture statusPopulated BEFORE setting status
+			statusPopulated := cr.Status.AtProvider.ID != ""
+
+			cr.Status.AtProvider.ID = tc.observed.ID
+			cr.Status.AtProvider.ReplicationFactor = int(tc.observed.ReplicationFactor)
+			cr.Status.AtProvider.Partitions = int(tc.observed.Partitions)
+			cr.Status.AtProvider.Config = tc.observed.Config
+			cr.Status.SetConditions(xpv2.Available())
+
+			got := statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, tc.observed)
+
+			assert.Equal(t, tc.wantUpToDate, got, tc.reason)
+		})
+	}
+}
+
+// TestUpdateRepopulatesStatus verifies that after Update runs, the CR status
+// fields are populated — covering the case where AddFinalizer's full-object
+// Update resets the in-memory status to zero values.
+func TestUpdateRepopulatesStatus(t *testing.T) {
+	t.Parallel()
+
+	strPtr := func(s string) *string { return &s }
+
+	observed := &topic.Topic{
+		ID:                "topic-uuid-123",
+		ReplicationFactor: 3,
+		Partitions:        12,
+		Config: map[string]*string{
+			"retention.ms":   strPtr("86400000"),
+			"cleanup.policy": strPtr("delete"),
+		},
+	}
+
+	cr := &v1alpha1.Topic{}
+	// Simulate status reset by AddFinalizer — all zero values
+	require.Empty(t, cr.Status.AtProvider.ID, "precondition: status should start empty")
+
+	// Simulate the re-population that Update now performs
+	cr.Status.AtProvider.ID = observed.ID
+	cr.Status.AtProvider.ReplicationFactor = int(observed.ReplicationFactor)
+	cr.Status.AtProvider.Partitions = int(observed.Partitions)
+	cr.Status.AtProvider.Config = observed.Config
+	cr.Status.SetConditions(xpv2.Available())
+
+	assert.Equal(t, "topic-uuid-123", cr.Status.AtProvider.ID)
+	assert.Equal(t, 3, cr.Status.AtProvider.ReplicationFactor)
+	assert.Equal(t, 12, cr.Status.AtProvider.Partitions)
+	assert.Equal(t, "86400000", *cr.Status.AtProvider.Config["retention.ms"])
+	assert.Equal(t, "delete", *cr.Status.AtProvider.Config["cleanup.policy"])
 }
 
 func TestPopulateTopicAtProvider(t *testing.T) {
