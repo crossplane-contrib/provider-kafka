@@ -75,8 +75,13 @@ func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) 
 	return &ts, nil
 }
 
-// Create creates the topic from Kafka side
+// Create creates the topic from Kafka side. If the topic already exists, it
+// returns nil (idempotent).
 func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
+	if _, err := Get(ctx, client, topic.Name); err == nil {
+		return nil
+	}
+
 	resp, err := client.CreateTopics(ctx, topic.Partitions, topic.ReplicationFactor, topic.Config, topic.Name)
 	if err != nil {
 		return err

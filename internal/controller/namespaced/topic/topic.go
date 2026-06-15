@@ -198,6 +198,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, fmt.Errorf(errGetTopic+": %w", err)
 	}
 
+	// On the first reconcile, AddFinalizer performs a full-object Update that
+	// resets the in-memory status before it can be persisted. Returning
+	// ResourceUpToDate=false forces an Update call which runs after
+	// AddFinalizer and re-populates status there.
+	statusPopulated := cr.Status.AtProvider.ID != ""
+
 	cr.Status.AtProvider.ID = tpc.ID
 	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
 	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
@@ -206,7 +212,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
+		ResourceUpToDate: statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
 	}, nil
 }
 
@@ -224,7 +230,26 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotTopic)
 	}
 
-	return managed.ExternalUpdate{}, topic.Update(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
+	name := meta.GetExternalName(cr)
+
+	if err := topic.Update(ctx, c.kafkaClient, topic.Generate(name, &cr.Spec.ForProvider)); err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	// Re-populate status which may have been reset by AddFinalizer's
+	// full-object Update on the first reconcile.
+	tpc, err := topic.Get(ctx, c.kafkaClient, name)
+	if err != nil {
+		return managed.ExternalUpdate{}, fmt.Errorf(errGetTopic+": %w", err)
+	}
+
+	cr.Status.AtProvider.ID = tpc.ID
+	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
+	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
+	cr.Status.AtProvider.Config = tpc.Config
+	cr.Status.SetConditions(xpv2.Available())
+
+	return managed.ExternalUpdate{}, nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
