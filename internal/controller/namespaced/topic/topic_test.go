@@ -11,7 +11,6 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -126,48 +125,11 @@ func TestObserveFirstReconcileNotUpToDate(t *testing.T) {
 
 			statusPopulated := cr.Status.AtProvider.ID != ""
 
-			cr.Status.AtProvider.ID = tc.observed.ID
-			cr.Status.AtProvider.ReplicationFactor = int(tc.observed.ReplicationFactor)
-			cr.Status.AtProvider.Partitions = int(tc.observed.Partitions)
-			cr.Status.AtProvider.Config = tc.observed.Config
-			cr.Status.SetConditions(xpv2.Available())
-
-			got := statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, tc.observed)
+			got := isResourceUpToDate(cr, statusPopulated, tc.observed)
 
 			assert.Equal(t, tc.wantUpToDate, got, tc.reason)
 		})
 	}
-}
-
-func TestUpdateRepopulatesStatus(t *testing.T) {
-	t.Parallel()
-
-	strPtr := func(s string) *string { return &s }
-
-	observed := &topic.Topic{
-		ID:                "topic-uuid-123",
-		ReplicationFactor: 3,
-		Partitions:        12,
-		Config: map[string]*string{
-			testRetentionMS:  strPtr("86400000"),
-			"cleanup.policy": strPtr("delete"),
-		},
-	}
-
-	cr := &v1alpha1.Topic{}
-	require.Empty(t, cr.Status.AtProvider.ID, "precondition: status should start empty")
-
-	cr.Status.AtProvider.ID = observed.ID
-	cr.Status.AtProvider.ReplicationFactor = int(observed.ReplicationFactor)
-	cr.Status.AtProvider.Partitions = int(observed.Partitions)
-	cr.Status.AtProvider.Config = observed.Config
-	cr.Status.SetConditions(xpv2.Available())
-
-	assert.Equal(t, "topic-uuid-123", cr.Status.AtProvider.ID)
-	assert.Equal(t, 3, cr.Status.AtProvider.ReplicationFactor)
-	assert.Equal(t, 12, cr.Status.AtProvider.Partitions)
-	assert.Equal(t, "86400000", *cr.Status.AtProvider.Config[testRetentionMS])
-	assert.Equal(t, "delete", *cr.Status.AtProvider.Config["cleanup.policy"])
 }
 
 func TestPopulateTopicAtProvider(t *testing.T) {

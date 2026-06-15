@@ -197,8 +197,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, tpc),
+		ResourceUpToDate: isResourceUpToDate(cr, statusPopulated, tpc),
 	}, nil
+}
+
+func isResourceUpToDate(cr *v1alpha1.Topic, statusPopulated bool, observed *topic.Topic) bool {
+	return statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, observed)
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {

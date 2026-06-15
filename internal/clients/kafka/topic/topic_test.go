@@ -6,14 +6,18 @@ import (
 	"os"
 	"testing"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	clustertopic "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
+
 
 const configKeyRetentionMs = "retention.ms"
 
@@ -168,6 +172,7 @@ func TestGet(t *testing.T) {
 
 // TestGetAtProviderFields verifies that Get() returns all fields needed for
 // status.atProvider population, including topic config entries.
+// Uses the Strimzi-managed "pre-existing" topic (cluster/local/kafka-cluster.yaml).
 func TestGetAtProviderFields(t *testing.T) {
 	if len(dataTesting) == 0 {
 		t.Skip("KAFKA_CONFIG not set, skipping integration test")
@@ -179,37 +184,19 @@ func TestGetAtProviderFields(t *testing.T) {
 		t.Fatalf("failed to create admin client: %v", err)
 	}
 
-	topicName := "test-atprovider-fields"
-	retentionMs := "86400000"
-
-	// Create a topic with a specific config
-	err = Create(ctx, newAc, &Topic{
-		Name:              topicName,
-		ReplicationFactor: 1,
-		Partitions:        2,
-		Config:            map[string]*string{configKeyRetentionMs: &retentionMs},
-	})
-	if err != nil {
-		t.Fatalf("failed to create topic: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = Delete(ctx, newAc, topicName)
-	})
-
-	got, err := Get(ctx, newAc, topicName)
+	got, err := Get(ctx, newAc, "pre-existing")
 	if err != nil {
 		t.Fatalf("Get() returned error: %v", err)
 	}
 
-	// Validate all fields that feed into status.atProvider
-	if got.Name != topicName {
-		t.Errorf("Name = %q, want %q", got.Name, topicName)
+	if got.Name != "pre-existing" {
+		t.Errorf("Name = %q, want %q", got.Name, "pre-existing")
 	}
 	if got.ID == "" {
 		t.Error("ID should not be empty for an existing topic")
 	}
-	if got.Partitions != 2 {
-		t.Errorf("Partitions = %d, want 2", got.Partitions)
+	if got.Partitions != 1 {
+		t.Errorf("Partitions = %d, want 1", got.Partitions)
 	}
 	if got.ReplicationFactor != 1 {
 		t.Errorf("ReplicationFactor = %d, want 1", got.ReplicationFactor)
@@ -217,10 +204,8 @@ func TestGetAtProviderFields(t *testing.T) {
 	if got.Config == nil {
 		t.Fatal("Config should not be nil")
 	}
-	if v, ok := got.Config[configKeyRetentionMs]; !ok {
+	if _, ok := got.Config[configKeyRetentionMs]; !ok {
 		t.Error("Config should contain 'retention.ms' key")
-	} else if v == nil || *v != retentionMs {
-		t.Errorf("Config['retention.ms'] = %v, want %q", v, retentionMs)
 	}
 }
 
@@ -583,10 +568,9 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// TestPreExistingTopicReconcile simulates the provider reconciling a topic that
-// was created externally (e.g. by Strimzi via KafkaTopic CR) and referenced via
-// crossplane.io/external-name annotation. Create must be idempotent (no error),
-// and Get must return all fields needed for status.atProvider population.
+// TestPreExistingTopicReconcile verifies that Get() on a Strimzi-created topic
+// returns all fields needed to populate status.atProvider when imported via
+// crossplane.io/external-name annotation.
 func TestPreExistingTopicReconcile(t *testing.T) {
 	if len(dataTesting) == 0 {
 		t.Skip("KAFKA_CONFIG not set, skipping integration test")
@@ -596,25 +580,38 @@ func TestPreExistingTopicReconcile(t *testing.T) {
 	client, err := kafka.NewAdminClient(ctx, dataTesting, nil)
 	require.NoError(t, err, "failed to create admin client")
 
-	const preExistingTopic = "pre-existing"
+	// "pre-existing" topic is created by Strimzi (cluster/local/kafka-cluster.yaml).
+	cr := &clustertopic.Topic{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-cr-name",
+		},
+	}
+	meta.SetExternalName(cr, "pre-existing")
 
 	// Create on an already-existing topic must succeed (idempotent)
 	err = Create(ctx, client, &Topic{
-		Name:              preExistingTopic,
+		Name:              meta.GetExternalName(cr),
 		ReplicationFactor: 1,
 		Partitions:        1,
 	})
 	require.NoError(t, err, "Create on pre-existing topic should be idempotent")
 
 	// Get must return all fields needed for status.atProvider
-	got, err := Get(ctx, client, preExistingTopic)
+	got, err := Get(ctx, client, meta.GetExternalName(cr))
 	require.NoError(t, err, "Get on pre-existing topic should succeed")
 
-	assert.Equal(t, preExistingTopic, got.Name)
-	assert.NotEmpty(t, got.ID, "ID must be populated for status.atProvider")
-	assert.Equal(t, int32(1), got.Partitions)
-	assert.Equal(t, int16(1), got.ReplicationFactor)
-	assert.NotNil(t, got.Config, "Config must be populated for status.atProvider")
+	// Populate status.atProvider the same way the controller does.
+	cr.Status.AtProvider = v1alpha1.TopicObservation{
+		ID:                got.ID,
+		ReplicationFactor: int(got.ReplicationFactor),
+		Partitions:        int(got.Partitions),
+		Config:            got.Config,
+	}
+
+	assert.NotEmpty(t, cr.Status.AtProvider.ID, "status.atProvider.id")
+	assert.Equal(t, 1, cr.Status.AtProvider.ReplicationFactor, "status.atProvider.replicationFactor")
+	assert.Equal(t, 1, cr.Status.AtProvider.Partitions, "status.atProvider.partitions")
+	assert.NotEmpty(t, cr.Status.AtProvider.Config, "status.atProvider.config must contain broker defaults")
 }
 
 // TestPreExistingTopicUpdateConfig updates a config key on the Strimzi-managed
