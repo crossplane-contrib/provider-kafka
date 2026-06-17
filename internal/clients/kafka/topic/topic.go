@@ -37,6 +37,11 @@ const (
 	ErrTopicDoesNotExist = "topic does not exist"
 )
 
+var (
+	// ErrCannotDecreasePartitions indicates that reducing partition count is not supported by Kafka.
+	ErrCannotDecreasePartitions = errors.New("cannot decrease topic partitions")
+)
+
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
 	td, err := client.ListTopics(ctx, name)
@@ -144,8 +149,8 @@ func Update(ctx context.Context, client *kadm.Client, desired *Topic) error {
 // updatePartitions updates a topic Partition count in Kafka, reusing the already-fetched existing topic.
 func updatePartitions(ctx context.Context, client *kadm.Client, desired *Topic, existing *Topic) error {
 	if desired.Partitions < existing.Partitions {
-		return fmt.Errorf("cannot decrease topic partitions from %d to %d: Kafka does not support reducing the number of partitions",
-			existing.Partitions, desired.Partitions)
+		return fmt.Errorf("%w from %d to %d: Kafka does not support reducing the number of partitions",
+			ErrCannotDecreasePartitions, existing.Partitions, desired.Partitions)
 	}
 	resp, err := client.UpdatePartitions(ctx, int(desired.Partitions), desired.Name)
 	if err != nil {
@@ -207,6 +212,16 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 	}
 
 	return tpc
+}
+
+// ToObservation converts a Kafka Topic to a TopicObservation.
+func (t *Topic) ToObservation() v1alpha1.TopicObservation {
+	return v1alpha1.TopicObservation{
+		ID:                t.ID,
+		ReplicationFactor: int(t.ReplicationFactor),
+		Partitions:        int(t.Partitions),
+		Config:            t.Config,
+	}
 }
 
 // IsUpToDate returns true if the supplied Kubernetes resource matches the
