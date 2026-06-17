@@ -669,7 +669,7 @@ func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {
 
 	err := updatePartitions(context.Background(), nil, &Topic{Partitions: 3}, &Topic{Partitions: 5})
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrCannotDecreasePartitions)
+	require.ErrorIs(t, err, ErrCannotDecreasePartitions)
 	assert.Contains(t, err.Error(), "from 5 to 3")
 }
 

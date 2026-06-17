@@ -37,10 +37,8 @@ const (
 	ErrTopicDoesNotExist = "topic does not exist"
 )
 
-var (
-	// ErrCannotDecreasePartitions indicates that reducing partition count is not supported by Kafka.
-	ErrCannotDecreasePartitions = errors.New("cannot decrease topic partitions")
-)
+// ErrCannotDecreasePartitions indicates that reducing partition count is not supported by Kafka.
+var ErrCannotDecreasePartitions = errors.New("cannot decrease topic partitions")
 
 // Get gets the topic from Kafka side and returns a Topic object.
 func Get(ctx context.Context, client *kadm.Client, name string) (*Topic, error) {
