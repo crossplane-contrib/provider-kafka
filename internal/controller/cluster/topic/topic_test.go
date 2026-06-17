@@ -186,10 +186,7 @@ func TestPopulateTopicAtProvider(t *testing.T) {
 			cr := &v1alpha1.Topic{}
 			cr.Status.SetConditions(xpv2.Available())
 
-			cr.Status.AtProvider.ID = tc.observed.ID
-			cr.Status.AtProvider.ReplicationFactor = int(tc.observed.ReplicationFactor)
-			cr.Status.AtProvider.Partitions = int(tc.observed.Partitions)
-			cr.Status.AtProvider.Config = tc.observed.Config
+			cr.Status.AtProvider = tc.observed.ToObservation()
 
 			if diff := cmp.Diff(tc.want, cr.Status.AtProvider); diff != "" {
 				t.Errorf("\n%s\natProvider: -want, +got:\n%s", tc.reason, diff)

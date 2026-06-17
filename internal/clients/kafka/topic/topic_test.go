@@ -665,36 +665,33 @@ func TestPreExistingTopicUpdateConfig(t *testing.T) {
 }
 
 func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {
-	cases := map[string]struct {
-		existingPartitions int32
-		desiredPartitions  int32
-		wantErr            bool
-	}{
-		"DecreasePartitionsFails": {
-			existingPartitions: 5,
-			desiredPartitions:  3,
-			wantErr:            true,
-		},
-		"IncreasePartitionsAllowed": {
-			existingPartitions: 3,
-			desiredPartitions:  5,
-			wantErr:            false,
-		},
-		"SamePartitionsAllowed": {
-			existingPartitions: 4,
-			desiredPartitions:  4,
-			wantErr:            false,
+	t.Parallel()
+
+	err := updatePartitions(context.Background(), nil, &Topic{Partitions: 3}, &Topic{Partitions: 5})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrCannotDecreasePartitions)
+	assert.Contains(t, err.Error(), "from 5 to 3")
+}
+
+func TestToObservation(t *testing.T) {
+	t.Parallel()
+
+	strPtr := func(s string) *string { return &s }
+
+	tpc := &Topic{
+		ID:                "abc-123",
+		ReplicationFactor: 3,
+		Partitions:        12,
+		Config: map[string]*string{
+			configKeyRetentionMs: strPtr("86400000"),
+			"cleanup.policy":     strPtr("delete"),
 		},
 	}
 
-	for name, tt := range cases {
-		t.Run(name, func(t *testing.T) {
-			// Validate the partition decrease check logic
-			shouldError := tt.desiredPartitions < tt.existingPartitions
-			if shouldError != tt.wantErr {
-				t.Errorf("partition decrease validation failed: desired=%d, existing=%d, wantErr=%v, got=%v",
-					tt.desiredPartitions, tt.existingPartitions, tt.wantErr, shouldError)
-			}
-		})
-	}
+	got := tpc.ToObservation()
+
+	assert.Equal(t, tpc.ID, got.ID)
+	assert.Equal(t, int(tpc.ReplicationFactor), got.ReplicationFactor)
+	assert.Equal(t, int(tpc.Partitions), got.Partitions)
+	assert.Equal(t, tpc.Config, got.Config)
 }

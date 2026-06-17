@@ -189,10 +189,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// AddFinalizer and re-populates status there.
 	statusPopulated := cr.Status.AtProvider.ID != ""
 
-	cr.Status.AtProvider.ID = tpc.ID
-	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
-	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
-	cr.Status.AtProvider.Config = tpc.Config
+	cr.Status.AtProvider = tpc.ToObservation()
 	cr.Status.SetConditions(xpv2.Available())
 
 	return managed.ExternalObservation{
@@ -225,18 +222,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	// Re-populate status which may have been reset by AddFinalizer's
-	// full-object Update on the first reconcile.
-	tpc, err := topic.Get(ctx, c.kafkaClient, name)
-	if err != nil {
-		return managed.ExternalUpdate{}, fmt.Errorf(errGetTopic+": %w", err)
-	}
+	if cr.Status.AtProvider.ID == "" {
+		tpc, err := topic.Get(ctx, c.kafkaClient, name)
+		if err != nil {
+			return managed.ExternalUpdate{}, fmt.Errorf(errGetTopic+": %w", err)
+		}
 
-	cr.Status.AtProvider.ID = tpc.ID
-	cr.Status.AtProvider.ReplicationFactor = int(tpc.ReplicationFactor)
-	cr.Status.AtProvider.Partitions = int(tpc.Partitions)
-	cr.Status.AtProvider.Config = tpc.Config
-	cr.Status.SetConditions(xpv2.Available())
+		cr.Status.AtProvider = tpc.ToObservation()
+		cr.Status.SetConditions(xpv2.Available())
+	}
 
 	return managed.ExternalUpdate{}, nil
 }
