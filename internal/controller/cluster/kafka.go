@@ -46,9 +46,9 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 // the supplied manager gated.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		config.Setup,
-		topic.Setup,
-		acl.Setup,
+		config.SetupGated,
+		topic.SetupGated,
+		acl.SetupGated,
 		user.SetupGated,
 	} {
 		if err := setup(mgr, o); err != nil {

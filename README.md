@@ -175,7 +175,6 @@ spec:
       - SCRAM-SHA-512
     passwordSecretRef:
       name: alice-password
-      namespace: kafka-cluster
       key: password
 ```
 
@@ -247,7 +246,6 @@ spec:
       - SCRAM-SHA-512
     passwordSecretRef:
       name: alice-existing-password
-      namespace: kafka-cluster
       key: password
   writeConnectionSecretToRef:
     name: alice-kafka-credentials

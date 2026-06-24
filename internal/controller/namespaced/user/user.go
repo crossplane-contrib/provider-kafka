@@ -55,10 +55,11 @@ const (
 	errNotUser      = "managed resource is not a User custom resource"
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 
-	errGetPasswordSecret = "cannot get password secret"
-	errUpsertUser        = "cannot upsert Kafka user"
-	errDeleteUser        = "cannot delete Kafka user"
-	errObserveUser       = "cannot observe Kafka user"
+	errGetPasswordSecret      = "cannot get password secret"
+	errEmptyPasswordSecretKey = "password secret key is missing or empty"
+	errUpsertUser             = "cannot upsert Kafka user"
+	errDeleteUser             = "cannot delete Kafka user"
+	errObserveUser            = "cannot observe Kafka user"
 )
 
 const (
@@ -237,7 +238,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s); err != nil {
 			return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errGetPasswordSecret, err)
 		}
-		obs.ConnectionDetails = connectionDetails(username, string(s.Data[ref.Key]), c.brokers)
+		pw := s.Data[ref.Key]
+		if len(pw) == 0 {
+			return managed.ExternalObservation{}, errors.New(errEmptyPasswordSecretKey)
+		}
+		obs.ConnectionDetails = connectionDetails(username, string(pw), c.brokers)
 	}
 
 	return obs, nil
@@ -289,10 +294,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.User)
-	cr.Status.SetConditions(xpv2.Deleting())
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotUser)
 	}
+	cr.Status.SetConditions(xpv2.Deleting())
 
 	username := meta.GetExternalName(cr)
 	mechs := cr.Status.AtProvider.Mechanisms
@@ -318,7 +323,11 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s); err != nil {
 			return "", fmt.Errorf("%s: %w", errGetPasswordSecret, err)
 		}
-		return string(s.Data[ref.Key]), nil
+		pw := s.Data[ref.Key]
+		if len(pw) == 0 {
+			return "", errors.New(errEmptyPasswordSecretKey)
+		}
+		return string(pw), nil
 	}
 
 	// Branch 2: reuse password from existing output Secret

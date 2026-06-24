@@ -110,8 +110,7 @@ func ObservedMechanisms(ctx context.Context, cl ScramClient, username string) ([
 }
 
 // Upsert creates or updates SCRAM credentials for the user with the given
-// mechanisms and password. SCRAM iteration count is left at 0 so Kafka uses
-// its server-side default.
+// mechanisms and password. SCRAM iteration count is set to defaultScramIterations (4096).
 func Upsert(ctx context.Context, cl ScramClient, username, password string, mechanisms []string) error {
 	upserts := make([]kadm.UpsertSCRAM, 0, len(mechanisms))
 	for _, m := range mechanisms {
