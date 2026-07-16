@@ -176,11 +176,11 @@ func TestDesiredMechanisms(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		mechanisms []string
+		mechanisms []commonv1alpha1.Mechanism
 		want       []string
 	}{
 		"ExplicitMechanisms": {
-			mechanisms: []string{"SCRAM-SHA-256"},
+			mechanisms: []commonv1alpha1.Mechanism{"SCRAM-SHA-256"},
 			want:       []string{"SCRAM-SHA-256"},
 		},
 		"DefaultMechanism": {

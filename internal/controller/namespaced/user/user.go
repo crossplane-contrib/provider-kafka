@@ -28,7 +28,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -43,6 +42,7 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
+	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/user"
 )
@@ -72,7 +72,6 @@ const (
 type connector struct {
 	cache        *kafka.ClientCache
 	kube         client.Client
-	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
 	usage        *resource.ProviderConfigUsageTracker
 }
@@ -83,7 +82,6 @@ type external struct {
 	kafkaClient *kadm.Client
 	brokers     []string
 	kube        client.Client
-	log         logging.Logger
 }
 
 // Setup adds a controller that reconciles User managed resources.
@@ -189,10 +187,10 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	cfg := kafka.Config{}
 	if err := json.Unmarshal(data, &cfg); err == nil {
-		return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube, log: c.log}, nil
+		return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
 	}
 
-	return &external{kafkaClient: svc, kube: c.kube, log: c.log}, nil
+	return &external{kafkaClient: svc, kube: c.kube}, nil
 }
 
 func (c *external) Disconnect(_ context.Context) error {
@@ -207,17 +205,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	username := meta.GetExternalName(cr)
-	exists, err := user.Exists(ctx, c.kafkaClient, username)
+	exists, mechs, err := user.Describe(ctx, c.kafkaClient, username)
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errObserveUser, err)
 	}
 	if !exists {
 		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-
-	mechs, err := user.ObservedMechanisms(ctx, c.kafkaClient, username)
-	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errObserveUser, err)
 	}
 
 	cr.Status.AtProvider.Mechanisms = mechs
@@ -347,11 +340,15 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 }
 
 // desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
-func desiredMechanisms(mechanisms []string) []string {
-	if len(mechanisms) > 0 {
-		return mechanisms
+func desiredMechanisms(mechanisms []commonv1alpha1.Mechanism) []string {
+	if len(mechanisms) == 0 {
+		return []string{"SCRAM-SHA-512"}
 	}
-	return []string{"SCRAM-SHA-512"}
+	mechs := make([]string, len(mechanisms))
+	for i, m := range mechanisms {
+		mechs[i] = string(m)
+	}
+	return mechs
 }
 
 // connectionDetails assembles the managed resource connection detail map.

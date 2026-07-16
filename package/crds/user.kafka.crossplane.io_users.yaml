@@ -81,6 +81,10 @@ spec:
                       Mechanisms lists the SCRAM mechanisms to enroll the user in.
                       Valid values are SCRAM-SHA-256 and SCRAM-SHA-512.
                     items:
+                      description: Mechanism is a Kafka SCRAM mechanism name.
+                      enum:
+                      - SCRAM-SHA-256
+                      - SCRAM-SHA-512
                       type: string
                     type: array
                   passwordSecretRef:

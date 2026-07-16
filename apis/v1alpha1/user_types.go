@@ -1,5 +1,9 @@
 package v1alpha1
 
+// Mechanism is a Kafka SCRAM mechanism name.
+// +kubebuilder:validation:Enum="SCRAM-SHA-256";"SCRAM-SHA-512"
+type Mechanism string
+
 // UserObservation are the observable fields of a User.
 type UserObservation struct {
 	// Mechanisms lists the SCRAM mechanisms currently enrolled for this user in Kafka.
@@ -34,7 +38,7 @@ type UserParameters struct {
 	// Valid values are SCRAM-SHA-256 and SCRAM-SHA-512.
 	// +kubebuilder:default={"SCRAM-SHA-512"}
 	// +optional
-	Mechanisms []string `json:"mechanisms,omitempty"`
+	Mechanisms []Mechanism `json:"mechanisms,omitempty"`
 
 	// PasswordSecretRef is an optional reference to a Kubernetes Secret
 	// containing the user's password. When set, the controller reads the
@@ -52,7 +56,7 @@ type NamespacedUserParameters struct {
 	// Valid values are SCRAM-SHA-256 and SCRAM-SHA-512.
 	// +kubebuilder:default={"SCRAM-SHA-512"}
 	// +optional
-	Mechanisms []string `json:"mechanisms,omitempty"`
+	Mechanisms []Mechanism `json:"mechanisms,omitempty"`
 
 	// PasswordSecretRef is an optional reference to a Kubernetes Secret in the
 	// same namespace as this User. When set, the controller reads the password
@@ -87,7 +91,7 @@ func (in *UserParameters) DeepCopyInto(out *UserParameters) {
 	*out = *in
 	if in.Mechanisms != nil {
 		in, out := &in.Mechanisms, &out.Mechanisms
-		*out = make([]string, len(*in))
+		*out = make([]Mechanism, len(*in))
 		copy(*out, *in)
 	}
 	if in.PasswordSecretRef != nil {
@@ -142,7 +146,7 @@ func (in *NamespacedUserParameters) DeepCopyInto(out *NamespacedUserParameters) 
 	*out = *in
 	if in.Mechanisms != nil {
 		in, out := &in.Mechanisms, &out.Mechanisms
-		*out = make([]string, len(*in))
+		*out = make([]Mechanism, len(*in))
 		copy(*out, *in)
 	}
 	if in.PasswordSecretRef != nil {

@@ -65,48 +65,45 @@ func IsUpToDate(observed, desired []string) bool {
 	return true
 }
 
-// Exists returns true when the user has at least one SCRAM credential enrolled
-// in Kafka.
-func Exists(ctx context.Context, cl ScramClient, username string) (bool, error) {
+// Describe returns whether the user exists and its enrolled mechanisms in a
+// single Kafka RPC. Returns (false, nil, nil) when the user has no credentials.
+func Describe(ctx context.Context, cl ScramClient, username string) (exists bool, mechanisms []string, err error) {
 	resp, err := cl.DescribeUserSCRAMs(ctx, username)
 	if err != nil {
-		return false, fmt.Errorf("%s: %w", errDescribeUser, err)
+		return false, nil, fmt.Errorf("%s: %w", errDescribeUser, err)
 	}
 	described, ok := resp[username]
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if described.Err != nil {
 		if errors.Is(described.Err, kerr.ResourceNotFound) {
-			return false, nil
+			return false, nil, nil
 		}
-		return false, fmt.Errorf("%s: %w", errDescribeUser, described.Err)
+		return false, nil, fmt.Errorf("%s: %w", errDescribeUser, described.Err)
 	}
-	return len(described.CredInfos) > 0, nil
-}
-
-// ObservedMechanisms returns the mechanism names currently enrolled for the
-// user, as reported by Kafka. Returns nil if the user has no credentials.
-func ObservedMechanisms(ctx context.Context, cl ScramClient, username string) ([]string, error) {
-	resp, err := cl.DescribeUserSCRAMs(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errDescribeUser, err)
-	}
-	described, ok := resp[username]
-	if !ok {
-		return nil, nil
-	}
-	if described.Err != nil {
-		if errors.Is(described.Err, kerr.ResourceNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("%s: %w", errDescribeUser, described.Err)
+	if len(described.CredInfos) == 0 {
+		return false, nil, nil
 	}
 	mechs := make([]string, 0, len(described.CredInfos))
 	for _, ci := range described.CredInfos {
 		mechs = append(mechs, ci.Mechanism.String())
 	}
-	return mechs, nil
+	return true, mechs, nil
+}
+
+// Exists returns true when the user has at least one SCRAM credential enrolled
+// in Kafka.
+func Exists(ctx context.Context, cl ScramClient, username string) (bool, error) {
+	exists, _, err := Describe(ctx, cl, username)
+	return exists, err
+}
+
+// ObservedMechanisms returns the mechanism names currently enrolled for the
+// user, as reported by Kafka. Returns nil if the user has no credentials.
+func ObservedMechanisms(ctx context.Context, cl ScramClient, username string) ([]string, error) {
+	_, mechs, err := Describe(ctx, cl, username)
+	return mechs, err
 }
 
 // Upsert creates or updates SCRAM credentials for the user with the given

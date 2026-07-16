@@ -29,7 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/user/v1alpha1"
@@ -159,7 +158,7 @@ func TestDesiredMechanisms(t *testing.T) {
 		want   []string
 	}{
 		"ExplicitMechanisms": {
-			params: commonv1alpha1.UserParameters{Mechanisms: []string{"SCRAM-SHA-256"}},
+			params: commonv1alpha1.UserParameters{Mechanisms: []commonv1alpha1.Mechanism{"SCRAM-SHA-256"}},
 			want:   []string{"SCRAM-SHA-256"},
 		},
 		"DefaultMechanism": {
@@ -266,9 +265,3 @@ func TestPopulateAtProvider(t *testing.T) {
 		})
 	}
 }
-
-// Ensure the external type is available to tests in this package (avoids unused import).
-var (
-	_ = types.NamespacedName{}
-	_ = xpv2.Available()
-)

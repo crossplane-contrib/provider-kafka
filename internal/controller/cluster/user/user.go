@@ -28,7 +28,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -57,7 +56,6 @@ const (
 
 	errGetPasswordSecret      = "cannot get password secret"
 	errEmptyPasswordSecretKey = "password secret key is missing or empty"
-	errGetOutputSecret        = "cannot get output connection secret"
 	errUpsertUser             = "cannot upsert Kafka user"
 	errDeleteUser             = "cannot delete Kafka user"
 	errObserveUser            = "cannot observe Kafka user"
@@ -72,7 +70,6 @@ const (
 type connector struct {
 	cache        *kafka.ClientCache
 	kube         client.Client
-	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
 	usage        *resource.LegacyProviderConfigUsageTracker
 }
@@ -83,7 +80,6 @@ type external struct {
 	kafkaClient *kadm.Client
 	brokers     []string
 	kube        client.Client
-	log         logging.Logger
 }
 
 // Setup adds a controller that reconciles User managed resources.
@@ -175,10 +171,10 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	cfg := kafka.Config{}
 	if err := json.Unmarshal(data, &cfg); err == nil {
-		return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube, log: c.log}, nil
+		return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
 	}
 
-	return &external{kafkaClient: svc, kube: c.kube, log: c.log}, nil
+	return &external{kafkaClient: svc, kube: c.kube}, nil
 }
 
 func (c *external) Disconnect(_ context.Context) error {
@@ -193,17 +189,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	username := meta.GetExternalName(cr)
-	exists, err := user.Exists(ctx, c.kafkaClient, username)
+	exists, mechs, err := user.Describe(ctx, c.kafkaClient, username)
 	if err != nil {
 		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errObserveUser, err)
 	}
 	if !exists {
 		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-
-	mechs, err := user.ObservedMechanisms(ctx, c.kafkaClient, username)
-	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errObserveUser, err)
 	}
 
 	cr.Status.AtProvider.Mechanisms = mechs
@@ -333,10 +324,14 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 
 // desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
 func desiredMechanisms(p commonv1alpha1.UserParameters) []string {
-	if len(p.Mechanisms) > 0 {
-		return p.Mechanisms
+	if len(p.Mechanisms) == 0 {
+		return []string{"SCRAM-SHA-512"}
 	}
-	return []string{"SCRAM-SHA-512"}
+	mechs := make([]string, len(p.Mechanisms))
+	for i, m := range p.Mechanisms {
+		mechs[i] = string(m)
+	}
+	return mechs
 }
 
 // connectionDetails assembles the managed resource connection detail map.

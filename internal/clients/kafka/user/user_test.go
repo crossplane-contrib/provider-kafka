@@ -120,13 +120,14 @@ func TestIsUpToDate(t *testing.T) {
 	}
 }
 
-func TestExists(t *testing.T) {
+func TestDescribe(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
 		username   string
 		describeFn func(ctx context.Context, users ...string) (kadm.DescribedUserSCRAMs, error)
-		want       bool
+		wantExists bool
+		wantMechs  []string
 		wantErr    bool
 	}{
 		"UserExists": {
@@ -141,14 +142,32 @@ func TestExists(t *testing.T) {
 					},
 				}, nil
 			},
-			want: true,
+			wantExists: true,
+			wantMechs:  []string{mechanismSHA512},
+		},
+		"TwoMechanisms": {
+			username: testUserAlice,
+			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
+				return kadm.DescribedUserSCRAMs{
+					testUserAlice: {
+						User: testUserAlice,
+						CredInfos: []kadm.CredInfo{
+							{Mechanism: kadm.ScramSha512},
+							{Mechanism: kadm.ScramSha256},
+						},
+					},
+				}, nil
+			},
+			wantExists: true,
+			wantMechs:  []string{mechanismSHA512, mechanismSHA256},
 		},
 		"UserAbsent": {
 			username: "bob",
 			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
 				return kadm.DescribedUserSCRAMs{}, nil
 			},
-			want: false,
+			wantExists: false,
+			wantMechs:  nil,
 		},
 		"UserResourceNotFound": {
 			username: testUserCharlie,
@@ -160,7 +179,8 @@ func TestExists(t *testing.T) {
 					},
 				}, nil
 			},
-			want: false,
+			wantExists: false,
+			wantMechs:  nil,
 		},
 		"UserWithOtherKafkaError": {
 			username: testUserCharlie,
@@ -187,70 +207,56 @@ func TestExists(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			cl := &fakeScramClient{describeFn: tc.describeFn}
-			got, err := Exists(context.Background(), cl, tc.username)
+			gotExists, gotMechs, err := Describe(context.Background(), cl, tc.username)
 			if tc.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.wantExists, gotExists)
+			assert.Equal(t, tc.wantMechs, gotMechs)
 		})
 	}
+}
+
+func TestExists(t *testing.T) {
+	t.Parallel()
+
+	cl := &fakeScramClient{
+		describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
+			return kadm.DescribedUserSCRAMs{
+				testUserAlice: {
+					User: testUserAlice,
+					CredInfos: []kadm.CredInfo{
+						{Mechanism: kadm.ScramSha512},
+					},
+				},
+			}, nil
+		},
+	}
+	got, err := Exists(context.Background(), cl, testUserAlice)
+	require.NoError(t, err)
+	assert.True(t, got)
 }
 
 func TestObservedMechanisms(t *testing.T) {
 	t.Parallel()
 
-	cases := map[string]struct {
-		username   string
-		describeFn func(ctx context.Context, users ...string) (kadm.DescribedUserSCRAMs, error)
-		want       []string
-		wantErr    bool
-	}{
-		"TwoMechanisms": {
-			username: testUserAlice,
-			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
-				return kadm.DescribedUserSCRAMs{
-					testUserAlice: {
-						User: testUserAlice,
-						CredInfos: []kadm.CredInfo{
-							{Mechanism: kadm.ScramSha512},
-							{Mechanism: kadm.ScramSha256},
-						},
+	cl := &fakeScramClient{
+		describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
+			return kadm.DescribedUserSCRAMs{
+				testUserAlice: {
+					User: testUserAlice,
+					CredInfos: []kadm.CredInfo{
+						{Mechanism: kadm.ScramSha512},
 					},
-				}, nil
-			},
-			want: []string{mechanismSHA512, mechanismSHA256},
-		},
-		"UserAbsent": {
-			username: "bob",
-			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
-				return kadm.DescribedUserSCRAMs{}, nil
-			},
-			want: nil,
-		},
-		"DescribeError": {
-			username: "dave",
-			describeFn: func(_ context.Context, users ...string) (kadm.DescribedUserSCRAMs, error) {
-				return nil, errors.New("kafka unavailable")
-			},
-			wantErr: true,
+				},
+			}, nil
 		},
 	}
-
-	for name, tc := range cases {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			cl := &fakeScramClient{describeFn: tc.describeFn}
-			got, err := ObservedMechanisms(context.Background(), cl, tc.username)
-			if tc.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tc.want, got)
-		})
-	}
+	got, err := ObservedMechanisms(context.Background(), cl, testUserAlice)
+	require.NoError(t, err)
+	assert.Equal(t, []string{mechanismSHA512}, got)
 }
 
 func TestUpsert(t *testing.T) {
