@@ -114,6 +114,9 @@ func Create(ctx context.Context, cl adminClient, accessControlList *AccessContro
 	if resp[0].Err != nil {
 		return fmt.Errorf("create ACL failed: %w", resp[0].Err)
 	}
+	if len(resp[0].Principal) == 0 {
+		return errors.New("no create response for acl")
+	}
 
 	return nil
 }
@@ -129,8 +132,10 @@ func Delete(ctx context.Context, cl adminClient, accessControlList *AccessContro
 	if err != nil {
 		return err
 	}
-	if len(resp) > 0 && resp[0].Err != nil {
-		return fmt.Errorf("delete ACL failed: %w", resp[0].Err)
+	for _, r := range resp {
+		if r.Err != nil {
+			return fmt.Errorf("delete ACL failed: %w", r.Err)
+		}
 	}
 	return nil
 }
