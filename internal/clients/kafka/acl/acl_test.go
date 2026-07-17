@@ -18,12 +18,12 @@ import (
 
 // fakeACLAdmin is an in-process implementation of adminClient for unit tests.
 type fakeACLAdmin struct {
-	createResults kadm.CreateACLsResults
-	createErr     error
+	createResults   kadm.CreateACLsResults
+	createErr       error
 	describeResults kadm.DescribeACLsResults
-	describeErr   error
-	deleteResults kadm.DeleteACLsResults
-	deleteErr     error
+	describeErr     error
+	deleteResults   kadm.DeleteACLsResults
+	deleteErr       error
 }
 
 func (f *fakeACLAdmin) CreateACLs(_ context.Context, _ *kadm.ACLBuilder) (kadm.CreateACLsResults, error) {
