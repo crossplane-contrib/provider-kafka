@@ -10,10 +10,16 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
+)
+
+const (
+	testTopicID     = "abc-123"
+	testRetentionMS = "retention.ms"
 )
 
 func TestObserveWrongType(t *testing.T) {
@@ -49,6 +55,88 @@ func TestObserveWrongType(t *testing.T) {
 	}
 }
 
+// TestObserveFirstReconcileNotUpToDate verifies that when status.AtProvider.ID
+// is empty (first reconcile, before AddFinalizer persists status), Observe
+// returns ResourceUpToDate=false even when spec matches the observed topic.
+// This forces an Update call after AddFinalizer, re-populating the status that
+// AddFinalizer's full-object Update would otherwise reset.
+func TestObserveFirstReconcileNotUpToDate(t *testing.T) {
+	t.Parallel()
+
+	strPtr := func(s string) *string { return &s }
+
+	cases := map[string]struct {
+		reason       string
+		existingID   string
+		spec         common.TopicParameters
+		observed     *topic.Topic
+		wantUpToDate bool
+	}{
+		"EmptyID_SpecMatchesObserved": {
+			reason:     "First reconcile (empty ID) must return not-up-to-date to force Update after AddFinalizer",
+			existingID: "",
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			observed: &topic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			wantUpToDate: false,
+		},
+		"PopulatedID_SpecMatchesObserved": {
+			reason:     "Subsequent reconcile (populated ID) with matching spec should be up-to-date",
+			existingID: testTopicID,
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			observed: &topic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			wantUpToDate: true,
+		},
+		"PopulatedID_SpecDiffers": {
+			reason:     "Subsequent reconcile with different spec should not be up-to-date",
+			existingID: testTopicID,
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        12,
+			},
+			observed: &topic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+			},
+			wantUpToDate: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cr := &v1alpha1.Topic{}
+			cr.Spec.ForProvider = tc.spec
+			cr.Status.AtProvider.ID = tc.existingID
+
+			statusPopulated := cr.Status.AtProvider.ID != ""
+
+			got := isResourceUpToDate(cr, statusPopulated, tc.observed)
+
+			assert.Equal(t, tc.wantUpToDate, got, tc.reason)
+		})
+	}
+}
+
 func TestPopulateTopicAtProvider(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
@@ -60,20 +148,20 @@ func TestPopulateTopicAtProvider(t *testing.T) {
 		"AllFieldsPopulated": {
 			reason: "All observed fields should be mapped to atProvider",
 			observed: &topic.Topic{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        12,
 				Config: map[string]*string{
-					"retention.ms":   strPtr("86400000"),
+					testRetentionMS:  strPtr("86400000"),
 					"cleanup.policy": strPtr("delete"),
 				},
 			},
 			want: common.TopicObservation{
-				ID:                "abc-123",
+				ID:                testTopicID,
 				ReplicationFactor: 3,
 				Partitions:        12,
 				Config: map[string]*string{
-					"retention.ms":   strPtr("86400000"),
+					testRetentionMS:  strPtr("86400000"),
 					"cleanup.policy": strPtr("delete"),
 				},
 			},
@@ -98,10 +186,7 @@ func TestPopulateTopicAtProvider(t *testing.T) {
 			cr := &v1alpha1.Topic{}
 			cr.Status.SetConditions(xpv2.Available())
 
-			cr.Status.AtProvider.ID = tc.observed.ID
-			cr.Status.AtProvider.ReplicationFactor = int(tc.observed.ReplicationFactor)
-			cr.Status.AtProvider.Partitions = int(tc.observed.Partitions)
-			cr.Status.AtProvider.Config = tc.observed.Config
+			cr.Status.AtProvider = tc.observed.ToObservation()
 
 			if diff := cmp.Diff(tc.want, cr.Status.AtProvider); diff != "" {
 				t.Errorf("\n%s\natProvider: -want, +got:\n%s", tc.reason, diff)
