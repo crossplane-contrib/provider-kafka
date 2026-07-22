@@ -14,6 +14,14 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
 
+// adminClient is the subset of kadm.Client methods used by this package.
+// *kadm.Client satisfies this interface without any changes to callers.
+type adminClient interface {
+	CreateACLs(ctx context.Context, b *kadm.ACLBuilder) (kadm.CreateACLsResults, error)
+	DeleteACLs(ctx context.Context, b *kadm.ACLBuilder) (kadm.DeleteACLsResults, error)
+	DescribeACLs(ctx context.Context, b *kadm.ACLBuilder) (kadm.DescribeACLsResults, error)
+}
+
 // AccessControlList is a holistic representation of a Kafka ACL with configurable
 // fields
 type AccessControlList struct {
@@ -58,7 +66,7 @@ func buildACLBuilder(accessControlList *AccessControlList) (*kadm.ACLBuilder, er
 }
 
 // List lists all the ACLs in Kafka
-func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) (*AccessControlList, error) {
+func List(ctx context.Context, cl adminClient, accessControlList *AccessControlList) (*AccessControlList, error) {
 	ab, err := buildACLBuilder(accessControlList)
 	if err != nil {
 		return nil, err
@@ -68,7 +76,13 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 	if err != nil {
 		return nil, fmt.Errorf("describe ACLs failed: %w", err)
 	}
-	if len(resp) == 0 || len(resp[0].Described) == 0 {
+	if len(resp) == 0 {
+		return nil, nil
+	}
+	if resp[0].Err != nil {
+		return nil, fmt.Errorf("describe ACLs failed: %w", resp[0].Err)
+	}
+	if len(resp[0].Described) == 0 {
 		return nil, nil
 	}
 
@@ -84,7 +98,7 @@ func List(ctx context.Context, cl *kadm.Client, accessControlList *AccessControl
 }
 
 // Create creates an ACL from the Kafka side
-func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
+func Create(ctx context.Context, cl adminClient, accessControlList *AccessControlList) error {
 	ab, err := buildACLBuilder(accessControlList)
 	if err != nil {
 		return err
@@ -94,7 +108,13 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 	if err != nil {
 		return err
 	}
-	if len(resp) == 0 || len(resp[0].Principal) == 0 {
+	if len(resp) == 0 {
+		return errors.New("no create response for acl")
+	}
+	if resp[0].Err != nil {
+		return fmt.Errorf("create ACL failed: %w", resp[0].Err)
+	}
+	if len(resp[0].Principal) == 0 {
 		return errors.New("no create response for acl")
 	}
 
@@ -102,14 +122,22 @@ func Create(ctx context.Context, cl *kadm.Client, accessControlList *AccessContr
 }
 
 // Delete deletes an ACL from the Kafka side
-func Delete(ctx context.Context, cl *kadm.Client, accessControlList *AccessControlList) error {
+func Delete(ctx context.Context, cl adminClient, accessControlList *AccessControlList) error {
 	ab, err := buildACLBuilder(accessControlList)
 	if err != nil {
 		return err
 	}
 
-	_, err = cl.DeleteACLs(ctx, ab)
-	return err
+	resp, err := cl.DeleteACLs(ctx, ab)
+	if err != nil {
+		return err
+	}
+	for _, r := range resp {
+		if r.Err != nil {
+			return fmt.Errorf("delete ACL failed: %w", r.Err)
+		}
+	}
+	return nil
 }
 
 // ConvertToJSON performs a json marshalling for ACLs
