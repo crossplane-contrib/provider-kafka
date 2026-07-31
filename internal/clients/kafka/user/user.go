@@ -136,6 +136,9 @@ func Upsert(ctx context.Context, cl ScramClient, username, password string, mech
 // should be taken from status.atProvider so that all enrolled credentials are
 // cleaned up regardless of the current spec.
 func Delete(ctx context.Context, cl ScramClient, username string, mechanisms []string) error {
+	if len(mechanisms) == 0 {
+		return nil
+	}
 	deletions := make([]kadm.DeleteSCRAM, 0, len(mechanisms))
 	for _, m := range mechanisms {
 		mech, err := MechanismFromString(m)

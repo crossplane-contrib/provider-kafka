@@ -26,6 +26,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -121,30 +123,18 @@ func TestResolvePassword(t *testing.T) {
 			e := &external{kube: kube}
 			got, err := e.resolvePassword(context.Background(), tc.cr)
 			if tc.wantErr {
-				if err == nil {
-					t.Errorf("resolvePassword(): want error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Errorf("resolvePassword(): unexpected error: %v", err)
-				return
-			}
+			require.NoError(t, err)
 			if tc.wantPw != "" {
-				if got != tc.wantPw {
-					t.Errorf("resolvePassword(): got %q, want %q", got, tc.wantPw)
-				}
+				assert.Equal(t, tc.wantPw, got)
 				return
 			}
 			// Auto-generated: must be 32 chars of the allowed alphabet
-			if len(got) != passwordLength {
-				t.Errorf("resolvePassword(): generated password length = %d, want %d", len(got), passwordLength)
-			}
+			assert.Len(t, got, passwordLength)
 			for _, ch := range got {
-				if !isAlphanumeric(ch) {
-					t.Errorf("resolvePassword(): generated password contains non-alphanumeric char %q", ch)
-					break
-				}
+				assert.True(t, isAlphanumeric(ch), "generated password contains non-alphanumeric char %q", ch)
 			}
 		})
 	}
@@ -171,9 +161,7 @@ func TestDesiredMechanisms(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			got := desiredMechanisms(tc.params)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("desiredMechanisms(): -want, +got:\n%s", diff)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -182,15 +170,9 @@ func TestConnectionDetails(t *testing.T) {
 	t.Parallel()
 
 	got := connectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
-	if string(got["username"]) != "alice" {
-		t.Errorf("username = %q, want %q", string(got["username"]), "alice")
-	}
-	if string(got["password"]) != "s3cr3t" {
-		t.Errorf("password = %q, want %q", string(got["password"]), "s3cr3t")
-	}
-	if string(got["brokers"]) != "broker1:9092,broker2:9092" {
-		t.Errorf("brokers = %q, want %q", string(got["brokers"]), "broker1:9092,broker2:9092")
-	}
+	assert.Equal(t, "alice", string(got["username"]))
+	assert.Equal(t, "s3cr3t", string(got["password"]))
+	assert.Equal(t, "broker1:9092,broker2:9092", string(got["brokers"]))
 }
 
 // helpers

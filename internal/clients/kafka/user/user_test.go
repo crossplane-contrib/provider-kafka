@@ -353,9 +353,8 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		"EmptyMechanisms": {
-			username:    testUserAlice,
-			mechanisms:  []string{},
-			wantDeletes: []kadm.DeleteSCRAM{},
+			username:   testUserAlice,
+			mechanisms: []string{},
 		},
 		"UnknownMechanism": {
 			username:   testUserAlice,
