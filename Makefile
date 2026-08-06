@@ -224,6 +224,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafka/dev --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkauser/user --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkatopic/pre-existing --timeout=300s
+	@$(KUBECTL) annotate kafkatopic --all -n kafka-cluster strimzi.io/pause-reconciliation=true --overwrite
 	@$(INFO) Waiting for Kafka broker to be fully initialized...
 	@for i in $$(seq 1 30); do $(KUBECTL) -n kafka-cluster exec kafka-dev-0 -- bash -c 'echo "test" | kafka-console-producer.sh --broker-list localhost:9092 --topic pre-existing' > /dev/null 2>&1 && break || sleep 2; done
 	@$(INFO) Getting service IP and port

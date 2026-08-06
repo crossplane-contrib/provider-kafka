@@ -8,11 +8,37 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"k8s.io/apimachinery/pkg/util/json"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 )
+
+// fakeACLAdmin is an in-process implementation of adminClient for unit tests.
+type fakeACLAdmin struct {
+	createResults   kadm.CreateACLsResults
+	createErr       error
+	describeResults kadm.DescribeACLsResults
+	describeErr     error
+	deleteResults   kadm.DeleteACLsResults
+	deleteErr       error
+}
+
+func (f *fakeACLAdmin) CreateACLs(_ context.Context, _ *kadm.ACLBuilder) (kadm.CreateACLsResults, error) {
+	return f.createResults, f.createErr
+}
+
+func (f *fakeACLAdmin) DescribeACLs(_ context.Context, _ *kadm.ACLBuilder) (kadm.DescribeACLsResults, error) {
+	return f.describeResults, f.describeErr
+}
+
+func (f *fakeACLAdmin) DeleteACLs(_ context.Context, _ *kadm.ACLBuilder) (kadm.DeleteACLsResults, error) {
+	return f.deleteResults, f.deleteErr
+}
 
 var dataTesting = []byte(os.Getenv("KAFKA_CONFIG"))
 
@@ -475,6 +501,69 @@ func TestList(t *testing.T) {
 	if got.ResourcePatternTypeFilter != testACL.ResourcePatternTypeFilter {
 		t.Errorf("ResourcePatternTypeFilter = %q, want %q", got.ResourcePatternTypeFilter, testACL.ResourcePatternTypeFilter)
 	}
+}
+
+// --- Unit tests for broker-level error propagation (no real Kafka needed) ---
+
+func TestCreateBrokerError(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{
+		createResults: kadm.CreateACLsResults{
+			{Principal: "User:alice", Err: kerr.ClusterAuthorizationFailed},
+		},
+	}
+	err := Create(context.Background(), cl, &baseACL)
+	require.Error(t, err)
+}
+
+func TestCreateEmptyResponse(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{createResults: kadm.CreateACLsResults{}}
+	err := Create(context.Background(), cl, &baseACL)
+	require.Error(t, err)
+}
+
+func TestListBrokerError(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{
+		describeResults: kadm.DescribeACLsResults{
+			{Err: kerr.ClusterAuthorizationFailed},
+		},
+	}
+	got, err := List(context.Background(), cl, &baseACL)
+	require.Error(t, err)
+	assert.Nil(t, got)
+}
+
+func TestListNotFound(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{
+		describeResults: kadm.DescribeACLsResults{
+			{Described: kadm.DescribedACLs{}},
+		},
+	}
+	got, err := List(context.Background(), cl, &baseACL)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestListEmptyResponse(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{describeResults: kadm.DescribeACLsResults{}}
+	got, err := List(context.Background(), cl, &baseACL)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestDeleteBrokerError(t *testing.T) {
+	t.Parallel()
+	cl := &fakeACLAdmin{
+		deleteResults: kadm.DeleteACLsResults{
+			{Err: kerr.ClusterAuthorizationFailed},
+		},
+	}
+	err := Delete(context.Background(), cl, &baseACL)
+	require.Error(t, err)
 }
 
 // TestListAtProviderNotFound verifies that List returns nil when the ACL does not exist.
