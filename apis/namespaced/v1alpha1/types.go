@@ -97,4 +97,3 @@ type ClusterProviderConfigList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ClusterProviderConfig `json:"items"`
 }
-
