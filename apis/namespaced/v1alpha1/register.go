@@ -48,14 +48,6 @@ var (
 	ClusterProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigKind)
 )
 
-// ClusterProviderConfigUsage type metadata.
-var (
-	ClusterProviderConfigUsageKind             = reflect.TypeOf(ClusterProviderConfigUsage{}).Name()
-	ClusterProviderConfigUsageGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigUsageKind)
-
-	ClusterProviderConfigUsageListKind             = reflect.TypeOf(ClusterProviderConfigUsageList{}).Name()
-	ClusterProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigUsageListKind)
-)
 
 func init() {
 	SchemeBuilder.Register(func(s *runtime.Scheme) error {
@@ -63,7 +55,6 @@ func init() {
 			&ProviderConfig{}, &ProviderConfigList{},
 			&ProviderConfigUsage{}, &ProviderConfigUsageList{},
 			&ClusterProviderConfig{}, &ClusterProviderConfigList{},
-			&ClusterProviderConfigUsage{}, &ClusterProviderConfigUsageList{},
 		)
 		return nil
 	})

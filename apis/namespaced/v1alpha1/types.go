@@ -98,27 +98,3 @@ type ClusterProviderConfigList struct {
 	Items           []ClusterProviderConfig `json:"items"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:storageversion
-
-// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="CONFIG-NAME",type="string",JSONPath=".providerConfigRef.name"
-// +kubebuilder:printcolumn:name="RESOURCE-KIND",type="string",JSONPath=".resourceRef.kind"
-// +kubebuilder:printcolumn:name="RESOURCE-NAME",type="string",JSONPath=".resourceRef.name"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,kafka}
-// A ClusterProviderConfigUsage indicates that a resource is using a ClusterProviderConfig.
-type ClusterProviderConfigUsage struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	xpv2.TypedProviderConfigUsage `json:",inline"`
-}
-
-// +kubebuilder:object:root=true
-
-// ClusterProviderConfigUsageList contains a list of ClusterProviderConfigUsage
-type ClusterProviderConfigUsageList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ClusterProviderConfigUsage `json:"items"`
-}
