@@ -15,8 +15,23 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(deps)"
+    open-pull-requests-limit: 10
     allow:
       - dependency-type: "direct"
+    groups:
+      aws-sdk:
+        patterns:
+          - "github.com/aws/aws-sdk-go-v2*"
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      crossplane:
+        patterns:
+          - "github.com/crossplane/*"
+      franz-go:
+        patterns:
+          - "github.com/twmb/franz-go*"
 
   # Base image
   - package-ecosystem: "docker"

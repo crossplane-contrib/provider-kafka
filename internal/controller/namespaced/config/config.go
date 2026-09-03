@@ -61,8 +61,8 @@ func setupClusterProviderConfig(mgr ctrl.Manager, o controller.Options) error {
 	name := providerconfig.ControllerName(v1alpha1.ClusterProviderConfigGroupKind)
 	of := resource.ProviderConfigKinds{
 		Config:    v1alpha1.ClusterProviderConfigGroupVersionKind,
-		Usage:     v1alpha1.ClusterProviderConfigUsageGroupVersionKind,
-		UsageList: v1alpha1.ClusterProviderConfigUsageListGroupVersionKind,
+		Usage:     v1alpha1.ProviderConfigUsageGroupVersionKind,
+		UsageList: v1alpha1.ProviderConfigUsageListGroupVersionKind,
 	}
 
 	r := providerconfig.NewReconciler(mgr, of,
@@ -73,7 +73,7 @@ func setupClusterProviderConfig(mgr ctrl.Manager, o controller.Options) error {
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		For(&v1alpha1.ClusterProviderConfig{}).
-		Watches(&v1alpha1.ClusterProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{}).
+		Watches(&v1alpha1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{}).
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
