@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. v0.1.0)'
+        description: "Release version (e.g. v0.1.0)"
         required: true
       message:
-        description: 'Tag message'
+        description: "Tag message"
         required: true
 
 jobs:
   create-tag:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
