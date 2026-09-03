@@ -1,6 +1,6 @@
 module github.com/crossplane-contrib/provider-kafka
 
-go 1.26.7
+go 1.26.8
 
 tool (
 	github.com/crossplane/crossplane-tools/cmd/angryjet
