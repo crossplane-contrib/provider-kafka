@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
@@ -94,7 +95,7 @@ func Create(ctx context.Context, client *kadm.Client, topic *Topic) error {
 	if !ok {
 		return errors.New(errNoCreateResponseForTopic)
 	}
-	if t.Err != nil {
+	if t.Err != nil && !errors.Is(t.Err, kerr.TopicAlreadyExists) {
 		return fmt.Errorf("%s: %w", errCannotCreateTopic, t.Err)
 	}
 

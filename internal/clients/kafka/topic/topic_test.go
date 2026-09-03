@@ -664,6 +664,35 @@ func TestUpdateConfig(t *testing.T) {
 		"status.atProvider.config should reflect the updated retention.ms")
 }
 
+// TestCreate_AlreadyExistsRace verifies that Create succeeds when another
+// controller creates the topic between Get and CreateTopics (race condition).
+// The raw kadm.CreateTopics call simulates that external creation.
+func TestCreate_AlreadyExistsRace(t *testing.T) {
+	if len(dataTesting) == 0 {
+		t.Skip("KAFKA_CONFIG not set, skipping integration test")
+	}
+
+	ctx := context.Background()
+	client, err := kafka.NewAdminClient(ctx, dataTesting, nil)
+	require.NoError(t, err, "failed to create admin client")
+
+	const topicName = "test-create-race-already-exists"
+
+	// Create topic directly via kadm to simulate another controller.
+	_, err = client.CreateTopics(ctx, 1, 1, nil, topicName)
+	require.NoError(t, err, "raw CreateTopics should succeed")
+	t.Cleanup(func() { _ = Delete(ctx, client, topicName) })
+
+	// Create must succeed, either Get catches it (early return)
+	// or CreateTopics returns TopicAlreadyExists.
+	err = Create(ctx, client, &Topic{
+		Name:              topicName,
+		ReplicationFactor: 1,
+		Partitions:        1,
+	})
+	require.NoError(t, err, "Create must be idempotent when topic already exists")
+}
+
 func TestUpdatePartitions_DecreasePartitionsFails(t *testing.T) {
 	t.Parallel()
 
