@@ -203,7 +203,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Kafka SCRAM API does not expose stored password hashes, so only mechanism
 	// changes are detectable. Changing passwordSecretRef alone won't trigger an
 	// Update. Bump the external-name annotation to force re-upsert.
-	desiredMechs := desiredMechanisms(cr.Spec.ForProvider)
+	desiredMechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	obs := managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: user.IsUpToDate(mechs, desiredMechs),
@@ -240,7 +240,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider)
+	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
 		return managed.ExternalCreation{}, fmt.Errorf("%s: %w", errUpsertUser, err)
 	}
@@ -262,7 +262,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider)
+	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
 		return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errUpsertUser, err)
 	}
@@ -282,7 +282,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	username := meta.GetExternalName(cr)
 	mechs := cr.Status.AtProvider.Mechanisms
 	if len(mechs) == 0 {
-		mechs = desiredMechanisms(cr.Spec.ForProvider)
+		mechs = desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	}
 
 	if err := user.Delete(ctx, c.kafkaClient, username, mechs); err != nil {
@@ -326,12 +326,12 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 }
 
 // desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
-func desiredMechanisms(p commonv1alpha1.UserParameters) []string {
-	if len(p.Mechanisms) == 0 {
+func desiredMechanisms(mechanisms []commonv1alpha1.Mechanism) []string {
+	if len(mechanisms) == 0 {
 		return []string{"SCRAM-SHA-512"}
 	}
-	mechs := make([]string, len(p.Mechanisms))
-	for i, m := range p.Mechanisms {
+	mechs := make([]string, len(mechanisms))
+	for i, m := range mechanisms {
 		mechs[i] = string(m)
 	}
 	return mechs

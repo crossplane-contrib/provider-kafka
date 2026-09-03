@@ -144,23 +144,23 @@ func TestDesiredMechanisms(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		params commonv1alpha1.UserParameters
-		want   []string
+		mechanisms []commonv1alpha1.Mechanism
+		want       []string
 	}{
 		"ExplicitMechanisms": {
-			params: commonv1alpha1.UserParameters{Mechanisms: []commonv1alpha1.Mechanism{"SCRAM-SHA-256"}},
-			want:   []string{"SCRAM-SHA-256"},
+			mechanisms: []commonv1alpha1.Mechanism{"SCRAM-SHA-256"},
+			want:       []string{"SCRAM-SHA-256"},
 		},
 		"DefaultMechanism": {
-			params: commonv1alpha1.UserParameters{},
-			want:   []string{"SCRAM-SHA-512"},
+			mechanisms: nil,
+			want:       []string{"SCRAM-SHA-512"},
 		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := desiredMechanisms(tc.params)
+			got := desiredMechanisms(tc.mechanisms)
 			assert.Equal(t, tc.want, got)
 		})
 	}

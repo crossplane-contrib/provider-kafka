@@ -216,6 +216,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.Mechanisms = mechs
 	cr.Status.SetConditions(xpv2.Available())
 
+	// Kafka SCRAM API does not expose stored password hashes, so only mechanism
+	// changes are detectable. Changing passwordSecretRef alone won't trigger an
+	// Update. Bump the external-name annotation to force re-upsert.
 	desiredMechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	obs := managed.ExternalObservation{
 		ResourceExists:   true,
