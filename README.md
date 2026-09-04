@@ -137,7 +137,58 @@ manage [Kafka](https://kafka.apache.org/) resources.
 
 3. Create a `ProviderConfig`, see [providerconfig examples](examples/namespaced/providerconfig/).
 
-4. Create a managed resource, see [topic](examples/namespaced/topic/) and [acl](examples/namespaced/acl/) for examples.
+4. Create a managed resource, see [topic](examples/namespaced/topic/), [acl](examples/namespaced/acl/), and [user](examples/namespaced/user/) for examples.
+
+### Managing Kafka SCRAM Users
+
+The `User` resource provisions a Kafka SCRAM user and writes a connection Secret
+containing `username`, `password`, and `brokers` so applications have a single
+source of truth for Kafka credentials.
+
+```yaml
+apiVersion: user.kafka.m.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: sample-user
+  namespace: kafka-cluster
+  annotations:
+    crossplane.io/external-name: alice
+spec:
+  forProvider:
+    mechanisms:
+      - SCRAM-SHA-512
+  writeConnectionSecretToRef:
+    name: alice-kafka-credentials
+  providerConfigRef:
+    name: default
+    kind: ClusterProviderConfig
+```
+
+The controller auto-generates a secure random password and persists it in the
+output Secret. To supply your own password, set `spec.forProvider.passwordSecretRef`
+to reference an existing Secret:
+
+```yaml
+spec:
+  forProvider:
+    mechanisms:
+      - SCRAM-SHA-512
+    passwordSecretRef:
+      name: alice-password
+      key: password
+```
+
+The output Secret contains:
+
+| Key | Value |
+|-----|-------|
+| `username` | Kafka username (from `crossplane.io/external-name`) |
+| `password` | The user's password |
+| `brokers` | Comma-separated broker addresses from the ProviderConfig |
+
+Cluster-scoped `User` resources are available under `user.kafka.crossplane.io/v1alpha1`.
+See [cluster user examples](examples/cluster/user/v1alpha1/) and
+[namespaced user examples](examples/namespaced/user/v1alpha1/) for complete manifests.
 
 ### Importing existing resources
 
@@ -167,10 +218,52 @@ spec:
 The provider will observe the topic and populate `status.atProvider` with the
 actual state without making any changes to the Kafka cluster.
 
+To import an existing SCRAM user, provide the known password via `passwordSecretRef`
+so the controller can populate the output Secret without resetting credentials:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alice-existing-password
+  namespace: kafka-cluster
+type: Opaque
+stringData:
+  password: "the-existing-password"
+---
+apiVersion: user.kafka.m.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: imported-user
+  namespace: kafka-cluster
+  annotations:
+    crossplane.io/external-name: alice
+spec:
+  managementPolicies:
+    - Observe
+  forProvider:
+    mechanisms:
+      - SCRAM-SHA-512
+    passwordSecretRef:
+      name: alice-existing-password
+      key: password
+  writeConnectionSecretToRef:
+    name: alice-kafka-credentials
+  providerConfigRef:
+    name: default
+    kind: ClusterProviderConfig
+```
+
 > **Note**: Importing ACLs via `Observe` is not supported. Kafka ACLs don't have
 > a unique identifier — they are identified by the full combination of their
 > fields (resource name, type, principal, host, operation, permission type, and
 > pattern type), making observe-only imports impractical.
+>
+> **Note**: Importing `User` resources requires a `passwordSecretRef`. The Kafka
+> SCRAM API does not expose stored password hashes, so the password in the output
+> Secret cannot be reconstructed from observed state. When `passwordSecretRef` is
+> set, the controller reads the password from that Secret during `Observe` and
+> writes it to the output Secret — no credential rotation occurs.
 
 ## Development
 
