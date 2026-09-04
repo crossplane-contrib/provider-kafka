@@ -109,25 +109,22 @@ func ObservedMechanisms(ctx context.Context, cl ScramClient, username string) ([
 // Upsert creates or updates SCRAM credentials for the user with the given
 // mechanisms and password. SCRAM iteration count is set to defaultScramIterations (4096).
 func Upsert(ctx context.Context, cl ScramClient, username, password string, mechanisms []string) error {
-	upserts := make([]kadm.UpsertSCRAM, 0, len(mechanisms))
+	// Kafka rejects an AlterUserScramCredentials request that names the same
+	// user more than once with DUPLICATE_RESOURCE, even for distinct
+	// mechanisms, so each mechanism gets its own request.
 	for _, m := range mechanisms {
 		mech, err := MechanismFromString(m)
 		if err != nil {
 			return err
 		}
-		upserts = append(upserts, kadm.UpsertSCRAM{
+		if err := alter(ctx, cl, nil, []kadm.UpsertSCRAM{{
 			User:       username,
 			Mechanism:  mech,
 			Iterations: defaultScramIterations,
 			Password:   password,
-		})
-	}
-	results, err := cl.AlterUserSCRAMs(ctx, nil, upserts)
-	if err != nil {
-		return fmt.Errorf("%s: %w", errAlterUser, err)
-	}
-	if err := results.Error(); err != nil {
-		return fmt.Errorf("%s: %w", errAlterUser, err)
+		}}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -139,18 +136,26 @@ func Delete(ctx context.Context, cl ScramClient, username string, mechanisms []s
 	if len(mechanisms) == 0 {
 		return nil
 	}
-	deletions := make([]kadm.DeleteSCRAM, 0, len(mechanisms))
+	// One request per mechanism, see the note in Upsert.
 	for _, m := range mechanisms {
 		mech, err := MechanismFromString(m)
 		if err != nil {
 			return err
 		}
-		deletions = append(deletions, kadm.DeleteSCRAM{
+		if err := alter(ctx, cl, []kadm.DeleteSCRAM{{
 			User:      username,
 			Mechanism: mech,
-		})
+		}}, nil); err != nil {
+			return err
+		}
 	}
-	results, err := cl.AlterUserSCRAMs(ctx, deletions, nil)
+	return nil
+}
+
+// alter sends a single AlterUserScramCredentials request and folds the
+// transport and per-credential errors into one.
+func alter(ctx context.Context, cl ScramClient, del []kadm.DeleteSCRAM, upsert []kadm.UpsertSCRAM) error {
+	results, err := cl.AlterUserSCRAMs(ctx, del, upsert)
 	if err != nil {
 		return fmt.Errorf("%s: %w", errAlterUser, err)
 	}
