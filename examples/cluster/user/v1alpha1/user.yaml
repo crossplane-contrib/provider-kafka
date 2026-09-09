@@ -1,0 +1,15 @@
+apiVersion: user.kafka.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: cluster-sample-user
+  annotations:
+    crossplane.io/external-name: alice
+spec:
+  forProvider:
+    mechanisms:
+      - SCRAM-SHA-512
+  writeConnectionSecretToRef:
+    name: alice-kafka-credentials
+    namespace: default
+  providerConfigRef:
+    name: default
