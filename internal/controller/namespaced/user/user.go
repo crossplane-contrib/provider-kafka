@@ -52,6 +52,7 @@ const (
 	errGetCreds     = "cannot get credentials"
 	errGetPC        = "cannot get ProviderConfig"
 	errNewClient    = "cannot create new Kafka client"
+	errParseCreds   = "cannot parse provider credentials for broker list"
 	errNotUser      = "managed resource is not a User custom resource"
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 
@@ -79,7 +80,7 @@ type connector struct {
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kafkaClient *kadm.Client
+	kafkaClient user.ScramClient
 	brokers     []string
 	kube        client.Client
 }
@@ -186,11 +187,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	cfg := kafka.Config{}
-	if err := json.Unmarshal(data, &cfg); err == nil {
-		return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("%s: %w", errParseCreds, err)
 	}
 
-	return &external{kafkaClient: svc, kube: c.kube}, nil
+	return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
 }
 
 func (c *external) Disconnect(_ context.Context) error {
@@ -281,6 +282,14 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
 		return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errUpsertUser, err)
+	}
+
+	// Mechanisms dropped from the spec stay enrolled in Kafka unless deleted,
+	// which would leave the resource permanently not up to date.
+	if removed := user.Removed(cr.Status.AtProvider.Mechanisms, mechs); len(removed) > 0 {
+		if err := user.Delete(ctx, c.kafkaClient, username, removed); err != nil {
+			return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errDeleteUser, err)
+		}
 	}
 
 	return managed.ExternalUpdate{

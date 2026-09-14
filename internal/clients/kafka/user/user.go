@@ -65,6 +65,23 @@ func IsUpToDate(observed, desired []string) bool {
 	return true
 }
 
+// Removed returns the mechanisms present in observed but absent from desired.
+// Used on Update to drop credentials for mechanisms taken out of the spec;
+// Upsert alone would leave them enrolled and the resource never up to date.
+func Removed(observed, desired []string) []string {
+	keep := make(map[string]struct{}, len(desired))
+	for _, d := range desired {
+		keep[d] = struct{}{}
+	}
+	var removed []string
+	for _, o := range observed {
+		if _, ok := keep[o]; !ok {
+			removed = append(removed, o)
+		}
+	}
+	return removed
+}
+
 // Describe returns whether the user exists and its enrolled mechanisms in a
 // single Kafka RPC. Returns (false, nil, nil) when the user has no credentials.
 func Describe(ctx context.Context, cl ScramClient, username string) (exists bool, mechanisms []string, err error) {

@@ -142,6 +142,45 @@ func TestIsUpToDate(t *testing.T) {
 	}
 }
 
+func TestRemoved(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		observed []string
+		desired  []string
+		want     []string
+	}{
+		"MechanismDropped": {
+			observed: []string{mechanismSHA256, mechanismSHA512},
+			desired:  []string{mechanismSHA512},
+			want:     []string{mechanismSHA256},
+		},
+		"NoChange": {
+			observed: []string{mechanismSHA512},
+			desired:  []string{mechanismSHA512},
+			want:     nil,
+		},
+		"MechanismAdded": {
+			observed: []string{mechanismSHA512},
+			desired:  []string{mechanismSHA512, mechanismSHA256},
+			want:     nil,
+		},
+		"AllDropped": {
+			observed: []string{mechanismSHA256, mechanismSHA512},
+			desired:  nil,
+			want:     []string{mechanismSHA256, mechanismSHA512},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := Removed(tc.observed, tc.desired)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestDescribe(t *testing.T) {
 	t.Parallel()
 
@@ -461,6 +500,34 @@ func TestUserLifecycle(t *testing.T) {
 		exists, _, err := Describe(ctx, cl, username)
 		return err == nil && !exists
 	}, 10*time.Second, 200*time.Millisecond, "user still exists after Delete")
+}
+
+// TestUserMechanismRemoval covers dropping a mechanism from the spec against a
+// live Kafka. Upsert only ever adds, so an Update that just upserts the desired
+// set leaves the dropped credential enrolled and the resource never reaches
+// up-to-date; this reproduces that and then runs the real Update sequence.
+func TestUserMechanismRemoval(t *testing.T) {
+	ctx, cl := integrationClient(t)
+
+	const username = "provider-test-user-removal"
+	t.Cleanup(func() { _ = Delete(ctx, cl, username, []string{mechanismSHA512, mechanismSHA256}) })
+
+	// Create enrolled in both mechanisms.
+	require.NoError(t, Upsert(ctx, cl, username, testPassword, []string{mechanismSHA512, mechanismSHA256}))
+	requireMechanisms(ctx, t, cl, username, mechanismSHA256, mechanismSHA512)
+
+	// Spec now asks for SHA-512 only. Upserting the desired set is not enough:
+	// SHA-256 stays enrolled and the resource still reads as out of date.
+	desired := []string{mechanismSHA512}
+	require.NoError(t, Upsert(ctx, cl, username, testPassword, desired))
+	_, mechs, err := Describe(ctx, cl, username)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{mechanismSHA256, mechanismSHA512}, mechs, "Upsert must not drop the removed mechanism on its own")
+	assert.False(t, IsUpToDate(mechs, desired), "resource would reconcile forever")
+
+	// What Update actually does: delete whatever the spec dropped.
+	require.NoError(t, Delete(ctx, cl, username, Removed(mechs, desired)))
+	requireMechanisms(ctx, t, cl, username, mechanismSHA512)
 }
 
 // requireMechanisms waits until Describe reports exactly the given mechanisms;
