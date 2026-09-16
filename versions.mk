@@ -4,7 +4,7 @@
 # Centralized version definitions for all external tools and dependencies.
 
 # Go
-GOLANGCILINT_VERSION = 2.12.2
+GOLANGCILINT_VERSION = 2.13.2
 
 # Kubernetes tools
 KIND_VERSION = v0.32.0
@@ -16,4 +16,5 @@ CROSSPLANE_VERSION = 2.4.1
 STRIMZI_CHART_VERSION = 1.2.0
 
 # Utilities
+DOCKER_BUILDX_VERSION ?= v0.33.0
 SYFT_VERSION ?= 1.51.1

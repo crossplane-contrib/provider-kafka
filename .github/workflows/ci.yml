@@ -33,8 +33,13 @@ jobs:
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.noop.outputs.should_skip != 'true'
+
       - name: Detect versions
         id: detect-versions
+        if: steps.noop.outputs.should_skip != 'true'
         run: |
           VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' versions.mk)
           echo "golang-ci-lint=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
