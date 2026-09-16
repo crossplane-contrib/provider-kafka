@@ -23,6 +23,7 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/acl"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/config"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/topic"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/user"
 )
 
 // Setup creates all controllers with the supplied logger and adds them to
@@ -32,6 +33,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		config.Setup,
 		topic.Setup,
 		acl.Setup,
+		user.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
@@ -47,6 +49,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 		config.SetupGated,
 		topic.SetupGated,
 		acl.SetupGated,
+		user.SetupGated,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
