@@ -33,8 +33,8 @@ const (
 )
 
 const (
-	ErrParseCreds   = "cannot parse provider credentials for broker list"
-	ErrNotUser      = "managed resource is not a User custom resource"
+	ErrParseCreds = "cannot parse provider credentials for broker list"
+	ErrNotUser    = "managed resource is not a User custom resource"
 
 	ErrGetPasswordSecret      = "cannot get password secret"
 	ErrEmptyPasswordSecretKey = "password secret key is missing or empty"
