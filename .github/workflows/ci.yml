@@ -96,7 +96,7 @@ jobs:
       - name: Check Diff
         run: make check-diff
 
-  unit-tests:
+  integration-tests:
     runs-on: ubuntu-latest
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
@@ -118,13 +118,13 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
-      - name: Run Unit Tests
+      - name: Run Integration Tests
         run: make test
 
-      - name: Publish Unit Test Coverage
+      - name: Publish Integration Test Coverage
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          flags: unittests
+          flags: integrationtests
           files: _output/tests/linux_amd64/coverage.txt
           override_branch: ${{ github.head_ref || github.ref_name }}
 
@@ -164,7 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-noop
-      - unit-tests
+      - integration-tests
       - build-test
     if: needs.detect-noop.outputs.noop != 'true'
 

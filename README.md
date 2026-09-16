@@ -284,7 +284,7 @@ parameters [here](https://github.com/bitnami/charts/tree/master/bitnami/kafka/#i
 1. (Optional) Create a local [kind](https://kind.sigs.k8s.io/) cluster unless you want to develop against an existing
    k8s cluster.
 
-   > Or simply run: `make kind-setup` or `make unit-tests.init` for steps 1-2.
+   > Or simply run: `make kind-setup` or `make integration-tests.init` for steps 1-2.
 
 2. Run `make kind-kafka-setup` or manually as follows:
 
