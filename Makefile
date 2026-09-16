@@ -1,4 +1,9 @@
 # ====================================================================================
+# Versions
+
+include versions.mk
+
+# ====================================================================================
 # Setup Project
 
 PROJECT_NAME := provider-kafka
@@ -18,7 +23,6 @@ PLATFORMS ?= linux_amd64 linux_arm64
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 GO_REQUIRED_VERSION ?= $(shell grep '^go ' go.mod | awk '{print $$2}')
-GOLANGCILINT_VERSION = 2.12.2
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -29,12 +33,8 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 # ====================================================================================
 # Setup Kubernetes tools
 
-KIND_VERSION = v0.32.0
-KUBECTL_VERSION = v1.36.1
 UP_CHANNEL = stable
-UP_VERSION = v0.48.1
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
-CROSSPLANE_VERSION = 2.4.1
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -125,7 +125,6 @@ run: go.build
 # Special Targets
 
 # Install gomplate
-GOMPLATE_VERSION := 3.10.0
 GOMPLATE := $(TOOLS_HOST_DIR)/gomplate-$(GOMPLATE_VERSION)
 
 $(GOMPLATE):
@@ -214,7 +213,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(HELM) repo update strimzi
 	@$(HELM) upgrade --install kafka-operator strimzi/strimzi-kafka-operator \
 		--create-namespace --namespace kafka-operator \
-		--version 0.51.0 \
+		--version $(STRIMZI_CHART_VERSION) \
 		--set watchAnyNamespace=true \
 		--wait
 	@$(KUBECTL) create namespace kafka-cluster --dry-run=client -o yaml | $(KUBECTL) apply -f -
@@ -248,7 +247,6 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 
-SYFT_VERSION ?= 1.51.1
 SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 
 $(SYFT):
