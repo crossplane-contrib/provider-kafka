@@ -55,7 +55,7 @@ jobs:
       - name: Detect golangci-lint version
         id: golangci-lint-version
         run: |
-          VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' Makefile)
+          VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' versions.mk)
           echo "version=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
 
       - name: Vendor Dependencies
