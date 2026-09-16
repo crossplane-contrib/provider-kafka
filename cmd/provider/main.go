@@ -113,8 +113,8 @@ func main() {
 	ctx.FatalIfErrorf(apiextensionsv1.AddToScheme(scheme), "Cannot add CustomResourceDefinition to scheme")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme,
-		Client: clientOpts,
+		Scheme:                     scheme,
+		Client:                     clientOpts,
 		LeaderElection:             cli.LeaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-kafka",
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
