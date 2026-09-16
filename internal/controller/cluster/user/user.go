@@ -46,11 +46,6 @@ import (
 )
 
 const (
-	errGetCreds     = common.ErrGetCreds
-	errGetPC        = common.ErrGetPC
-	errNewClient    = common.ErrNewClient
-	errTrackPCUsage = common.ErrTrackPCUsage
-
 	errParseCreds             = userhelpers.ErrParseCreds
 	errNotUser                = userhelpers.ErrNotUser
 	errGetPasswordSecret      = userhelpers.ErrGetPasswordSecret
@@ -142,25 +137,25 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
 
 	if err := c.usage.Track(ctx, lmg); err != nil {
-		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
 	}
 
 	pc := &apisv1alpha1.ProviderConfig{}
 	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetPC, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
 	}
 
 	cd := pc.Spec.Credentials
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
 	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errNewClient, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
 	cfg := kafka.Config{}

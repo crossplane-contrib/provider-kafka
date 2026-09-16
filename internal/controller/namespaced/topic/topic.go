@@ -45,12 +45,6 @@ import (
 )
 
 const (
-	errGetCPC       = common.ErrGetCPC
-	errGetCreds     = common.ErrGetCreds
-	errGetPC        = common.ErrGetPC
-	errNewClient    = common.ErrNewClient
-	errTrackPCUsage = common.ErrTrackPCUsage
-
 	errGetTopic = "cannot get topic spec from topic client"
 	errNotTopic = "managed resource is not a Topic custom resource"
 )
@@ -140,7 +134,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
 	}
 
 	var cd apisv1alpha1.ProviderCredentials
@@ -153,13 +147,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	case "ProviderConfig":
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
-			return nil, fmt.Errorf("%s: %w", errGetPC, err)
+			return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
 		}
 		cd = pc.Spec.Credentials
 	case "ClusterProviderConfig":
 		cpc := &apisv1alpha1.ClusterProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, fmt.Errorf("%s: %w", errGetCPC, err)
+			return nil, fmt.Errorf("%s: %w", common.ErrGetCPC, err)
 		}
 		cd = cpc.Spec.Credentials
 	default:
@@ -168,14 +162,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
 	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errNewClient, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
 	return &external{kafkaClient: svc, log: c.log}, nil
