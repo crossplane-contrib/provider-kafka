@@ -1,4 +1,9 @@
 # ====================================================================================
+# Versions
+
+include versions.mk
+
+# ====================================================================================
 # Setup Project
 
 PROJECT_NAME := provider-kafka
@@ -18,7 +23,6 @@ PLATFORMS ?= linux_amd64 linux_arm64
 NPROCS ?= 1
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 GO_REQUIRED_VERSION ?= $(shell grep '^go ' go.mod | awk '{print $$2}')
-GOLANGCILINT_VERSION = 2.12.2
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -29,13 +33,8 @@ export GOTOOLCHAIN := go$(GO_REQUIRED_VERSION)
 # ====================================================================================
 # Setup Kubernetes tools
 
-KIND_VERSION = v0.32.0
-KUBECTL_VERSION = v1.36.1
 UP_CHANNEL = stable
-UP_VERSION = v0.48.1
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
-CROSSPLANE_CLI_VERSION = v2.3.2
-CROSSPLANE_VERSION = 2.3.2
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -95,18 +94,6 @@ submodules:
 	@git submodule sync
 	@git submodule update --init --recursive
 
-# NOTE(hasheddan): the build submodule currently overrides XDG_CACHE_HOME in
-# order to force the Helm 3 to use the .work/helm directory. This causes Go on
-# Linux machines to use that directory as the build cache as well. We should
-# adjust this behavior in the build submodule because it is also causing Linux
-# users to duplicate their build cache, but for now we just make it easier to
-# identify its location in CI so that we cache between builds.
-go.cachedir:
-	@go env GOCACHE
-
-go.mod.cachedir:
-	@go env GOMODCACHE
-
 # NOTE(hasheddan): we must ensure up is installed in tool cache prior to build
 # as including the k8s_tools machinery prior to the xpkg machinery sets UP to
 # point to tool cache.
@@ -124,43 +111,6 @@ run: go.build
 
 # ====================================================================================
 # Special Targets
-
-# Install gomplate
-GOMPLATE_VERSION := 3.10.0
-GOMPLATE := $(TOOLS_HOST_DIR)/gomplate-$(GOMPLATE_VERSION)
-
-$(GOMPLATE):
-	@$(INFO) installing gomplate $(SAFEHOSTPLATFORM)
-	@mkdir -p $(TOOLS_HOST_DIR)
-	@curl -fsSLo $(GOMPLATE) https://github.com/hairyhenderson/gomplate/releases/download/v$(GOMPLATE_VERSION)/gomplate_$(SAFEHOSTPLATFORM) || $(FAIL)
-	@chmod +x $(GOMPLATE)
-	@$(OK) installing gomplate $(SAFEHOSTPLATFORM)
-
-export GOMPLATE
-
-# This target prepares repo for your provider by replacing all "template"
-# occurrences with your provider name.
-# This target can only be run once, if you want to rerun for some reason,
-# consider stashing/resetting your git state.
-# Arguments:
-#   provider: Camel case name of your provider, e.g. GitHub, PlanetScale
-provider.prepare:
-	@[ "${provider}" ] || ( echo "argument \"provider\" is not set"; exit 1 )
-	@PROVIDER=$(provider) ./hack/helpers/prepare.sh
-
-# This target adds a new api type and its controller.
-# You would still need to register new api in "apis/<provider>.go" and
-# controller in "internal/controller/<provider>.go".
-# Arguments:
-#   provider: Camel case name of your provider, e.g. GitHub, PlanetScale
-#   group: API group for the type you want to add.
-#   kind: Kind of the type you want to add
-#	apiversion: API version of the type you want to add. Optional and defaults to "v1alpha1"
-provider.addtype: $(GOMPLATE)
-	@[ "${provider}" ] || ( echo "argument \"provider\" is not set"; exit 1 )
-	@[ "${group}" ] || ( echo "argument \"group\" is not set"; exit 1 )
-	@[ "${kind}" ] || ( echo "argument \"kind\" is not set"; exit 1 )
-	@PROVIDER=$(provider) GROUP=$(group) KIND=$(kind) APIVERSION=$(apiversion) PROJECT_REPO=$(PROJECT_REPO) ./hack/helpers/addtype.sh
 
 define CROSSPLANE_MAKE_HELP
 Crossplane Targets:
@@ -197,7 +147,7 @@ dev: $(KIND) $(KUBECTL) $(DOCKER)
 	@$(INFO) Starting Provider Kafka controllers
 	@$(GO) run cmd/provider/main.go --debug
 
-kind-setup: $(KIND)
+kind-setup: $(KIND) $(HELM) $(KUBECTL)
 	@$(KIND) get clusters | grep $(KIND_CLUSTER_NAME) || ( \
 		$(INFO) Creating kind cluster; \
 		$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --quiet --wait 5m; \
@@ -215,7 +165,7 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(HELM) repo update strimzi
 	@$(HELM) upgrade --install kafka-operator strimzi/strimzi-kafka-operator \
 		--create-namespace --namespace kafka-operator \
-		--version 0.51.0 \
+		--version $(STRIMZI_CHART_VERSION) \
 		--set watchAnyNamespace=true \
 		--wait
 	@$(KUBECTL) create namespace kafka-cluster --dry-run=client -o yaml | $(KUBECTL) apply -f -
@@ -249,7 +199,6 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 
-SYFT_VERSION ?= 1.44.0
 SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 
 $(SYFT):
@@ -265,16 +214,16 @@ sbom: $(SYFT)
 	@$(SYFT) scan dir:. --source-name $(PROJECT_NAME) --source-version $(VERSION) -o spdx-json=$(EXTENSIONS_DIR)/sbom/sbom.spdx.json
 	@$(OK) SBOM generated at $(EXTENSIONS_DIR)/sbom/sbom.spdx.json
 	
-test: unit-tests.init unit-tests.run unit-tests.done
+test: integration-tests.init integration-tests.run integration-tests.done
 
-unit-tests.init: $(HELM) $(KIND) $(KUBECTL)
+integration-tests.init: $(HELM) $(KIND) $(KUBECTL)
 	@$(MAKE) -s kind-setup
 	@$(MAKE) -s kind-kafka-setup
 
-unit-tests.run: $(HELM) $(KIND) $(KUBECTL)
+integration-tests.run: $(HELM) $(KIND) $(KUBECTL)
 	@KAFKA_CONFIG=$$($(KUBECTL) get secret kafka-creds -n kafka-cluster -o jsonpath='{.data.credentials}' | base64 -d) $(MAKE) -j2 -s go.test.unit
 
-unit-tests.done: $(KIND) $(KUBECTL)
+integration-tests.done: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
 	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
 

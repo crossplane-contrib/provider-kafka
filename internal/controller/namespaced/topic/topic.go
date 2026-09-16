@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,16 +41,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
-)
-
-const (
-	errGetCPC       = "cannot get ClusterProviderConfig"
-	errGetCreds     = "cannot get credentials"
-	errGetPC        = "cannot get ProviderConfig"
-	errGetTopic     = "cannot get topic spec from topic client"
-	errNewClient    = "cannot create new Kafka client"
-	errNotTopic     = "managed resource is not a Topic custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
@@ -134,11 +125,11 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return nil, errors.New(errNotTopic)
+		return nil, errors.New(common.ErrNotTopic)
 	}
 
 	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
 	}
 
 	var cd apisv1alpha1.ProviderCredentials
@@ -151,13 +142,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	case "ProviderConfig":
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
-			return nil, fmt.Errorf("%s: %w", errGetPC, err)
+			return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
 		}
 		cd = pc.Spec.Credentials
 	case "ClusterProviderConfig":
 		cpc := &apisv1alpha1.ClusterProviderConfig{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, fmt.Errorf("%s: %w", errGetCPC, err)
+			return nil, fmt.Errorf("%s: %w", common.ErrGetCPC, err)
 		}
 		cd = cpc.Spec.Credentials
 	default:
@@ -166,14 +157,14 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
 	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errNewClient, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
 	return &external{kafkaClient: svc, log: c.log}, nil
@@ -187,7 +178,7 @@ func (c *external) Disconnect(_ context.Context) error {
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotTopic)
+		return managed.ExternalObservation{}, errors.New(common.ErrNotTopic)
 	}
 
 	tpc, err := topic.Get(ctx, c.kafkaClient, meta.GetExternalName(cr))
@@ -195,7 +186,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if strings.HasPrefix(err.Error(), topic.ErrTopicDoesNotExist) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
-		return managed.ExternalObservation{}, fmt.Errorf(errGetTopic+": %w", err)
+		return managed.ExternalObservation{}, fmt.Errorf(common.ErrGetTopic+": %w", err)
 	}
 
 	// On the first reconcile, AddFinalizer performs a full-object Update that
@@ -220,7 +211,7 @@ func isResourceUpToDate(cr *v1alpha1.Topic, statusPopulated bool, observed *topi
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotTopic)
+		return managed.ExternalCreation{}, errors.New(common.ErrNotTopic)
 	}
 	return managed.ExternalCreation{}, topic.Create(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
 }
@@ -228,7 +219,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotTopic)
+		return managed.ExternalUpdate{}, errors.New(common.ErrNotTopic)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -240,7 +231,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if cr.Status.AtProvider.ID == "" {
 		tpc, err := topic.Get(ctx, c.kafkaClient, name)
 		if err != nil {
-			return managed.ExternalUpdate{}, fmt.Errorf(errGetTopic+": %w", err)
+			return managed.ExternalUpdate{}, fmt.Errorf(common.ErrGetTopic+": %w", err)
 		}
 
 		cr.Status.AtProvider = tpc.ToObservation()
@@ -254,7 +245,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	cr, ok := mg.(*v1alpha1.Topic)
 	cr.Status.SetConditions(xpv2.Deleting())
 	if !ok {
-		return managed.ExternalDelete{}, errors.New(errNotTopic)
+		return managed.ExternalDelete{}, errors.New(common.ErrNotTopic)
 	}
 
 	return managed.ExternalDelete{}, topic.Delete(ctx, c.kafkaClient, meta.GetExternalName(cr))

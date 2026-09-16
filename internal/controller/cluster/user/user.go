@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +18,9 @@ package user
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -42,29 +39,10 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/user/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
-	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/user"
-)
-
-const (
-	errGetCreds     = "cannot get credentials"
-	errGetPC        = "cannot get ProviderConfig"
-	errNewClient    = "cannot create new Kafka client"
-	errParseCreds   = "cannot parse provider credentials for broker list"
-	errNotUser      = "managed resource is not a User custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
-
-	errGetPasswordSecret      = "cannot get password secret"
-	errEmptyPasswordSecretKey = "password secret key is missing or empty"
-	errUpsertUser             = "cannot upsert Kafka user"
-	errDeleteUser             = "cannot delete Kafka user"
-	errObserveUser            = "cannot observe Kafka user"
-)
-
-const (
-	passwordAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	passwordLength   = 32
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
@@ -143,36 +121,36 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return nil, errors.New(errNotUser)
+		return nil, errors.New(userhelpers.ErrNotUser)
 	}
 
 	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
 
 	if err := c.usage.Track(ctx, lmg); err != nil {
-		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
 	}
 
 	pc := &apisv1alpha1.ProviderConfig{}
 	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetPC, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
 	}
 
 	cd := pc.Spec.Credentials
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
 	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errNewClient, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
 	cfg := kafka.Config{}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%s: %w", errParseCreds, err)
+		return nil, fmt.Errorf("%s: %w", userhelpers.ErrParseCreds, err)
 	}
 
 	return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
@@ -186,13 +164,13 @@ func (c *external) Disconnect(_ context.Context) error {
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotUser)
+		return managed.ExternalObservation{}, errors.New(userhelpers.ErrNotUser)
 	}
 
 	username := meta.GetExternalName(cr)
 	exists, mechs, err := user.Describe(ctx, c.kafkaClient, username)
 	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errObserveUser, err)
+		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", userhelpers.ErrObserveUser, err)
 	}
 	if !exists {
 		return managed.ExternalObservation{ResourceExists: false}, nil
@@ -204,7 +182,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// Kafka SCRAM API does not expose stored password hashes, so only mechanism
 	// changes are detectable. Changing passwordSecretRef alone won't trigger an
 	// Update. Bump the external-name annotation to force re-upsert.
-	desiredMechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
+	desiredMechs := userhelpers.DesiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	obs := managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: user.IsUpToDate(mechs, desiredMechs),
@@ -217,13 +195,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if ref := cr.Spec.ForProvider.PasswordSecretRef; ref != nil {
 		s := &corev1.Secret{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, s); err != nil {
-			return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errGetPasswordSecret, err)
+			return managed.ExternalObservation{}, fmt.Errorf("%s: %w", userhelpers.ErrGetPasswordSecret, err)
 		}
 		pw := s.Data[ref.Key]
 		if len(pw) == 0 {
-			return managed.ExternalObservation{}, errors.New(errEmptyPasswordSecretKey)
+			return managed.ExternalObservation{}, errors.New(userhelpers.ErrEmptyPasswordSecretKey)
 		}
-		obs.ConnectionDetails = connectionDetails(username, string(pw), c.brokers)
+		obs.ConnectionDetails = userhelpers.ConnectionDetails(username, string(pw), c.brokers)
 	}
 
 	return obs, nil
@@ -232,7 +210,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotUser)
+		return managed.ExternalCreation{}, errors.New(userhelpers.ErrNotUser)
 	}
 
 	username := meta.GetExternalName(cr)
@@ -241,20 +219,20 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
+	mechs := userhelpers.DesiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
-		return managed.ExternalCreation{}, fmt.Errorf("%s: %w", errUpsertUser, err)
+		return managed.ExternalCreation{}, fmt.Errorf("%s: %w", userhelpers.ErrUpsertUser, err)
 	}
 
 	return managed.ExternalCreation{
-		ConnectionDetails: connectionDetails(username, password, c.brokers),
+		ConnectionDetails: userhelpers.ConnectionDetails(username, password, c.brokers),
 	}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotUser)
+		return managed.ExternalUpdate{}, errors.New(userhelpers.ErrNotUser)
 	}
 
 	username := meta.GetExternalName(cr)
@@ -263,39 +241,39 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	mechs := desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
+	mechs := userhelpers.DesiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	if err := user.Upsert(ctx, c.kafkaClient, username, password, mechs); err != nil {
-		return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errUpsertUser, err)
+		return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", userhelpers.ErrUpsertUser, err)
 	}
 
 	// Mechanisms dropped from the spec stay enrolled in Kafka unless deleted,
 	// which would leave the resource permanently not up to date.
 	if removed := user.Removed(cr.Status.AtProvider.Mechanisms, mechs); len(removed) > 0 {
 		if err := user.Delete(ctx, c.kafkaClient, username, removed); err != nil {
-			return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", errDeleteUser, err)
+			return managed.ExternalUpdate{}, fmt.Errorf("%s: %w", userhelpers.ErrDeleteUser, err)
 		}
 	}
 
 	return managed.ExternalUpdate{
-		ConnectionDetails: connectionDetails(username, password, c.brokers),
+		ConnectionDetails: userhelpers.ConnectionDetails(username, password, c.brokers),
 	}, nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return managed.ExternalDelete{}, errors.New(errNotUser)
+		return managed.ExternalDelete{}, errors.New(userhelpers.ErrNotUser)
 	}
 	cr.Status.SetConditions(xpv2.Deleting())
 
 	username := meta.GetExternalName(cr)
 	mechs := cr.Status.AtProvider.Mechanisms
 	if len(mechs) == 0 {
-		mechs = desiredMechanisms(cr.Spec.ForProvider.Mechanisms)
+		mechs = userhelpers.DesiredMechanisms(cr.Spec.ForProvider.Mechanisms)
 	}
 
 	if err := user.Delete(ctx, c.kafkaClient, username, mechs); err != nil {
-		return managed.ExternalDelete{}, fmt.Errorf("%s: %w", errDeleteUser, err)
+		return managed.ExternalDelete{}, fmt.Errorf("%s: %w", userhelpers.ErrDeleteUser, err)
 	}
 
 	return managed.ExternalDelete{}, nil
@@ -310,11 +288,11 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 	if ref := cr.Spec.ForProvider.PasswordSecretRef; ref != nil {
 		s := &corev1.Secret{}
 		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, s); err != nil {
-			return "", fmt.Errorf("%s: %w", errGetPasswordSecret, err)
+			return "", fmt.Errorf("%s: %w", userhelpers.ErrGetPasswordSecret, err)
 		}
 		pw := s.Data[ref.Key]
 		if len(pw) == 0 {
-			return "", errors.New(errEmptyPasswordSecretKey)
+			return "", errors.New(userhelpers.ErrEmptyPasswordSecretKey)
 		}
 		return string(pw), nil
 	}
@@ -324,46 +302,12 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 		s := &corev1.Secret{}
 		err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, s)
 		if err == nil {
-			if pw, ok := s.Data["password"]; ok && len(pw) > 0 {
+			if pw, ok := s.Data[userhelpers.PasswordSecretKey]; ok && len(pw) > 0 {
 				return string(pw), nil
 			}
 		}
 	}
 
 	// Branch 3: auto-generate
-	return generatePassword()
-}
-
-// desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
-func desiredMechanisms(mechanisms []commonv1alpha1.Mechanism) []string {
-	if len(mechanisms) == 0 {
-		return []string{"SCRAM-SHA-512"}
-	}
-	mechs := make([]string, len(mechanisms))
-	for i, m := range mechanisms {
-		mechs[i] = string(m)
-	}
-	return mechs
-}
-
-// connectionDetails assembles the managed resource connection detail map.
-func connectionDetails(username, password string, brokers []string) managed.ConnectionDetails {
-	return managed.ConnectionDetails{
-		"username": []byte(username),
-		"password": []byte(password),
-		"brokers":  []byte(strings.Join(brokers, ",")),
-	}
-}
-
-// generatePassword returns a cryptographically random alphanumeric password.
-func generatePassword() (string, error) {
-	b := make([]byte, passwordLength)
-	for i := range b {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordAlphabet))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = passwordAlphabet[n.Int64()]
-	}
-	return string(b), nil
+	return userhelpers.GeneratePassword()
 }

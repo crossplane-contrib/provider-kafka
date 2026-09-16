@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,16 +41,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-)
-
-const (
-	errNotAccessControlList = "managed resource is not a AccessControlList custom resource"
-	errTrackPCUsage         = "cannot track ProviderConfig usage"
-	errGetPC                = "cannot get ProviderConfig"
-	errGetCreds             = "cannot get credentials"
-	errListACL              = "cannot List ACLs"
-	errNewClient            = "cannot create new Service"
-	errUpdateNotSupported   = "updates are not supported"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
@@ -128,32 +119,32 @@ type connector struct {
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return nil, errors.New(errNotAccessControlList)
+		return nil, errors.New(common.ErrNotAccessControlList)
 	}
 
 	// Switch to LegacyManaged to support ProviderConfigUsage tracking
 	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
 
 	if err := c.usage.Track(ctx, lmg); err != nil {
-		return nil, fmt.Errorf("%s: %w", errTrackPCUsage, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
 	}
 
 	pc := &apisv1alpha1.ProviderConfig{}
 	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetPC, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
 	}
 
 	cd := pc.Spec.Credentials
 	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errGetCreds, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
 	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errNewClient, err)
+		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
 	return &external{kafkaClient: svc, log: c.log}, nil
@@ -174,7 +165,7 @@ type external struct {
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotAccessControlList)
+		return managed.ExternalObservation{}, errors.New(common.ErrNotAccessControlList)
 	}
 
 	// Check if the external name is set, to determine if ACL has been created or not
@@ -204,7 +195,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ae, err := acl.List(ctx, c.kafkaClient, extName)
 	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", errListACL, err)
+		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", common.ErrListACL, err)
 	}
 
 	if ae == nil {
@@ -230,7 +221,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotAccessControlList)
+		return managed.ExternalCreation{}, errors.New(common.ErrNotAccessControlList)
 	}
 
 	generated := acl.Generate(&cr.Spec.ForProvider)
@@ -245,14 +236,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	return managed.ExternalUpdate{}, errors.New(errUpdateNotSupported)
+	return managed.ExternalUpdate{}, errors.New(common.ErrUpdateNotSupported)
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	cr.Status.SetConditions(xpv2.Deleting())
 	if !ok {
-		return managed.ExternalDelete{}, errors.New(errNotAccessControlList)
+		return managed.ExternalDelete{}, errors.New(common.ErrNotAccessControlList)
 	}
 
 	return managed.ExternalDelete{}, acl.Delete(ctx, c.kafkaClient, acl.Generate(&cr.Spec.ForProvider))

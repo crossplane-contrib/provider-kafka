@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
 const (
@@ -63,7 +64,7 @@ func TestObserveWrongType(t *testing.T) {
 			reason: "Should return error when managed resource is not a User",
 			want: want{
 				o:   managed.ExternalObservation{},
-				err: errors.New(errNotUser),
+				err: errors.New(userhelpers.ErrNotUser),
 			},
 		},
 	}
@@ -144,7 +145,7 @@ func TestResolvePassword(t *testing.T) {
 				return
 			}
 			// Auto-generated: must be 32 chars of the allowed alphabet
-			assert.Len(t, got, passwordLength)
+			assert.Len(t, got, userhelpers.PasswordLength)
 			for _, ch := range got {
 				assert.True(t, isAlphanumeric(ch), "generated password contains non-alphanumeric char %q", ch)
 			}
@@ -172,7 +173,7 @@ func TestDesiredMechanisms(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := desiredMechanisms(tc.mechanisms)
+			got := userhelpers.DesiredMechanisms(tc.mechanisms)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -181,7 +182,7 @@ func TestDesiredMechanisms(t *testing.T) {
 func TestConnectionDetails(t *testing.T) {
 	t.Parallel()
 
-	got := connectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
+	got := userhelpers.ConnectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
 	assert.Equal(t, "alice", string(got["username"]))
 	assert.Equal(t, "s3cr3t", string(got["password"]))
 	assert.Equal(t, "broker1:9092,broker2:9092", string(got["brokers"]))
@@ -223,7 +224,7 @@ func secret(name, namespace string, data map[string][]byte) *corev1.Secret {
 }
 
 func isAlphanumeric(r rune) bool {
-	for _, c := range passwordAlphabet {
+	for _, c := range userhelpers.PasswordAlphabet {
 		if r == c {
 			return true
 		}

@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	aclclient "github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
+	ctrlcommon "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
 
 func TestObserveWrongType(t *testing.T) {
@@ -46,7 +47,7 @@ func TestObserveWrongType(t *testing.T) {
 			reason: "Should return error when managed resource is not an AccessControlList",
 			want: want{
 				o:   managed.ExternalObservation{},
-				err: errors.New(errNotAccessControlList),
+				err: errors.New(ctrlcommon.ErrNotAccessControlList),
 			},
 		},
 	}
