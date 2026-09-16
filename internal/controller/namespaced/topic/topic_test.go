@@ -15,6 +15,7 @@ import (
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
+	ctrlcommon "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
 
 const (
@@ -36,7 +37,7 @@ func TestObserveWrongType(t *testing.T) {
 			reason: "Should return error when managed resource is not a Topic",
 			want: want{
 				o:   managed.ExternalObservation{},
-				err: errors.New(errNotTopic),
+				err: errors.New(ctrlcommon.ErrNotTopic),
 			},
 		},
 	}

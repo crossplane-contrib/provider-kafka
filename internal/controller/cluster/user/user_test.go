@@ -64,7 +64,7 @@ func TestObserveWrongType(t *testing.T) {
 			reason: "Should return error when managed resource is not a User",
 			want: want{
 				o:   managed.ExternalObservation{},
-				err: errors.New(errNotUser),
+				err: errors.New(userhelpers.ErrNotUser),
 			},
 		},
 	}
@@ -173,7 +173,7 @@ func TestDesiredMechanisms(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := desiredMechanisms(tc.mechanisms)
+			got := userhelpers.DesiredMechanisms(tc.mechanisms)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -182,7 +182,7 @@ func TestDesiredMechanisms(t *testing.T) {
 func TestConnectionDetails(t *testing.T) {
 	t.Parallel()
 
-	got := connectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
+	got := userhelpers.ConnectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
 	assert.Equal(t, "alice", string(got["username"]))
 	assert.Equal(t, "s3cr3t", string(got["password"]))
 	assert.Equal(t, "broker1:9092,broker2:9092", string(got["brokers"]))

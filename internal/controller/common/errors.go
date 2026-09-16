@@ -22,4 +22,10 @@ const (
 	ErrGetCPC       = "cannot get ClusterProviderConfig"
 	ErrNewClient    = "cannot create new Kafka client"
 	ErrTrackPCUsage = "cannot track ProviderConfig usage"
+
+	ErrGetTopic             = "cannot get topic spec from topic client"
+	ErrNotTopic             = "managed resource is not a Topic custom resource"
+	ErrNotAccessControlList = "managed resource is not an AccessControlList custom resource"
+	ErrListACL              = "cannot List ACLs"
+	ErrUpdateNotSupported   = "updates are not supported"
 )
