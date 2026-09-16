@@ -14,8 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 contains the core resources of the Kafka provider.
-// +kubebuilder:object:generate=true
-// +groupName=kafka.crossplane.io
-// +versionName=v1alpha1
-package v1alpha1
+package common
+
+const (
+	ErrGetCreds     = "cannot get credentials"
+	ErrGetPC        = "cannot get ProviderConfig"
+	ErrGetCPC       = "cannot get ClusterProviderConfig"
+	ErrNewClient    = "cannot create new Kafka client"
+	ErrTrackPCUsage = "cannot track ProviderConfig usage"
+)

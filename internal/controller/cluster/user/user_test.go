@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
 const (
@@ -144,7 +145,7 @@ func TestResolvePassword(t *testing.T) {
 				return
 			}
 			// Auto-generated: must be 32 chars of the allowed alphabet
-			assert.Len(t, got, passwordLength)
+			assert.Len(t, got, userhelpers.PasswordLength)
 			for _, ch := range got {
 				assert.True(t, isAlphanumeric(ch), "generated password contains non-alphanumeric char %q", ch)
 			}
@@ -223,7 +224,7 @@ func secret(name, namespace string, data map[string][]byte) *corev1.Secret {
 }
 
 func isAlphanumeric(r rune) bool {
-	for _, c := range passwordAlphabet {
+	for _, c := range userhelpers.PasswordAlphabet {
 		if r == c {
 			return true
 		}

@@ -34,8 +34,7 @@ KUBECTL_VERSION = v1.36.1
 UP_CHANNEL = stable
 UP_VERSION = v0.48.1
 UP := $(TOOLS_HOST_DIR)/up-$(UP_VERSION)
-CROSSPLANE_CLI_VERSION = v2.3.2
-CROSSPLANE_VERSION = 2.3.2
+CROSSPLANE_VERSION = 2.4.1
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -249,7 +248,7 @@ review:
 	@$(MAKE) reviewable
 	@$(MAKE) sbom
 
-SYFT_VERSION ?= 1.44.0
+SYFT_VERSION ?= 1.51.1
 SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 
 $(SYFT):

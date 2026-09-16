@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,15 +41,17 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
+	common "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
 
 const (
-	errGetCreds     = "cannot get credentials"
-	errGetPC        = "cannot get ProviderConfig"
-	errGetTopic     = "cannot get topic spec from topic client"
-	errNewClient    = "cannot create new Kafka client"
-	errNotTopic     = "managed resource is not a Topic custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
+	errGetCreds     = common.ErrGetCreds
+	errGetPC        = common.ErrGetPC
+	errNewClient    = common.ErrNewClient
+	errTrackPCUsage = common.ErrTrackPCUsage
+
+	errGetTopic = "cannot get topic spec from topic client"
+	errNotTopic = "managed resource is not a Topic custom resource"
 )
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.

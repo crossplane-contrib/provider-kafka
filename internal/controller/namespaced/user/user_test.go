@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
 const (
@@ -96,22 +97,22 @@ func TestResolvePassword(t *testing.T) {
 	}{
 		// Branch 1: explicit PasswordSecretRef — secret is looked up in the CR's own namespace
 		"PasswordSecretRefUsesOwnNamespace": {
-			cr: userWithPasswordRef("my-secret", "team-a", passwordSecretKey),
+			cr: userWithPasswordRef("my-secret", "team-a", userhelpers.PasswordSecretKey),
 			secrets: []runtime.Object{
-				secret("my-secret", "team-a", map[string][]byte{passwordSecretKey: []byte("s3cr3t!")}),
+				secret("my-secret", "team-a", map[string][]byte{userhelpers.PasswordSecretKey: []byte("s3cr3t!")}),
 			},
 			wantPw: "s3cr3t!",
 		},
 		"PasswordSecretRefNotFoundInOtherNamespace": {
 			// Secret exists but in a different namespace — must not be found
-			cr: userWithPasswordRef("my-secret", "team-a", passwordSecretKey),
+			cr: userWithPasswordRef("my-secret", "team-a", userhelpers.PasswordSecretKey),
 			secrets: []runtime.Object{
-				secret("my-secret", "other-ns", map[string][]byte{passwordSecretKey: []byte("wrong")}),
+				secret("my-secret", "other-ns", map[string][]byte{userhelpers.PasswordSecretKey: []byte("wrong")}),
 			},
 			wantErr: true,
 		},
 		"PasswordSecretRefMissing": {
-			cr:      userWithPasswordRef("missing-secret", "team-a", passwordSecretKey),
+			cr:      userWithPasswordRef("missing-secret", "team-a", userhelpers.PasswordSecretKey),
 			secrets: []runtime.Object{},
 			wantErr: true,
 		},
@@ -120,7 +121,7 @@ func TestResolvePassword(t *testing.T) {
 		"ReuseFromOutputSecretInCRNamespace": {
 			cr: userWithWriteRefInNamespace("out-secret", "team-a"),
 			secrets: []runtime.Object{
-				secret("out-secret", "team-a", map[string][]byte{passwordSecretKey: []byte("kept-password")}),
+				secret("out-secret", "team-a", map[string][]byte{userhelpers.PasswordSecretKey: []byte("kept-password")}),
 			},
 			wantPw: "kept-password",
 		},
@@ -129,7 +130,7 @@ func TestResolvePassword(t *testing.T) {
 			cr: userWithWriteRefInNamespace("out-secret", "team-a"),
 			secrets: []runtime.Object{
 				// Secret exists but in a different namespace
-				secret("out-secret", "other-namespace", map[string][]byte{passwordSecretKey: []byte("wrong-ns-password")}),
+				secret("out-secret", "other-namespace", map[string][]byte{userhelpers.PasswordSecretKey: []byte("wrong-ns-password")}),
 			},
 			// Secret not found → falls through to auto-generate
 		},
@@ -166,7 +167,7 @@ func TestResolvePassword(t *testing.T) {
 				return
 			}
 			// Auto-generated: must be 32 chars of the allowed alphabet
-			assert.Len(t, got, passwordLength)
+			assert.Len(t, got, userhelpers.PasswordLength)
 			for _, ch := range got {
 				assert.True(t, isAlphanumeric(ch), "generated password contains non-alphanumeric char %q", ch)
 			}
@@ -205,7 +206,7 @@ func TestConnectionDetails(t *testing.T) {
 
 	got := connectionDetails("alice", "s3cr3t", []string{"broker1:9092", "broker2:9092"})
 	assert.Equal(t, "alice", string(got["username"]))
-	assert.Equal(t, "s3cr3t", string(got[passwordSecretKey]))
+	assert.Equal(t, "s3cr3t", string(got[userhelpers.PasswordSecretKey]))
 	assert.Equal(t, "broker1:9092,broker2:9092", string(got["brokers"]))
 }
 
@@ -251,7 +252,7 @@ func secret(name, namespace string, data map[string][]byte) *corev1.Secret {
 }
 
 func isAlphanumeric(r rune) bool {
-	for _, c := range passwordAlphabet {
+	for _, c := range userhelpers.PasswordAlphabet {
 		if r == c {
 			return true
 		}
@@ -320,14 +321,14 @@ func TestUpdateDeletesRemovedMechanisms(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cr := userWithPasswordRef("my-secret", "team-a", passwordSecretKey)
+			cr := userWithPasswordRef("my-secret", "team-a", userhelpers.PasswordSecretKey)
 			meta.SetExternalName(cr, "alice")
 			cr.Spec.ForProvider.Mechanisms = tc.desired
 			cr.Status.AtProvider.Mechanisms = tc.observed
 
 			kube := clientfake.NewClientBuilder().
 				WithScheme(scheme).
-				WithRuntimeObjects(secret("my-secret", "team-a", map[string][]byte{passwordSecretKey: []byte("s3cr3t")})).
+				WithRuntimeObjects(secret("my-secret", "team-a", map[string][]byte{userhelpers.PasswordSecretKey: []byte("s3cr3t")})).
 				Build()
 
 			cl := &fakeScramClient{}

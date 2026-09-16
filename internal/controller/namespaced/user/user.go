@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Crossplane Authors.
+Copyright 2026 The Crossplane Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +18,9 @@ package user
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -42,31 +39,26 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
-	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/user"
+	common "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
 const (
-	errGetCPC       = "cannot get ClusterProviderConfig"
-	errGetCreds     = "cannot get credentials"
-	errGetPC        = "cannot get ProviderConfig"
-	errNewClient    = "cannot create new Kafka client"
-	errParseCreds   = "cannot parse provider credentials for broker list"
-	errNotUser      = "managed resource is not a User custom resource"
-	errTrackPCUsage = "cannot track ProviderConfig usage"
+	errGetCPC       = common.ErrGetCPC
+	errGetCreds     = common.ErrGetCreds
+	errGetPC        = common.ErrGetPC
+	errNewClient    = common.ErrNewClient
+	errTrackPCUsage = common.ErrTrackPCUsage
 
-	errGetPasswordSecret      = "cannot get password secret"
-	errEmptyPasswordSecretKey = "password secret key is missing or empty"
-	errUpsertUser             = "cannot upsert Kafka user"
-	errDeleteUser             = "cannot delete Kafka user"
-	errObserveUser            = "cannot observe Kafka user"
-)
-
-const (
-	passwordAlphabet  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	passwordLength    = 32
-	passwordSecretKey = "password"
+	errParseCreds             = userhelpers.ErrParseCreds
+	errNotUser                = userhelpers.ErrNotUser
+	errGetPasswordSecret      = userhelpers.ErrGetPasswordSecret
+	errEmptyPasswordSecretKey = userhelpers.ErrEmptyPasswordSecretKey
+	errUpsertUser             = userhelpers.ErrUpsertUser
+	errDeleteUser             = userhelpers.ErrDeleteUser
+	errObserveUser            = userhelpers.ErrObserveUser
 )
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
@@ -341,46 +333,17 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 		// namespaced: LocalSecretReference has only Name; Secret lives in the CR's namespace
 		err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, s)
 		if err == nil {
-			if pw, ok := s.Data[passwordSecretKey]; ok && len(pw) > 0 {
+			if pw, ok := s.Data[userhelpers.PasswordSecretKey]; ok && len(pw) > 0 {
 				return string(pw), nil
 			}
 		}
 	}
 
 	// Branch 3: auto-generate
-	return generatePassword()
+	return userhelpers.GeneratePassword()
 }
 
-// desiredMechanisms returns the mechanisms from spec, defaulting to SCRAM-SHA-512.
-func desiredMechanisms(mechanisms []commonv1alpha1.Mechanism) []string {
-	if len(mechanisms) == 0 {
-		return []string{"SCRAM-SHA-512"}
-	}
-	mechs := make([]string, len(mechanisms))
-	for i, m := range mechanisms {
-		mechs[i] = string(m)
-	}
-	return mechs
-}
-
-// connectionDetails assembles the managed resource connection detail map.
-func connectionDetails(username, password string, brokers []string) managed.ConnectionDetails {
-	return managed.ConnectionDetails{
-		"username":        []byte(username),
-		passwordSecretKey: []byte(password),
-		"brokers":         []byte(strings.Join(brokers, ",")),
-	}
-}
-
-// generatePassword returns a cryptographically random alphanumeric password.
-func generatePassword() (string, error) {
-	b := make([]byte, passwordLength)
-	for i := range b {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordAlphabet))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = passwordAlphabet[n.Int64()]
-	}
-	return string(b), nil
-}
+var (
+	desiredMechanisms = userhelpers.DesiredMechanisms
+	connectionDetails = userhelpers.ConnectionDetails
+)
