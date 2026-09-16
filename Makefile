@@ -204,7 +204,7 @@ SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 $(SYFT):
 	@$(INFO) installing syft $(SYFT_VERSION)
 	@mkdir -p $(TOOLS_HOST_DIR)
-	@curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $(TOOLS_HOST_DIR) v$(SYFT_VERSION) || $(FAIL)
+	@curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $(TOOLS_HOST_DIR) $(SYFT_VERSION) || $(FAIL)
 	@mv $(TOOLS_HOST_DIR)/syft $(SYFT)
 	@$(OK) installing syft $(SYFT_VERSION)
 
