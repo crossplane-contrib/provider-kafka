@@ -41,9 +41,8 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
-	common "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
-
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {

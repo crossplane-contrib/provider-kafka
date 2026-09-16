@@ -41,9 +41,8 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
-	common "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
-
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {

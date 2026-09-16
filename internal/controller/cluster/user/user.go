@@ -41,7 +41,7 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/user"
-	common "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
@@ -311,4 +311,3 @@ func (c *external) resolvePassword(ctx context.Context, cr *v1alpha1.User) (stri
 	// Branch 3: auto-generate
 	return userhelpers.GeneratePassword()
 }
-
