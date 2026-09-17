@@ -37,11 +37,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	authv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	runtimescheme "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -68,6 +72,7 @@ var cli struct {
 	ChangelogsSocketPath     string `help:"Path for changelogs socket (if enabled)" default:"/var/run/changelogs/changelogs.sock" env:"CHANGELOGS_SOCKET_PATH"`
 
 	BrokerConnectionTimeout time.Duration `help:"Timeout for establishing connection to Kafka brokers" default:"30s"`
+	EnableSecretCache       bool          `help:"Enable caching of Secret objects. When true, Secrets are served from the informer cache instead of direct API calls. This reduces API server load but increases memory usage." default:"true" env:"ENABLE_SECRET_CACHE"`
 }
 
 func main() {
@@ -92,20 +97,40 @@ func main() {
 	cfg, err := ctrl.GetConfig()
 	ctx.FatalIfErrorf(err, "Cannot get API server rest config")
 
+	var clientOpts client.Options
+	if !cli.EnableSecretCache {
+		clientOpts = client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{&corev1.Secret{}},
+			},
+		}
+	}
+
+	scheme := runtimescheme.NewScheme()
+	ctx.FatalIfErrorf(clientgoscheme.AddToScheme(scheme), "Cannot add client-go scheme")
+	ctx.FatalIfErrorf(clusterapis.AddToScheme(scheme), "Cannot add Cluster Kafka APIs to scheme")
+	ctx.FatalIfErrorf(namespacedapis.AddToScheme(scheme), "Cannot add Namespaced Kafka APIs to scheme")
+	ctx.FatalIfErrorf(apiextensionsv1.AddToScheme(scheme), "Cannot add CustomResourceDefinition to scheme")
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:                     scheme,
+		Client:                     clientOpts,
 		LeaderElection:             cli.LeaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-kafka",
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaseDuration:              func() *time.Duration { d := 60 * time.Second; return &d }(),
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 		Cache: cache.Options{
-			SyncPeriod: &cli.SyncPeriod,
+			SyncPeriod:       &cli.SyncPeriod,
+			DefaultTransform: cache.TransformStripManagedFields(),
+			ByObject: map[client.Object]cache.ByObject{
+				&apiextensionsv1.CustomResourceDefinition{}: {
+					Transform: customresourcesgate.TransformStripCRDSchema,
+				},
+			},
 		},
 	})
 	ctx.FatalIfErrorf(err, "Cannot create controller manager")
-	ctx.FatalIfErrorf(clusterapis.AddToScheme(mgr.GetScheme()), "Cannot add Cluster Kafka APIs to scheme")
-	ctx.FatalIfErrorf(namespacedapis.AddToScheme(mgr.GetScheme()), "Cannot add Namespaced Kafka APIs to scheme")
-	ctx.FatalIfErrorf(apiextensionsv1.AddToScheme(mgr.GetScheme()), "Cannot add CustomResourceDefinition to scheme")
 
 	metricRecorder := managed.NewMRMetricRecorder()
 	stateMetrics := statemetrics.NewMRStateMetrics()
@@ -113,7 +138,6 @@ func main() {
 	metrics.Registry.MustRegister(metricRecorder)
 	metrics.Registry.MustRegister(stateMetrics)
 
-	ctx.FatalIfErrorf(err, "Cannot get provider")
 	o := controller.Options{
 		Logger:                  log,
 		MaxConcurrentReconciles: cli.MaxReconcileRate,

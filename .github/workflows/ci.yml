@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DOCKER_BUILDX_VERSION: "v0.33.0"
-
   # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
   # a step 'if env.AWS_USR' != ""', so we copy these to succinctly test whether
   # credentials have been provided before trying to run steps that need them.
@@ -24,10 +22,8 @@ env:
   AWS_USR: ${{ secrets.AWS_USR }}
 
 jobs:
-  detect-noop:
+  prepare:
     runs-on: ubuntu-latest
-    outputs:
-      noop: ${{ steps.noop.outputs.should_skip }}
     steps:
       - name: Detect No-op Changes
         id: noop
@@ -37,10 +33,27 @@ jobs:
           paths_ignore: '["**.md", "**.png", "**.jpg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.noop.outputs.should_skip != 'true'
+
+      - name: Detect versions
+        id: detect-versions
+        if: steps.noop.outputs.should_skip != 'true'
+        run: |
+          VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' versions.mk)
+          echo "golang-ci-lint=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
+          VERSION=$(awk '/^DOCKER_BUILDX_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' versions.mk)
+          echo "docker-buildx=${VERSION}" | tee -a "$GITHUB_OUTPUT"
+    outputs:
+      docker-buildx: ${{ steps.detect-versions.outputs.docker-buildx }}
+      golang-ci-lint: ${{ steps.detect-versions.outputs.golang-ci-lint }}
+      noop: ${{ steps.noop.outputs.should_skip }}
+
   lint:
     runs-on: ubuntu-latest
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
+    needs: prepare
+    if: needs.prepare.outputs.noop != 'true'
 
     steps:
       - name: Checkout
@@ -52,12 +65,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Detect golangci-lint version
-        id: golangci-lint-version
-        run: |
-          VERSION=$(awk '/^GOLANGCILINT_VERSION/{gsub(/[[:space:]]/, "", $3); print $3}' versions.mk)
-          echo "version=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
-
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
@@ -67,13 +74,13 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: ${{ steps.golangci-lint-version.outputs.version }}
+          version: ${{ needs.prepare.outputs.golang-ci-lint }}
           args: --timeout 10m0s
 
   check-diff:
     runs-on: ubuntu-latest
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
+    needs: prepare
+    if: needs.prepare.outputs.noop != 'true'
 
     steps:
       - name: Checkout
@@ -98,8 +105,8 @@ jobs:
 
   integration-tests:
     runs-on: ubuntu-latest
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
+    needs: prepare
+    if: needs.prepare.outputs.noop != 'true'
 
     steps:
       - name: Checkout
@@ -130,8 +137,8 @@ jobs:
 
   build-test:
     runs-on: ubuntu-latest
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
+    needs: prepare
+    if: needs.prepare.outputs.noop != 'true'
 
     steps:
       - name: Setup QEMU
@@ -142,7 +149,7 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         with:
-          version: ${{ env.DOCKER_BUILDX_VERSION }}
+          version: ${{ needs.prepare.outputs.docker-buildx }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,10 +170,10 @@ jobs:
   publish-artifacts:
     runs-on: ubuntu-latest
     needs:
-      - detect-noop
+      - prepare
       - integration-tests
       - build-test
-    if: needs.detect-noop.outputs.noop != 'true'
+    if: needs.prepare.outputs.noop != 'true'
 
     steps:
       - name: Setup QEMU
@@ -177,7 +184,7 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         with:
-          version: ${{ env.DOCKER_BUILDX_VERSION }}
+          version: ${{ needs.prepare.outputs.docker-buildx }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -3,14 +3,14 @@ name: Publish Provider Package
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version string to use while publishing the package (e.g. v1.0.0-alpha.1)"
-        default: ""
-        required: false
       cleanup-disk:
         description: Whether or not perform a disk cleanup in the runner
         default: true
         type: boolean
+        required: false
+      version:
+        description: Version string to use while publishing the package (e.g. v1.0.0-alpha.1)
+        default: ""
         required: false
 
 jobs:

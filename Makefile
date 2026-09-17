@@ -85,6 +85,12 @@ xpkg.append: xpkg.extensions $(UP)
 	@$(UP) alpha xpkg append --extensions-root=$(EXTENSIONS_DIR) $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION) || $(FAIL)
 	@$(OK) Appended extensions to $(XPKG_REG_ORGS)/$(PROJECT_NAME):$(VERSION)
 
+go.cachedir:
+	@go env GOCACHE
+
+go.mod.cachedir:
+	@go env GOMODCACHE
+
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
@@ -204,7 +210,7 @@ SYFT := $(TOOLS_HOST_DIR)/syft-$(SYFT_VERSION)
 $(SYFT):
 	@$(INFO) installing syft $(SYFT_VERSION)
 	@mkdir -p $(TOOLS_HOST_DIR)
-	@curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $(TOOLS_HOST_DIR) v$(SYFT_VERSION) || $(FAIL)
+	@curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $(TOOLS_HOST_DIR) $(SYFT_VERSION) || $(FAIL)
 	@mv $(TOOLS_HOST_DIR)/syft $(SYFT)
 	@$(OK) installing syft $(SYFT_VERSION)
 
