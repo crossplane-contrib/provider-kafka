@@ -51,7 +51,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	clusterapis "github.com/crossplane-contrib/provider-kafka/apis/cluster"
+	aclv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
+	topicv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
+	userv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/user/v1alpha1"
 	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
+	aclv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
+	topicv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
+	userv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
@@ -148,6 +154,14 @@ func main() {
 			PollStateMetricInterval: cli.PollStateMetricInterval,
 			MRMetrics:               metricRecorder,
 			MRStateMetrics:          stateMetrics,
+		},
+		Groups: []string{
+			topicv1alpha1cluster.Group,
+			aclv1alpha1cluster.Group,
+			userv1alpha1cluster.Group,
+			topicv1alpha1namespaced.Group,
+			aclv1alpha1namespaced.Group,
+			userv1alpha1namespaced.Group,
 		},
 	}
 
