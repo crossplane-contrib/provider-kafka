@@ -4,45 +4,84 @@ import (
 	"crypto/sha256"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-// ClientCache caches a *kadm.Client keyed by a digest of credential bytes.
-// If the provided secret changes/rotates, a new client is created.
-type ClientCache struct {
-	mu           sync.Mutex
-	cachedClient *kadm.Client
-	credsDigest  [sha256.Size]byte // SHA-256 hash of credentials, avoids storing secret material
+// clientIdleTimeout is how long a cached client may stay unused before it is closed.
+var clientIdleTimeout = 10 * time.Minute
+
+// SetClientIdleGracePeriod sets clientIdleTimeout to
+// pollInterval + maxReconcileDuration + gracePeriod and returns it.
+func SetClientIdleGracePeriod(gracePeriod, pollInterval time.Duration) time.Duration {
+	clientIdleTimeout = pollInterval + maxReconcileDuration + max(gracePeriod, 0)
+	return clientIdleTimeout
 }
 
-// GetOrCreate returns the cached client if the credential digest is unchanged,
-// otherwise closes the old client and calls newFn to create a new one.
+// ClientCache caches one *kadm.Client per set of credentials and closes
+// clients unused for longer than clientIdleTimeout.
+type ClientCache struct {
+	mu      sync.Mutex
+	clients map[[sha256.Size]byte]*cachedClient // keyed by SHA-256 of credentials, avoids storing secret material
+}
+
+type cachedClient struct {
+	client   *kadm.Client
+	lastUsed time.Time
+}
+
+// GetOrCreate returns the client cached for creds, or creates one with newFn.
+// It also closes idle clients.
 func (c *ClientCache) GetOrCreate(creds []byte, newFn func() (*kadm.Client, error)) (*kadm.Client, error) {
+	client, idle, err := c.getOrCreate(sha256.Sum256(creds), newFn)
+
+	// Close outside the lock: Close waits for the client's goroutines to stop.
+	for _, idleClient := range idle {
+		idleClient.Close()
+	}
+	return client, err
+}
+
+// getOrCreate does GetOrCreate's work under the lock and returns the removed
+// idle clients for the caller to close.
+func (c *ClientCache) getOrCreate(digest [sha256.Size]byte, newFn func() (*kadm.Client, error)) (*kadm.Client, []*kadm.Client, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	digest := sha256.Sum256(creds)
-	if c.cachedClient != nil && digest == c.credsDigest {
-		return c.cachedClient, nil
+	now := time.Now()
+	idle := c.removeIdle(now)
+
+	if cached, ok := c.clients[digest]; ok {
+		cached.lastUsed = now
+		return cached.client, idle, nil
 	}
 
-	svc, err := newFn()
+	client, err := newFn()
 	if err != nil {
-		return nil, err
+		return nil, idle, err
 	}
 
-	if svc == nil {
-		return nil, errors.New("newFn returned nil client")
+	if client == nil {
+		return nil, idle, errors.New("newFn returned nil client")
 	}
 
-	// Only close the old client after successfully creating the new one, ensuring cache
-	// consistency even if newFn() fails. Also avoids storing raw secret material.
-	if c.cachedClient != nil {
-		c.cachedClient.Close()
+	if c.clients == nil {
+		c.clients = make(map[[sha256.Size]byte]*cachedClient)
 	}
 
-	c.cachedClient = svc
-	c.credsDigest = digest
-	return svc, nil
+	c.clients[digest] = &cachedClient{client: client, lastUsed: now}
+	return client, idle, nil
+}
+
+// removeIdle removes and returns the clients unused for longer than clientIdleTimeout.
+func (c *ClientCache) removeIdle(now time.Time) []*kadm.Client {
+	var idle []*kadm.Client
+	for digest, cached := range c.clients {
+		if now.Sub(cached.lastUsed) > clientIdleTimeout {
+			idle = append(idle, cached.client)
+			delete(c.clients, digest)
+		}
+	}
+	return idle
 }
