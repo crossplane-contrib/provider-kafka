@@ -18,7 +18,7 @@ require (
 	github.com/crossplane/crossplane/apis/v2 v2.4.2
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.12.1
-	github.com/twmb/franz-go v1.22.0
+	github.com/twmb/franz-go v1.22.1
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
 	github.com/twmb/franz-go/pkg/kmsg v1.14.0
 	google.golang.org/grpc v1.84.0
