@@ -47,7 +47,7 @@ import (
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
-	cache        *kafka.ClientCache
+	cache        common.ClientCache
 	kube         client.Client
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
 	usage        *resource.LegacyProviderConfigUsageTracker
@@ -57,6 +57,7 @@ type connector struct {
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kafkaClient user.ScramClient
+	release     func()
 	brokers     []string
 	kube        client.Client
 }
@@ -141,23 +142,26 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
-	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+	cfg := kafka.Config{}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("%s: %w", userhelpers.ErrParseCreds, err)
+	}
+
+	svc, release, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
-	cfg := kafka.Config{}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("%s: %w", userhelpers.ErrParseCreds, err)
-	}
-
-	return &external{kafkaClient: svc, brokers: cfg.Brokers, kube: c.kube}, nil
+	return &external{kafkaClient: svc, release: release, brokers: cfg.Brokers, kube: c.kube}, nil
 }
 
 func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
+	if c.release != nil {
+		c.release()
+	}
 	return nil
 }
 

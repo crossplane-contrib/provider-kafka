@@ -8,9 +8,6 @@ import (
 const (
 	defaultIAMCredentialsExpiryWindow = 5 * time.Minute
 
-	// maxReconcileDuration is crossplane-runtime's reconcile timeout (1m) plus its grace period (30s).
-	maxReconcileDuration = 90 * time.Second
-
 	// ACL resource types
 	ACLResourceTypeTopic           = "Topic"
 	ACLResourceTypeGroup           = "Group"

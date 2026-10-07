@@ -6,16 +6,27 @@ import (
 	"testing"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/twmb/franz-go/pkg/kadm"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	apis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
+	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 	ctrlcommon "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common/commontest"
 )
 
 const (
@@ -189,4 +200,64 @@ func TestPopulateTopicAtProvider(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestConnectReleasesClient checks that Disconnect releases the client Connect acquired.
+func TestConnectReleasesClient(t *testing.T) {
+	t.Parallel()
+
+	cache := &commontest.ClientCache{}
+	c, cr := newConnector(t, cache, []byte(`{"brokers":["broker:9092"]}`))
+
+	ext, err := c.Connect(context.Background(), cr)
+	require.NoError(t, err)
+	assert.Equal(t, 1, cache.Acquired)
+	assert.Zero(t, cache.Released, "client released while connected")
+
+	require.NoError(t, ext.Disconnect(context.Background()))
+	assert.Equal(t, 1, cache.Released, "Disconnect must release the client")
+}
+
+// newConnector returns a connector backed by cache, and a Topic whose ProviderConfig credentials are creds.
+func newConnector(t *testing.T, cache ctrlcommon.ClientCache, creds []byte) (*connector, *v1alpha1.Topic) {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, apis.AddToScheme(scheme))
+
+	cr := &v1alpha1.Topic{
+		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.TopicKind},
+		ObjectMeta: metav1.ObjectMeta{Name: "topic", Namespace: "team-a", UID: "topic-uid"},
+	}
+	cr.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{Name: "pc", Kind: "ProviderConfig"}
+
+	pc := &apisv1alpha1.ProviderConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: cr.Namespace},
+		Spec: apisv1alpha1.ProviderConfigSpec{
+			Credentials: apisv1alpha1.ProviderCredentials{
+				Source: xpv2.CredentialsSourceSecret,
+				CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
+					SecretRef: &xpv2.SecretKeySelector{
+						SecretReference: xpv2.SecretReference{Name: "creds", Namespace: cr.Namespace},
+						Key:             "credentials",
+					},
+				},
+			},
+		},
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: cr.Namespace},
+		Data:       map[string][]byte{"credentials": creds},
+	}
+	kube := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(pc, secret).Build()
+
+	return &connector{
+		cache: cache,
+		kube:  kube,
+		usage: resource.NewProviderConfigUsageTracker(kube, &apisv1alpha1.ProviderConfigUsage{}),
+		newServiceFn: func(context.Context, []byte, client.Client) (*kadm.Client, error) {
+			return &kadm.Client{}, nil
+		},
+	}, cr
 }

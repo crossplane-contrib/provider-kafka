@@ -46,7 +46,7 @@ import (
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
-	cache        *kafka.ClientCache
+	cache        common.ClientCache
 	kube         client.Client
 	log          logging.Logger
 	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
@@ -57,6 +57,7 @@ type connector struct {
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kafkaClient *kadm.Client
+	release     func()
 	log         logging.Logger
 }
 
@@ -146,18 +147,21 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
 	}
 
-	svc, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
+	svc, release, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
 		return c.newServiceFn(ctx, data, c.kube)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
 	}
 
-	return &external{kafkaClient: svc, log: c.log}, nil
+	return &external{kafkaClient: svc, release: release, log: c.log}, nil
 }
 
 func (c *external) Disconnect(_ context.Context) error {
 	c.kafkaClient = nil
+	if c.release != nil {
+		c.release()
+	}
 	return nil
 }
 

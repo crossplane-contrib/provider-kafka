@@ -28,11 +28,11 @@ func TestGetOrCreateCacheHit(t *testing.T) {
 		return &kadm.Client{}, nil
 	}
 
-	client1, err := cache.GetOrCreate(creds, newFn)
+	client1, _, err := cache.GetOrCreate(creds, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 
-	client2, err := cache.GetOrCreate(creds, newFn)
+	client2, _, err := cache.GetOrCreate(creds, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount)) // Should not call newFn again
 	assert.Same(t, client1, client2)
@@ -48,7 +48,7 @@ func TestGetOrCreateErrorHandling(t *testing.T) {
 		return nil, testErr
 	}
 
-	_, err := cache.GetOrCreate(creds, newFn)
+	_, _, err := cache.GetOrCreate(creds, newFn)
 	require.Error(t, err)
 	assert.Equal(t, testErr, err)
 
@@ -75,7 +75,7 @@ func TestGetOrCreateConcurrentAccess(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			_, err := cache.GetOrCreate(creds, newFn)
+			_, _, err := cache.GetOrCreate(creds, newFn)
 			assert.NoError(t, err)
 		}()
 	}
@@ -98,11 +98,11 @@ func TestGetOrCreateEmptyCredentials(t *testing.T) {
 		return &kadm.Client{}, nil
 	}
 
-	_, err := cache.GetOrCreate(emptyCreds, newFn)
+	_, _, err := cache.GetOrCreate(emptyCreds, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 
-	_, err = cache.GetOrCreate(emptyCreds, newFn)
+	_, _, err = cache.GetOrCreate(emptyCreds, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount)) // Should reuse cached client
 }
@@ -120,12 +120,12 @@ func TestGetOrCreateCredentialComparison(t *testing.T) {
 	}
 
 	// Same credentials (different objects, same content)
-	_, err := cache.GetOrCreate(creds1, newFn)
+	_, _, err := cache.GetOrCreate(creds1, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 
 	// Should reuse client even though it's a different object
-	_, err = cache.GetOrCreate(creds2, newFn)
+	_, _, err = cache.GetOrCreate(creds2, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 }
@@ -143,7 +143,7 @@ func TestGetOrCreateErrorPreservesCacheState(t *testing.T) {
 	}
 
 	// Create initial client with creds1
-	client1, err := cache.GetOrCreate(creds1, newFn)
+	client1, _, err := cache.GetOrCreate(creds1, newFn)
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 
@@ -152,7 +152,7 @@ func TestGetOrCreateErrorPreservesCacheState(t *testing.T) {
 		return nil, errors.New("connection failed")
 	}
 
-	_, err = cache.GetOrCreate(creds2, failingFn)
+	_, _, err = cache.GetOrCreate(creds2, failingFn)
 	require.Error(t, err)
 
 	// Verify cache is unchanged - still has only the original client
@@ -169,7 +169,7 @@ func TestGetOrCreateNilClientRejected(t *testing.T) {
 		return nil, nil
 	}
 
-	_, err := cache.GetOrCreate(creds, nilClientFn)
+	_, _, err := cache.GetOrCreate(creds, nilClientFn)
 	require.Error(t, err)
 	assert.Empty(t, cache.clients)
 }
@@ -186,13 +186,13 @@ func TestGetOrCreateKeepsClientPerCredentials(t *testing.T) {
 		return newUnconnectedClient(t)
 	}
 
-	clientA, err := cache.GetOrCreate(credsA, newFn)
+	clientA, _, err := cache.GetOrCreate(credsA, newFn)
 	require.NoError(t, err)
-	clientB, err := cache.GetOrCreate(credsB, newFn)
+	clientB, _, err := cache.GetOrCreate(credsB, newFn)
 	require.NoError(t, err)
 	assert.NotSame(t, clientA, clientB)
 
-	existingClientA, err := cache.GetOrCreate(credsA, newFn)
+	existingClientA, _, err := cache.GetOrCreate(credsA, newFn)
 	require.NoError(t, err)
 	assert.Same(t, clientA, existingClientA, "credentials A should get its existing client back")
 	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount), "one client per credentials, not one per switch")
@@ -206,10 +206,10 @@ func TestGetOrCreateOtherCredentialsDoNotCloseClientInUse(t *testing.T) {
 		return newUnconnectedClient(t)
 	}
 
-	clientA, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+	clientA, _, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 	require.NoError(t, err)
 
-	_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+	_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
@@ -224,6 +224,10 @@ func TestGetOrCreateOtherCredentialsDoNotCloseClientInUse(t *testing.T) {
 // TestGetOrCreateConcurrentReconcilesKeepClientsUsable verifies that parallel
 // reconciles for different credentials never get a closed client.
 func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
+	// A zero timeout closes every unused client on the next acquire, so only
+	// reference counting keeps the clients in use open.
+	setClientIdleTimeout(t, 0)
+
 	cache := &ClientCache{}
 	creds := [][]byte{[]byte("broker-a"), []byte("broker-b")}
 	newFn := func() (*kadm.Client, error) {
@@ -239,7 +243,7 @@ func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for r := 0; r < reconcilesPerWorker; r++ {
-				client, err := cache.GetOrCreate(creds[(w+r)%len(creds)], newFn)
+				client, release, err := cache.GetOrCreate(creds[(w+r)%len(creds)], newFn)
 				if !assert.NoError(t, err) {
 					return
 				}
@@ -247,6 +251,7 @@ func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
 				if !errors.As(listTopics(client), &dialErr) {
 					atomic.AddInt32(&failedOnClosedClient, 1)
 				}
+				release()
 			}
 		}()
 	}
@@ -255,8 +260,33 @@ func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
 	assert.Zero(t, atomic.LoadInt32(&failedOnClosedClient), "reconciles used clients closed by other reconciles")
 }
 
-// TestGetOrCreateClosesIdleClient verifies that an idle client is closed and replaced.
+// TestGetOrCreateNeverClosesClientInUse verifies that a client in use stays open, however long it is held.
+func TestGetOrCreateNeverClosesClientInUse(t *testing.T) {
+	setClientIdleTimeout(t, 10*time.Minute)
+
+	synctest.Test(t, func(t *testing.T) {
+		cache := &ClientCache{}
+		newFn := func() (*kadm.Client, error) {
+			return newUnconnectedClient(t)
+		}
+
+		client, _, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		require.NoError(t, err)
+
+		time.Sleep(2 * ClientIdleTimeout)
+		_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+		require.NoError(t, err)
+
+		var dialErr *net.OpError
+		assert.ErrorAs(t, listTopics(client), &dialErr, "a client in use must stay open")
+	})
+}
+
+// TestGetOrCreateClosesIdleClient verifies that a released client is closed
+// on the next acquire after the idle timeout, and replaced.
 func TestGetOrCreateClosesIdleClient(t *testing.T) {
+	setClientIdleTimeout(t, 10*time.Minute)
+
 	synctest.Test(t, func(t *testing.T) {
 		cache := &ClientCache{}
 		var callCount int32
@@ -265,61 +295,59 @@ func TestGetOrCreateClosesIdleClient(t *testing.T) {
 			return newUnconnectedClient(t)
 		}
 
-		idleClient, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		idleClient, release, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
+		release()
 
 		// Past the timeout, the next call closes broker-a's client.
-		time.Sleep(clientIdleTimeout + time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+		time.Sleep(ClientIdleTimeout + time.Minute)
+		_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
 		require.NoError(t, err)
 
 		var dialErr *net.OpError
 		assert.NotErrorAs(t, listTopics(idleClient), &dialErr, "the idle client should be closed")
 
-		client, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		client, _, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
 		assert.NotSame(t, idleClient, client, "broker-a should get a new client")
 		assert.Equal(t, int32(3), atomic.LoadInt32(&callCount))
 	})
 }
 
-// TestGetOrCreateKeepsRecentlyUsedClient verifies that idle time counts from the last use, not from creation.
-func TestGetOrCreateKeepsRecentlyUsedClient(t *testing.T) {
+// TestGetOrCreateIdleTimeCountsFromLastRelease verifies that idle time starts at the last release, not at acquire.
+func TestGetOrCreateIdleTimeCountsFromLastRelease(t *testing.T) {
+	setClientIdleTimeout(t, 10*time.Minute)
+
 	synctest.Test(t, func(t *testing.T) {
 		cache := &ClientCache{}
-		var callCount int32
 		newFn := func() (*kadm.Client, error) {
-			atomic.AddInt32(&callCount, 1)
 			return newUnconnectedClient(t)
 		}
 
-		client, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		client, release, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
 
-		// Use broker-a again just before the timeout.
-		time.Sleep(clientIdleTimeout - time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-a"), newFn)
-		require.NoError(t, err)
+		// Held past the timeout, then released.
+		time.Sleep(ClientIdleTimeout + time.Minute)
+		release()
 
-		// Past the timeout since creation, but not since last use.
+		// Past the timeout since acquire, but not since release.
 		time.Sleep(2 * time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+		_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
 		require.NoError(t, err)
 
 		var dialErr *net.OpError
-		require.ErrorAs(t, listTopics(client), &dialErr, "a recently used client should stay open")
+		require.ErrorAs(t, listTopics(client), &dialErr, "a recently released client should stay open")
 
-		got, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		got, _, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
 		assert.Same(t, client, got)
-		assert.Equal(t, int32(2), atomic.LoadInt32(&callCount))
 	})
 }
 
-// TestGetOrCreateUsesConfiguredGracePeriod verifies that the cache uses the timeout from SetClientIdleGracePeriod.
-func TestGetOrCreateUsesConfiguredGracePeriod(t *testing.T) {
-	restoreClientIdleTimeout(t)
-	require.Equal(t, 7*time.Minute+30*time.Second, SetClientIdleGracePeriod(5*time.Minute, time.Minute))
+// TestGetOrCreateDoubleReleaseKeepsOtherHolder verifies that releasing twice drops only one reference.
+func TestGetOrCreateDoubleReleaseKeepsOtherHolder(t *testing.T) {
+	setClientIdleTimeout(t, 10*time.Minute)
 
 	synctest.Test(t, func(t *testing.T) {
 		cache := &ClientCache{}
@@ -327,24 +355,26 @@ func TestGetOrCreateUsesConfiguredGracePeriod(t *testing.T) {
 			return newUnconnectedClient(t)
 		}
 
-		idleClient, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		client, release, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		require.NoError(t, err)
+		_, _, err = cache.GetOrCreate([]byte("broker-a"), newFn) // a second reconcile holds it too
 		require.NoError(t, err)
 
-		// 8m is past 1m + 90s + 5m, but within the default.
-		time.Sleep(8 * time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+		release()
+		release()
+
+		time.Sleep(ClientIdleTimeout + time.Minute)
+		_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
 		require.NoError(t, err)
 
 		var dialErr *net.OpError
-		assert.NotErrorAs(t, listTopics(idleClient), &dialErr, "the idle client should be closed after the configured grace period")
+		assert.ErrorAs(t, listTopics(client), &dialErr, "the second holder's client must stay open")
 	})
 }
 
-// TestGetOrCreateKeepsClientThroughPollAndReconcile verifies that with a zero
-// grace period a client still lives for the poll interval plus 90s.
-func TestGetOrCreateKeepsClientThroughPollAndReconcile(t *testing.T) {
-	restoreClientIdleTimeout(t)
-	SetClientIdleGracePeriod(0, time.Minute)
+// TestGetOrCreateUsesConfiguredIdleTimeout verifies that the cache uses ClientIdleTimeout.
+func TestGetOrCreateUsesConfiguredIdleTimeout(t *testing.T) {
+	setClientIdleTimeout(t, 5*time.Minute)
 
 	synctest.Test(t, func(t *testing.T) {
 		cache := &ClientCache{}
@@ -352,62 +382,18 @@ func TestGetOrCreateKeepsClientThroughPollAndReconcile(t *testing.T) {
 			return newUnconnectedClient(t)
 		}
 
-		client, err := cache.GetOrCreate([]byte("broker-a"), newFn)
+		idleClient, release, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
+		release()
 
-		// 2m: within 1m + 90s.
-		time.Sleep(2 * time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
+		// 6m is past the configured 5m.
+		time.Sleep(6 * time.Minute)
+		_, _, err = cache.GetOrCreate([]byte("broker-b"), newFn)
 		require.NoError(t, err)
 
 		var dialErr *net.OpError
-		require.ErrorAs(t, listTopics(client), &dialErr, "the client should survive the poll interval and a reconcile")
-
-		// 3m: past 1m + 90s.
-		time.Sleep(time.Minute)
-		_, err = cache.GetOrCreate([]byte("broker-b"), newFn)
-		require.NoError(t, err)
-
-		assert.NotErrorAs(t, listTopics(client), &dialErr, "the client should be closed once past both")
+		assert.NotErrorAs(t, listTopics(idleClient), &dialErr, "the idle client should be closed after the configured timeout")
 	})
-}
-
-// TestSetClientIdleGracePeriod verifies that the timeout is pollInterval + 90s + gracePeriod.
-func TestSetClientIdleGracePeriod(t *testing.T) {
-	restoreClientIdleTimeout(t)
-
-	cases := map[string]struct {
-		gracePeriod  time.Duration
-		pollInterval time.Duration
-		want         time.Duration
-	}{
-		"ShortPollInterval": {
-			gracePeriod:  15 * time.Minute,
-			pollInterval: time.Minute,
-			want:         17*time.Minute + 30*time.Second,
-		},
-		"LongPollInterval": {
-			gracePeriod:  15 * time.Minute,
-			pollInterval: time.Hour,
-			want:         time.Hour + 16*time.Minute + 30*time.Second,
-		},
-		"ZeroGracePeriod": {
-			gracePeriod:  0,
-			pollInterval: time.Minute,
-			want:         150 * time.Second,
-		},
-		"NegativeGracePeriod": {
-			gracePeriod:  -5 * time.Minute,
-			pollInterval: time.Minute,
-			want:         150 * time.Second,
-		},
-	}
-
-	for name, tc := range cases {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.want, SetClientIdleGracePeriod(tc.gracePeriod, tc.pollInterval))
-		})
-	}
 }
 
 // listTopics makes the request Topic's Observe makes. An open client fails with
@@ -430,9 +416,10 @@ func newUnconnectedClient(t *testing.T) (*kadm.Client, error) {
 	return kadm.NewClient(kc), nil
 }
 
-// restoreClientIdleTimeout restores clientIdleTimeout after the test.
-func restoreClientIdleTimeout(t *testing.T) {
+// setClientIdleTimeout sets ClientIdleTimeout for the test and restores it afterwards.
+func setClientIdleTimeout(t *testing.T, timeout time.Duration) {
 	t.Helper()
-	previous := clientIdleTimeout
-	t.Cleanup(func() { clientIdleTimeout = previous })
+	previous := ClientIdleTimeout
+	ClientIdleTimeout = timeout
+	t.Cleanup(func() { ClientIdleTimeout = previous })
 }

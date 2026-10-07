@@ -9,52 +9,48 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-// clientIdleTimeout is how long a cached client may stay unused before it is closed.
-var clientIdleTimeout = 10 * time.Minute
+// ClientIdleTimeout is how long a cached client may stay unused before it is closed. Set from --client-idle-timeout.
+var ClientIdleTimeout time.Duration
 
-// SetClientIdleGracePeriod sets clientIdleTimeout to
-// pollInterval + maxReconcileDuration + gracePeriod and returns it.
-func SetClientIdleGracePeriod(gracePeriod, pollInterval time.Duration) time.Duration {
-	clientIdleTimeout = pollInterval + maxReconcileDuration + max(gracePeriod, 0)
-	return clientIdleTimeout
-}
-
-// ClientCache caches one *kadm.Client per set of credentials and closes
-// clients unused for longer than clientIdleTimeout.
+// ClientCache caches one *kadm.Client per set of credentials. Callers release
+// a client when done; unused clients are closed once idle past ClientIdleTimeout.
 type ClientCache struct {
 	mu      sync.Mutex
 	clients map[[sha256.Size]byte]*cachedClient // keyed by SHA-256 of credentials, avoids storing secret material
 }
 
 type cachedClient struct {
-	client   *kadm.Client
-	lastUsed time.Time
+	client       *kadm.Client
+	refs         int       // callers currently using the client
+	lastReleased time.Time // when refs last dropped to 0
 }
 
-// GetOrCreate returns the client cached for creds, or creates one with newFn.
-// It also closes idle clients.
-func (c *ClientCache) GetOrCreate(creds []byte, newFn func() (*kadm.Client, error)) (*kadm.Client, error) {
-	client, idle, err := c.getOrCreate(sha256.Sum256(creds), newFn)
+// GetOrCreate returns the client cached for creds, or creates one with newFn,
+// and a release func to call when done with it. It also closes idle clients.
+func (c *ClientCache) GetOrCreate(creds []byte, newFn func() (*kadm.Client, error)) (*kadm.Client, func(), error) {
+	cached, idle, err := c.acquire(sha256.Sum256(creds), newFn)
 
 	// Close outside the lock: Close waits for the client's goroutines to stop.
 	for _, idleClient := range idle {
 		idleClient.Close()
 	}
-	return client, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return cached.client, sync.OnceFunc(func() { c.release(cached) }), nil
 }
 
-// getOrCreate does GetOrCreate's work under the lock and returns the removed
-// idle clients for the caller to close.
-func (c *ClientCache) getOrCreate(digest [sha256.Size]byte, newFn func() (*kadm.Client, error)) (*kadm.Client, []*kadm.Client, error) {
+// acquire does GetOrCreate's work under the lock and returns the removed idle
+// clients for the caller to close.
+func (c *ClientCache) acquire(digest [sha256.Size]byte, newFn func() (*kadm.Client, error)) (*cachedClient, []*kadm.Client, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	now := time.Now()
-	idle := c.removeIdle(now)
+	idle := c.removeIdle(time.Now())
 
 	if cached, ok := c.clients[digest]; ok {
-		cached.lastUsed = now
-		return cached.client, idle, nil
+		cached.refs++
+		return cached, idle, nil
 	}
 
 	client, err := newFn()
@@ -70,15 +66,27 @@ func (c *ClientCache) getOrCreate(digest [sha256.Size]byte, newFn func() (*kadm.
 		c.clients = make(map[[sha256.Size]byte]*cachedClient)
 	}
 
-	c.clients[digest] = &cachedClient{client: client, lastUsed: now}
-	return client, idle, nil
+	cached := &cachedClient{client: client, refs: 1}
+	c.clients[digest] = cached
+	return cached, idle, nil
 }
 
-// removeIdle removes and returns the clients unused for longer than clientIdleTimeout.
+// release drops one reference to cached.
+func (c *ClientCache) release(cached *cachedClient) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	cached.refs--
+	if cached.refs == 0 {
+		cached.lastReleased = time.Now()
+	}
+}
+
+// removeIdle removes and returns the unused clients idle for longer than ClientIdleTimeout.
 func (c *ClientCache) removeIdle(now time.Time) []*kadm.Client {
 	var idle []*kadm.Client
 	for digest, cached := range c.clients {
-		if now.Sub(cached.lastUsed) > clientIdleTimeout {
+		if cached.refs == 0 && now.Sub(cached.lastReleased) > ClientIdleTimeout {
 			idle = append(idle, cached.client)
 			delete(c.clients, digest)
 		}
