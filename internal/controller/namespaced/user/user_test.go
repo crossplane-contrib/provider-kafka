@@ -42,6 +42,8 @@ import (
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/common/commontest"
 	userhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/user"
 )
 
@@ -381,44 +383,7 @@ func TestConnectMalformedCredentials(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			scheme := runtime.NewScheme()
-			require.NoError(t, corev1.AddToScheme(scheme))
-			require.NoError(t, apis.AddToScheme(scheme))
-
-			cr := &v1alpha1.User{
-				TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.UserKind},
-				ObjectMeta: metav1.ObjectMeta{Name: "alice", Namespace: "team-a", UID: "user-uid"},
-			}
-			cr.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{Name: "pc", Kind: "ProviderConfig"}
-
-			pc := &apisv1alpha1.ProviderConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: "team-a"},
-				Spec: apisv1alpha1.ProviderConfigSpec{
-					Credentials: apisv1alpha1.ProviderCredentials{
-						Source: xpv2.CredentialsSourceSecret,
-						CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
-							SecretRef: &xpv2.SecretKeySelector{
-								SecretReference: xpv2.SecretReference{Name: "creds", Namespace: "team-a"},
-								Key:             "credentials",
-							},
-						},
-					},
-				},
-			}
-
-			kube := clientfake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(pc, secret("creds", "team-a", map[string][]byte{"credentials": tc.creds})).
-				Build()
-
-			c := &connector{
-				cache: &kafka.ClientCache{},
-				kube:  kube,
-				usage: resource.NewProviderConfigUsageTracker(kube, &apisv1alpha1.ProviderConfigUsage{}),
-				newServiceFn: func(_ context.Context, _ []byte, _ client.Client) (*kadm.Client, error) {
-					return &kadm.Client{}, nil
-				},
-			}
+			c, cr := newConnector(t, &kafka.ClientCache{}, tc.creds)
 
 			got, err := c.Connect(context.Background(), cr)
 			if tc.wantErr {
@@ -429,4 +394,75 @@ func TestConnectMalformedCredentials(t *testing.T) {
 			assert.Equal(t, tc.wantBrokers, got.(*external).brokers)
 		})
 	}
+}
+
+// TestConnectReleasesClient checks that Disconnect releases the client Connect acquired.
+func TestConnectReleasesClient(t *testing.T) {
+	t.Parallel()
+
+	cache := &commontest.ClientCache{}
+	c, cr := newConnector(t, cache, []byte(`{"brokers":["broker:9092"]}`))
+
+	ext, err := c.Connect(context.Background(), cr)
+	require.NoError(t, err)
+	assert.Equal(t, 1, cache.Acquired)
+	assert.Zero(t, cache.Released, "client released while connected")
+
+	require.NoError(t, ext.Disconnect(context.Background()))
+	assert.Equal(t, 1, cache.Released, "Disconnect must release the client")
+}
+
+// TestConnectMalformedCredentialsHoldsNoClient checks that a Connect failing on credentials holds no client.
+func TestConnectMalformedCredentialsHoldsNoClient(t *testing.T) {
+	t.Parallel()
+
+	cache := &commontest.ClientCache{}
+	c, cr := newConnector(t, cache, []byte(`not json`))
+
+	_, err := c.Connect(context.Background(), cr)
+	require.ErrorContains(t, err, userhelpers.ErrParseCreds)
+	assert.Equal(t, cache.Acquired, cache.Released, "failed Connect must not hold a client")
+}
+
+// newConnector returns a connector backed by cache, and a User whose ProviderConfig credentials are creds.
+func newConnector(t *testing.T, cache common.ClientCache, creds []byte) (*connector, *v1alpha1.User) {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, apis.AddToScheme(scheme))
+
+	cr := &v1alpha1.User{
+		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.UserKind},
+		ObjectMeta: metav1.ObjectMeta{Name: "alice", Namespace: "team-a", UID: "user-uid"},
+	}
+	cr.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{Name: "pc", Kind: "ProviderConfig"}
+
+	pc := &apisv1alpha1.ProviderConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: cr.Namespace},
+		Spec: apisv1alpha1.ProviderConfigSpec{
+			Credentials: apisv1alpha1.ProviderCredentials{
+				Source: xpv2.CredentialsSourceSecret,
+				CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
+					SecretRef: &xpv2.SecretKeySelector{
+						SecretReference: xpv2.SecretReference{Name: "creds", Namespace: cr.Namespace},
+						Key:             "credentials",
+					},
+				},
+			},
+		},
+	}
+	kube := clientfake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(pc, secret("creds", cr.Namespace, map[string][]byte{"credentials": creds})).
+		Build()
+
+	return &connector{
+		cache: cache,
+		kube:  kube,
+		usage: resource.NewProviderConfigUsageTracker(kube, &apisv1alpha1.ProviderConfigUsage{}),
+		newServiceFn: func(context.Context, []byte, client.Client) (*kadm.Client, error) {
+			return &kadm.Client{}, nil
+		},
+	}, cr
 }

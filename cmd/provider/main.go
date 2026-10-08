@@ -78,6 +78,7 @@ var cli struct {
 	ChangelogsSocketPath     string `help:"Path for changelogs socket (if enabled)" default:"/var/run/changelogs/changelogs.sock" env:"CHANGELOGS_SOCKET_PATH"`
 
 	BrokerConnectionTimeout time.Duration `help:"Timeout for establishing connection to Kafka brokers" default:"30s"`
+	ClientIdleTimeout       time.Duration `help:"How long a cached Kafka client may stay unused before it is closed." default:"10m" env:"CLIENT_IDLE_TIMEOUT"`
 	EnableSecretCache       bool          `help:"Enable caching of Secret objects. When true, Secrets are served from the informer cache instead of direct API calls. This reduces API server load but increases memory usage." default:"true" env:"ENABLE_SECRET_CACHE"`
 }
 
@@ -99,6 +100,12 @@ func main() {
 		ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
 	}
 	ctx.Bind(log)
+
+	if cli.ClientIdleTimeout <= 0 {
+		ctx.Fatalf("--client-idle-timeout must be positive, got %s", cli.ClientIdleTimeout)
+	}
+
+	kafka.ClientIdleTimeout = cli.ClientIdleTimeout
 
 	cfg, err := ctrl.GetConfig()
 	ctx.FatalIfErrorf(err, "Cannot get API server rest config")

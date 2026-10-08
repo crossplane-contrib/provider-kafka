@@ -30,6 +30,10 @@ manage [Kafka](https://kafka.apache.org/) resources.
     the controller-runtime and the Kafka client (franz-go). Without it, the Kafka
     client logs at warn level.
 
+    **Client idle timeout**: The provider caches one Kafka client per set of
+    ProviderConfig credentials and closes it after `--client-idle-timeout`
+    (env `CLIENT_IDLE_TIMEOUT`, default `10m`) without use.
+
     **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
     skip server certificate verification.
 
