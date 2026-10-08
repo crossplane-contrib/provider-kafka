@@ -101,6 +101,10 @@ func main() {
 	}
 	ctx.Bind(log)
 
+	if cli.ClientIdleTimeout <= 0 {
+		ctx.Fatalf("--client-idle-timeout must be positive, got %s", cli.ClientIdleTimeout)
+	}
+
 	kafka.ClientIdleTimeout = cli.ClientIdleTimeout
 
 	cfg, err := ctrl.GetConfig()
