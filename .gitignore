@@ -1,16 +1,12 @@
-/.cache
-/.work
+.*
+**/.*
+!.github
+!.gitignore
+!.gitmodules
+!.golangci.yml
+
 /_output
-/.claude
-/vendor
-/.vendor-new
-cover.out
-/bin
-.DS_Store
-kc.json
-# ignore IDE folders
-.vscode/
-.idea/
-kaf.yaml
-local-test-scripts/*
 /extensions
+/vendor
+cover.out
+kc.json
