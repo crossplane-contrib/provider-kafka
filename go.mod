@@ -11,7 +11,7 @@ tool (
 require (
 	github.com/alecthomas/kong v1.16.1
 	github.com/aws/aws-sdk-go-v2 v1.47.3
-	github.com/aws/aws-sdk-go-v2/config v1.33.8
+	github.com/aws/aws-sdk-go-v2/config v1.33.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.4
 	github.com/crossplane/crossplane-runtime/v2 v2.5.0-rc.0.0.20260928191606-9420ba2f1717
