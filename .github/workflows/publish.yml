@@ -74,6 +74,7 @@ jobs:
         run: make xpkg.append VERSION="${INPUT_VERSION}"
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     env:
       GO_REQUIRED_VERSION: ${{ needs.get-go-version.outputs.go-version }}
       XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
