@@ -54,10 +54,12 @@ import (
 	aclv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
 	topicv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	userv1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/user/v1alpha1"
+	kafkav1alpha1cluster "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	namespacedapis "github.com/crossplane-contrib/provider-kafka/apis/namespaced"
 	aclv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/acl/v1alpha1"
 	topicv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
 	userv1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/user/v1alpha1"
+	kafkav1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
@@ -162,7 +164,11 @@ func main() {
 			MRMetrics:               metricRecorder,
 			MRStateMetrics:          stateMetrics,
 		},
+		// Every group with a gated controller, including ProviderConfig groups,
+		// or the CRD gate never opens for it.
 		Groups: []string{
+			kafkav1alpha1cluster.Group,
+			kafkav1alpha1namespaced.Group,
 			topicv1alpha1cluster.Group,
 			aclv1alpha1cluster.Group,
 			userv1alpha1cluster.Group,

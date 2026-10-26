@@ -78,6 +78,14 @@ xpkg.extensions: sbom
 	@$(INFO) Preparing package extensions
 	@mkdir -p $(EXTENSIONS_DIR)/readme
 	@cp $(ROOT_DIR)/README.md $(EXTENSIONS_DIR)/readme/readme.md
+	@rm -rf $(EXTENSIONS_DIR)/release-notes
+	@notes=$$(gh release view "$(VERSION)" --repo "$${GITHUB_REPOSITORY:-crossplane-contrib/$(PROJECT_NAME)}" --json body -q .body 2>/dev/null || true); \
+	if [ -z "$$notes" ]; then \
+		echo "No GitHub release notes found for $(VERSION), skipping"; \
+	else \
+		mkdir -p $(EXTENSIONS_DIR)/release-notes; \
+		printf '%s\n' "$$notes" > $(EXTENSIONS_DIR)/release-notes/release_notes.md; \
+	fi
 	@$(OK) Package extensions prepared at $(EXTENSIONS_DIR)
 
 xpkg.append: xpkg.extensions $(UP)

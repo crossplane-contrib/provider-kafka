@@ -13,23 +13,33 @@ on:
         default: ""
         required: false
 
+permissions: {}
+
 jobs:
   get-go-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       go-version: ${{ steps.extract-version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Extract Go version from go.mod
         id: extract-version
         run: |
           GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
-          echo "version=${GO_VERSION}" | tee -a $GITHUB_OUTPUT
+          echo "version=${GO_VERSION}" | tee -a "$GITHUB_OUTPUT"
 
   publish-provider-package:
     needs: get-go-version
-    uses: crossplane-contrib/provider-workflows/.github/workflows/publish-provider.yml@main
+    permissions:
+      contents: read
+      packages: write
+    uses: crossplane-contrib/provider-workflows/.github/workflows/publish-provider.yml@451c4dc6ad3691b0a702a997a0ac24e8bbc8bbaa # main
     with:
       cleanup-disk: ${{ inputs.cleanup-disk }}
       go-version: ${{ needs.get-go-version.outputs.go-version }}
@@ -44,11 +54,15 @@ jobs:
     needs:
       - get-go-version
       - publish-provider-package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: true
       - name: Login to Upbound
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
@@ -57,7 +71,10 @@ jobs:
           username: ${{ secrets.XPKG_ACCESS_ID }}
           password: ${{ secrets.XPKG_TOKEN }}
       - name: Append extensions
-        run: make xpkg.append VERSION=${{ inputs.version }}
+        run: make xpkg.append VERSION="${INPUT_VERSION}"
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     env:
       GO_REQUIRED_VERSION: ${{ needs.get-go-version.outputs.go-version }}
       XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
