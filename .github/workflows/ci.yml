@@ -13,17 +13,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 env:
-  # Common users. We can't run a step 'if secrets.AWS_USR != ""' but we can run
-  # a step 'if env.AWS_USR' != ""', so we copy these to succinctly test whether
-  # credentials have been provided before trying to run steps that need them.
-  CONTRIB_DOCKER_USR: ${{ secrets.CONTRIB_DOCKER_USR }}
-  XPKG_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
-  AWS_USR: ${{ secrets.AWS_USR }}
+  # Keep temp files off the size-capped tmpfs /tmp of ubuntu-26.04 runners.
+  TMPDIR: /home/runner/work/_temp
+  GOTMPDIR: /home/runner/work/_temp
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Detect No-op Changes
         id: noop
@@ -36,6 +39,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.noop.outputs.should_skip != 'true'
+        with:
+          persist-credentials: false
 
       - name: Detect versions
         id: detect-versions
@@ -51,7 +56,10 @@ jobs:
       noop: ${{ steps.noop.outputs.should_skip }}
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     needs: prepare
     if: needs.prepare.outputs.noop != 'true'
 
@@ -59,6 +67,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: true
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -78,7 +87,10 @@ jobs:
           args: --timeout 10m0s
 
   check-diff:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
     needs: prepare
     if: needs.prepare.outputs.noop != 'true'
 
@@ -86,6 +98,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
           submodules: true
 
@@ -104,7 +117,10 @@ jobs:
         run: make check-diff
 
   integration-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
     needs: prepare
     if: needs.prepare.outputs.noop != 'true'
 
@@ -112,6 +128,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: true
 
       - name: Fetch History
@@ -136,7 +153,10 @@ jobs:
           override_branch: ${{ github.head_ref || github.ref_name }}
 
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
     needs: prepare
     if: needs.prepare.outputs.noop != 'true'
 
@@ -154,6 +174,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: true
 
       - name: Fetch History
@@ -168,7 +189,10 @@ jobs:
         run: make local-deploy
 
   publish-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
     needs:
       - prepare
       - integration-tests
@@ -189,6 +213,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: true
 
       - name: Fetch History

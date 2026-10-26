@@ -6,10 +6,17 @@ on:
   # invoke any scripts, etc from within the repo. I believe the fact that we'll
   # be able to review PRs before this runs makes this fairly safe.
   # https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  # jactionlint ignore=dangerous-triggers
   pull_request_target:
     types:
       - closed
   # See also commands.yml for the /backport triggered variant of this workflow.
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   # NOTE(negz): I tested many backport GitHub actions before landing on this
@@ -19,10 +26,16 @@ jobs:
   # The main gotchas with this action are that it _only_ supports merge commits,
   # and that PRs _must_ be labelled before they're merged to trigger a backport.
   open-pr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
     if: github.event.pull_request.merged
     steps:
       - name: Checkout
+        # backport-action pushes the cherry-picked branch with these credentials.
+        # jactionlint ignore=artipacked
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
