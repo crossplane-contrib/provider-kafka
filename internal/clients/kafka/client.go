@@ -107,12 +107,8 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	// Configure TLS
 	if kc.TLS != nil {
-		tc := new(tls.Config)
-		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
-		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
-			return nil, err
-		}
-		if err := configureTLSAdvanced(kc.TLS, tc); err != nil {
+		tc, err := NewTLSConfig(ctx, kc.TLS, kube)
+		if err != nil {
 			return nil, err
 		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
@@ -126,6 +122,21 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 		return nil, err
 	}
 	return kadm.NewClient(c), nil
+}
+
+// NewTLSConfig builds a *tls.Config from t. It returns nil when t is nil.
+func NewTLSConfig(ctx context.Context, t *TLS, kube client.Client) (*tls.Config, error) {
+	if t == nil {
+		return nil, nil
+	}
+	tc := &tls.Config{InsecureSkipVerify: t.InsecureSkipVerify} //nolint:gosec // user opt-in
+	if err := configureClientCertificate(ctx, Config{TLS: t}, kube, tc); err != nil {
+		return nil, err
+	}
+	if err := configureTLSAdvanced(t, tc); err != nil {
+		return nil, err
+	}
+	return tc, nil
 }
 
 // configureClientCertificate sets up client certificate authentication in the TLS config,
