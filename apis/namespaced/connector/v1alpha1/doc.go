@@ -16,6 +16,6 @@ limitations under the License.
 
 // Package v1alpha1 contains the v1alpha1 group resources of the Kafka provider.
 // +kubebuilder:object:generate=true
-// +groupName=connector.kafka.m.crossplane.io
+// +groupName=kafka.m.crossplane.io
 // +versionName=v1alpha1
 package v1alpha1

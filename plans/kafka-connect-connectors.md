@@ -25,7 +25,7 @@ Add a `Connector` managed resource, cluster and namespaced scope, that manages c
 
 ## Research Findings
 
-- API groups follow the per-resource pattern: `connector.kafka.crossplane.io` (cluster) and `connector.kafka.m.crossplane.io` (namespaced). The tracked plan `plans/consolidate-crd-groups.md` does not exist on disk, so nothing contradicts this.
+- Connector lives in the base groups `kafka.crossplane.io` (cluster) and `kafka.m.crossplane.io` (namespaced), alongside ProviderConfig, so its full name is `connector.kafka.crossplane.io`. Topic, ACL and User still use per-resource groups.
 - Verified in Apache Kafka source (`AbstractHerder.connectorInfo`): `GET /connectors/{name}/config` returns the raw stored config. Placeholders like `${file:...}` stay unresolved, password fields are not masked, and no defaults are added. `PUT .../config` adds `name` when absent (`ConnectorsResource.checkAndPutConnectorConfigName`). Plain map equality of desired config plus `name` against observed config is therefore correct, and it also detects removed keys.
 - `PUT /connectors/{name}/config` is an idempotent upsert: 201 when created, 200 when updated. The body is the flat config map and every value is a JSON string (`tasks.max: "2"`).
 - `GET /connectors/{name}/status` returns `connector.state` and `tasks[].state` in RUNNING, PAUSED, STOPPED, FAILED or UNASSIGNED. `trace` is present only on FAILED.
@@ -199,7 +199,7 @@ type TaskStatus struct {
 	WorkerID string `json:"workerId,omitempty"`
 }
 ```
-- **Validation:** `make generate && go build ./...`. The CRDs `connector.kafka.crossplane.io_connectors.yaml` and `connector.kafka.m.crossplane.io_connectors.yaml` must appear in `package/crds/`.
+- **Validation:** `make generate && go build ./...`. The CRDs `kafka.crossplane.io_connectors.yaml` and `kafka.m.crossplane.io_connectors.yaml` must appear in `package/crds/`.
 
 ### Step 4: Desired state, drift and readiness helpers
 - **Test:** `internal/controller/connector/helpers_test.go`, table tests:

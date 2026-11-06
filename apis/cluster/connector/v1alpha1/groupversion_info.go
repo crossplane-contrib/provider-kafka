@@ -24,7 +24,7 @@ import (
 
 // Package type metadata.
 const (
-	Group   = "connector.kafka.crossplane.io"
+	Group   = "kafka.crossplane.io"
 	Version = "v1alpha1"
 )
 

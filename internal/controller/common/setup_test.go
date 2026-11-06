@@ -26,7 +26,7 @@ func (g *fakeGate) Set(schema.GroupVersionKind, bool) bool { return false }
 func TestSetupGated(t *testing.T) {
 	t.Parallel()
 
-	gvk := schema.GroupVersionKind{Group: "connector.kafka.crossplane.io", Version: "v1alpha1", Kind: "Connector"}
+	gvk := schema.GroupVersionKind{Group: "kafka.crossplane.io", Version: "v1alpha1", Kind: "Connector"}
 
 	gate := &fakeGate{}
 	called := 0
