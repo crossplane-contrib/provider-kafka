@@ -113,10 +113,16 @@ func (c *Client) PutConfig(ctx context.Context, name string, cfg map[string]stri
 	return err
 }
 
-// GetStatus returns the connector and task states.
+// GetStatus returns the connector and task states. It returns nil when
+// Kafka Connect has not written a status yet, which happens right after the
+// connector is created.
 func (c *Client) GetStatus(ctx context.Context, name string) (*Status, error) {
 	st := &Status{}
-	if _, err := c.do(ctx, http.MethodGet, connectorPath(name, "status"), nil, st); err != nil {
+	code, err := c.do(ctx, http.MethodGet, connectorPath(name, "status"), nil, st)
+	if code == http.StatusNotFound {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
 	return st, nil

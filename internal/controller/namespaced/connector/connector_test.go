@@ -41,6 +41,8 @@ type fakeConnect struct {
 	state  string
 	tasks  []string
 	calls  []string
+
+	noStatus bool // status not written yet, as right after creation
 }
 
 func (f *fakeConnect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +66,7 @@ func (f *fakeConnect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, f.config)
 	case r.Method == http.MethodGet && path == "/status":
-		if f.config == nil {
+		if f.config == nil || f.noStatus {
 			notFound()
 			return
 		}
@@ -188,6 +190,13 @@ func TestObserve(t *testing.T) {
 			wantExists:    true,
 			wantReady:     corev1.ConditionFalse,
 			wantStateSeen: running,
+		},
+		"StatusNotYetWritten": {
+			params:       heartbeat,
+			fake:         &fakeConnect{config: storedHeartbeat(), noStatus: true},
+			wantExists:   true,
+			wantUpToDate: true,
+			wantReady:    corev1.ConditionFalse,
 		},
 		"TaskFailedIsNotDrift": {
 			params:        heartbeat,

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,6 +145,18 @@ func TestGetStatus(t *testing.T) {
 	assert.Equal(t, "w2:8083", st.Tasks[0].WorkerID)
 }
 
+// TestGetStatus_NotYetWritten covers the window right after a connector is
+// created, when Kafka Connect has its config but has not written its status.
+func TestGetStatus_NotYetWritten(t *testing.T) {
+	t.Parallel()
+
+	c, _ := fakeConnect(t, http.StatusNotFound, `{"error_code":404,"message":"No status found for connector a"}`)
+
+	st, err := c.GetStatus(context.Background(), "a")
+	require.NoError(t, err)
+	assert.Nil(t, st)
+}
+
 func TestSetState(t *testing.T) {
 	t.Parallel()
 
@@ -241,8 +254,10 @@ func TestLifecycle_Integration(t *testing.T) {
 	desired["name"] = name
 	assert.Equal(t, desired, observed)
 
-	_, err = c.GetStatus(ctx, name)
-	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		st, err := c.GetStatus(ctx, name)
+		return err == nil && st != nil
+	}, 30*time.Second, time.Second, "connector status never appeared")
 
 	require.NoError(t, c.SetState(ctx, name, ActionPause))
 	require.NoError(t, c.Delete(ctx, name))

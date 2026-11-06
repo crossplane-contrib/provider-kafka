@@ -134,12 +134,18 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	c.observed, c.status = observed, st
 
 	p := cr.Spec.ForProvider
+	desired := connhelpers.Desired(p, name)
+	if st == nil {
+		cr.Status.SetConditions(xpv2.Creating())
+		return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: connhelpers.UpToDate(desired, observed)}, nil
+	}
+
 	cr.Status.AtProvider = connhelpers.Observation(st)
 	cr.Status.SetConditions(connhelpers.Condition(p.State, st))
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: connhelpers.UpToDate(connhelpers.Desired(p, name), observed) && connhelpers.StateUpToDate(p.State, st),
+		ResourceUpToDate: connhelpers.UpToDate(desired, observed) && connhelpers.StateUpToDate(p.State, st),
 	}, nil
 }
 
