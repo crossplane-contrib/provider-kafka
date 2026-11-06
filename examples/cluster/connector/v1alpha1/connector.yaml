@@ -1,0 +1,24 @@
+apiVersion: kafka.crossplane.io/v1alpha1
+kind: Connector
+metadata:
+  name: cluster-sample-connector
+  annotations:
+    crossplane.io/external-name: heartbeat
+spec:
+  forProvider:
+    class: org.apache.kafka.connect.mirror.MirrorHeartbeatConnector
+    tasksMax: 1
+    # Runs against the Strimzi dev cluster from "make test" / cluster/local.
+    # The password comes from a Kafka Connect config provider (Strimzi's
+    # strimzisecrets), so it never appears in the spec.
+    config:
+      source.cluster.alias: source
+      target.cluster.alias: target
+      target.cluster.bootstrap.servers: dev-kafka-plain-bootstrap:9092
+      target.cluster.security.protocol: SASL_PLAINTEXT
+      target.cluster.sasl.mechanism: SCRAM-SHA-512
+      target.cluster.sasl.jaas.config: >-
+        org.apache.kafka.common.security.scram.ScramLoginModule required
+        username="user" password="${strimzisecrets:kafka-cluster/user:password}";
+  providerConfigRef:
+    name: default
