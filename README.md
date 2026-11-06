@@ -194,6 +194,62 @@ Cluster-scoped `User` resources are available under `user.kafka.crossplane.io/v1
 See [cluster user examples](examples/cluster/user/v1alpha1/) and
 [namespaced user examples](examples/namespaced/user/v1alpha1/) for complete manifests.
 
+### Managing Kafka Connect connectors
+
+The `Connector` resource manages connectors on an existing, self-managed Kafka
+Connect cluster through the Connect REST API.
+The provider does not deploy Connect workers; use Strimzi, a Helm chart or your own deployment for that.
+For AWS MSK Connect, use the `kafkaconnect` group of [provider-upjet-aws](https://github.com/crossplane-contrib/provider-upjet-aws).
+
+Add a `connect` block to the provider secret. `basicAuth` and `tls` are optional,
+and `tls` accepts the same options as the broker `tls` block.
+A secret with only a `connect` block is enough for Connector resources.
+
+```json
+"connect": {
+  "url": "https://connect-api.kafka-cluster.svc:8083",
+  "basicAuth": { "username": "connect-admin", "password": "<your-password>" }
+}
+```
+
+```yaml
+apiVersion: kafka.m.crossplane.io/v1alpha1
+kind: Connector
+metadata:
+  name: sample-connector
+  namespace: kafka-cluster
+  annotations:
+    crossplane.io/external-name: heartbeat
+spec:
+  forProvider:
+    class: org.apache.kafka.connect.mirror.MirrorHeartbeatConnector
+    tasksMax: 1
+    state: running
+    config:
+      source.cluster.alias: source
+      target.cluster.alias: target
+  providerConfigRef:
+    name: default
+    kind: ClusterProviderConfig
+```
+
+Set `connector.class`, `tasks.max` and the connector name through `class`,
+`tasksMax` and the external name; the API rejects them inside `config`.
+`state` is `running` (the default), `paused` or `stopped`. The resource is
+Ready when the connector and all of its tasks are in that state, and
+`status.atProvider` lists the connector and task states.
+
+Kafka Connect returns connector configs in plain text, and the `config` map is
+stored in plain text in the Kubernetes API. Keep credentials out of it by
+enabling a [config provider](https://kafka.apache.org/documentation/#config_providers)
+on the Connect workers and referencing it, for example
+`${file:/opt/kafka/secrets/db.properties:password}`.
+
+The provider reverts changes made to a connector outside Kubernetes on the
+next poll. Namespaced Connectors in different namespaces that share a Connect
+cluster and an external name manage the same connector, so give each one a
+unique external name.
+
 ### Importing existing resources
 
 You can import existing resources into Crossplane by using the `Observe` management policy.
