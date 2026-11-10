@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	aclv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
+	connectorv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/connector/v1alpha1"
 	topicv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	userv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/user/v1alpha1"
 	kafkav1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
@@ -33,6 +34,7 @@ func init() {
 		topicv1alpha1.SchemeBuilder.AddToScheme,
 		aclv1alpha1.SchemeBuilder.AddToScheme,
 		userv1alpha1.SchemeBuilder.AddToScheme,
+		connectorv1alpha1.SchemeBuilder.AddToScheme,
 	)
 }
 

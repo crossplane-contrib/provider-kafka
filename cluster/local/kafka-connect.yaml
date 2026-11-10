@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: connect
+  namespace: kafka-cluster
+spec:
+  version: 4.3.1
+  replicas: 1
+  bootstrapServers: dev-kafka-plain-bootstrap:9092
+  authentication:
+    type: scram-sha-512
+    username: user
+    passwordSecret:
+      secretName: user
+      password: password
+  groupId: provider-kafka-connect
+  configStorageTopic: provider-kafka-connect-configs
+  offsetStorageTopic: provider-kafka-connect-offsets
+  statusStorageTopic: provider-kafka-connect-status
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+---
+# Exposes the Connect REST API to the integration tests, which run outside
+# the kind cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: connect-api-nodeport
+  namespace: kafka-cluster
+spec:
+  type: NodePort
+  selector:
+    strimzi.io/cluster: connect
+    strimzi.io/kind: KafkaConnect
+  ports:
+    - name: rest-api
+      port: 8083
+      targetPort: 8083
+      nodePort: 30083

@@ -107,12 +107,8 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 
 	// Configure TLS
 	if kc.TLS != nil {
-		tc := new(tls.Config)
-		tc.InsecureSkipVerify = kc.TLS.InsecureSkipVerify
-		if err := configureClientCertificate(ctx, kc, kube, tc); err != nil {
-			return nil, err
-		}
-		if err := configureTLSAdvanced(kc.TLS, tc); err != nil {
+		tc, err := NewTLSConfig(ctx, kc.TLS, kube)
+		if err != nil {
 			return nil, err
 		}
 		opts = append(opts, kgo.DialTLSConfig(tc))
@@ -128,27 +124,42 @@ func NewAdminClient(ctx context.Context, data []byte, kube client.Client) (*kadm
 	return kadm.NewClient(c), nil
 }
 
+// NewTLSConfig builds a *tls.Config from t. It returns nil when t is nil.
+func NewTLSConfig(ctx context.Context, t *TLS, kube client.Client) (*tls.Config, error) {
+	if t == nil {
+		return nil, nil
+	}
+	tc := &tls.Config{InsecureSkipVerify: t.InsecureSkipVerify} //nolint:gosec // user opt-in
+	if err := configureClientCertificate(ctx, t, kube, tc); err != nil {
+		return nil, err
+	}
+	if err := configureTLSAdvanced(t, tc); err != nil {
+		return nil, err
+	}
+	return tc, nil
+}
+
 // configureClientCertificate sets up client certificate authentication in the TLS config,
 // supporting both Kubernetes Secret references and on-disk file paths.
-func configureClientCertificate(ctx context.Context, kc Config, kube client.Client, tc *tls.Config) error {
+func configureClientCertificate(ctx context.Context, t *TLS, kube client.Client, tc *tls.Config) error {
 	// Validate that both clientCertificateSecretRef and clientCertificatePath are not both set.
 	// In Go TLS, GetClientCertificate (used for file-based certs) takes precedence over Certificates (used for secret-based certs),
 	// so setting both would silently ignore the secret-based certificate.
-	if kc.TLS.ClientCertificateSecretRef != nil && kc.TLS.ClientCertificatePath != nil {
+	if t.ClientCertificateSecretRef != nil && t.ClientCertificatePath != nil {
 		return errors.New("cannot specify both clientCertificateSecretRef and clientCertificatePath: " +
 			"use clientCertificateSecretRef for static certs or clientCertificatePath for certificates with rotation support")
 	}
 
-	if err := configureSecretRefCertificate(ctx, kc.TLS.ClientCertificateSecretRef, kube, tc); err != nil {
+	if err := configureSecretRefCertificate(ctx, t.ClientCertificateSecretRef, kube, tc); err != nil {
 		return err
 	}
-	if err := configureFilePathCertificate(kc.TLS.ClientCertificatePath, tc); err != nil {
+	if err := configureFilePathCertificate(t.ClientCertificatePath, tc); err != nil {
 		return err
 	}
-	if err := configureCACertificateSecretRef(ctx, kc.TLS.CACertificateSecretRef, kube, tc); err != nil {
+	if err := configureCACertificateSecretRef(ctx, t.CACertificateSecretRef, kube, tc); err != nil {
 		return err
 	}
-	return configureCACertificateFile(kc.TLS.CACertificateFile, tc)
+	return configureCACertificateFile(t.CACertificateFile, tc)
 }
 
 // configureSecretRefCertificate loads a client certificate key pair from a Kubernetes Secret

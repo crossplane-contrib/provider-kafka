@@ -189,13 +189,18 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkauser/user --timeout=300s
 	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkatopic/pre-existing --timeout=300s
 	@$(KUBECTL) annotate kafkatopic --all -n kafka-cluster strimzi.io/pause-reconciliation=true --overwrite
+	@$(INFO) Creating Kafka Connect cluster
+	@$(KUBECTL) apply -f cluster/local/kafka-connect.yaml
 	@$(INFO) Waiting for Kafka broker to be fully initialized...
-	@for i in $$(seq 1 30); do $(KUBECTL) -n kafka-cluster exec kafka-dev-0 -- bash -c 'echo "test" | kafka-console-producer.sh --broker-list localhost:9092 --topic pre-existing' > /dev/null 2>&1 && break || sleep 2; done
+	@for i in $$(seq 1 30); do $(KUBECTL) -n kafka-cluster exec dev-broker-0 -- bash -c 'echo "test" | kafka-console-producer.sh --broker-list localhost:9092 --topic pre-existing' > /dev/null 2>&1 && break || sleep 2; done
+	@$(INFO) Waiting for Kafka Connect readiness...
+	@$(KUBECTL) wait --for=condition=ready -n kafka-cluster kafkaconnect/connect --timeout=600s
 	@$(INFO) Getting service IP and port
 	@KIND_NODE_IP=$$($(KIND) get nodes --name=$(KIND_CLUSTER_NAME) | \
 	xargs $(KUBECTL) get node -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}') && \
 	KAFKA_NODEPORT=$$($(KUBECTL) -n kafka-cluster get svc dev-kafka-plain-bootstrap -o jsonpath='{.spec.ports[0].nodePort}') && \
 	KAFKA_PASSWORD=$$($(KUBECTL) get secret user -n kafka-cluster -o jsonpath='{.data.password}' | base64 -d) && \
+	CONNECT_NODEPORT=$$($(KUBECTL) -n kafka-cluster get svc connect-api-nodeport -o jsonpath='{.spec.ports[0].nodePort}') && \
 	echo "{ \
 		\"brokers\": [ \
 			\"$${KIND_NODE_IP}:$${KAFKA_NODEPORT}\" \
@@ -204,6 +209,9 @@ kind-kafka-setup: $(HELM) $(KIND) $(KUBECTL)
 			\"mechanism\": \"SCRAM-SHA-512\", \
 			\"username\": \"user\", \
 			\"password\": \"$${KAFKA_PASSWORD}\" \
+		}, \
+		\"connect\": { \
+			\"url\": \"http://$${KIND_NODE_IP}:$${CONNECT_NODEPORT}\" \
 		} \
 	}" | tee kc.json
 	@$(KUBECTL) -n kafka-cluster create secret generic kafka-creds --from-file=credentials=kc.json \
