@@ -1,7 +1,7 @@
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
-  name: dev
+  name: broker
   namespace: kafka-cluster
   labels:
     strimzi.io/cluster: dev
