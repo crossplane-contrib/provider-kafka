@@ -62,6 +62,7 @@ import (
 	kafkav1alpha1namespaced "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
 	clustercontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/cluster"
+	connhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/connector"
 	namespacedcontroller "github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced"
 	"github.com/crossplane-contrib/provider-kafka/internal/version"
 )
@@ -79,9 +80,10 @@ var cli struct {
 	EnableChangeLogs         bool   `help:"Enable support for capturing change logs during reconciliation." default:"false" env:"ENABLE_CHANGE_LOGS"`
 	ChangelogsSocketPath     string `help:"Path for changelogs socket (if enabled)" default:"/var/run/changelogs/changelogs.sock" env:"CHANGELOGS_SOCKET_PATH"`
 
-	BrokerConnectionTimeout time.Duration `help:"Timeout for establishing connection to Kafka brokers" default:"30s"`
-	ClientIdleTimeout       time.Duration `help:"How long a cached Kafka or Kafka Connect client may stay unused before it is closed." default:"10m" env:"CLIENT_IDLE_TIMEOUT"`
-	EnableSecretCache       bool          `help:"Enable caching of Secret objects. When true, Secrets are served from the informer cache instead of direct API calls. This reduces API server load but increases memory usage." default:"true" env:"ENABLE_SECRET_CACHE"`
+	BrokerConnectionTimeout   time.Duration `help:"Timeout for establishing connection to Kafka brokers" default:"30s"`
+	ClientIdleTimeout         time.Duration `help:"How long a cached Kafka or Kafka Connect client may stay unused before it is closed." default:"10m" env:"CLIENT_IDLE_TIMEOUT"`
+	ConnectorReconcileTimeout time.Duration `help:"How long one Connector reconcile may take, including Kafka Connect config validation." default:"3m" env:"CONNECTOR_RECONCILE_TIMEOUT"`
+	EnableSecretCache         bool          `help:"Enable caching of Secret objects. When true, Secrets are served from the informer cache instead of direct API calls. This reduces API server load but increases memory usage." default:"true" env:"ENABLE_SECRET_CACHE"`
 }
 
 func main() {
@@ -108,6 +110,11 @@ func main() {
 	}
 
 	kafka.ClientIdleTimeout = cli.ClientIdleTimeout
+
+	if cli.ConnectorReconcileTimeout <= 0 {
+		ctx.Fatalf("--connector-reconcile-timeout must be positive, got %s", cli.ConnectorReconcileTimeout)
+	}
+	connhelpers.ReconcileTimeout = cli.ConnectorReconcileTimeout
 
 	cfg, err := ctrl.GetConfig()
 	ctx.FatalIfErrorf(err, "Cannot get API server rest config")
