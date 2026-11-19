@@ -1,5 +1,11 @@
 package kafka
 
+// BasicAuth is an HTTP basic authentication option.
+type BasicAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"` //nolint:gosec
+}
+
 // CACertificateSecretRef is a TLS option for providing a custom CA certificate from a Kubernetes secret
 type CACertificateSecretRef struct {
 	CAField   string `json:"caField,omitempty"`
@@ -26,6 +32,15 @@ type Config struct {
 	Brokers []string `json:"brokers"`
 	SASL    *SASL    `json:"sasl,omitempty"`
 	TLS     *TLS     `json:"tls,omitempty"`
+	// Connect is the Kafka Connect REST endpoint. Only Connector resources use it.
+	Connect *Connect `json:"connect,omitempty"`
+}
+
+// Connect is a Kafka Connect REST endpoint configuration.
+type Connect struct {
+	URL       string     `json:"url"`
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	TLS       *TLS       `json:"tls,omitempty"`
 }
 
 // SASL is an sasl option

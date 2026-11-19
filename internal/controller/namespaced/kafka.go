@@ -22,6 +22,7 @@ import (
 
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/acl"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/config"
+	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/connector"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/topic"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/namespaced/user"
 )
@@ -34,6 +35,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		topic.Setup,
 		acl.Setup,
 		user.Setup,
+		connector.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
@@ -50,6 +52,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 		topic.SetupGated,
 		acl.SetupGated,
 		user.SetupGated,
+		connector.SetupGated,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err

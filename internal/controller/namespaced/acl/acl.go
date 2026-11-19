@@ -23,14 +23,10 @@ import (
 	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,60 +42,18 @@ import (
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(v1alpha1.AccessControlListGroupKind)
-
-	opts := []managed.ReconcilerOption{
-		managed.WithExternalConnector(&connector{
+	return common.SetupManaged(mgr, o, v1alpha1.AccessControlListGroupVersionKind, &v1alpha1.AccessControlList{}, &v1alpha1.AccessControlListList{},
+		&connector{
 			cache:        &kafka.ClientCache{},
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			newServiceFn: kafka.NewAdminClient,
-		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // crossplane-runtime doesn't support new events API yet
-		managed.WithInitializers(),
-	}
-
-	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
-		opts = append(opts, managed.WithManagementPolicies())
-	}
-
-	if o.Features.Enabled(feature.EnableAlphaChangeLogs) {
-		opts = append(opts, managed.WithChangeLogger(o.ChangeLogOptions.ChangeLogger))
-	}
-
-	if o.MetricOptions != nil {
-		opts = append(opts, managed.WithMetricRecorder(o.MetricOptions.MRMetrics))
-	}
-
-	if o.MetricOptions != nil && o.MetricOptions.MRStateMetrics != nil {
-		stateMetricsRecorder := statemetrics.NewMRStateRecorder(
-			mgr.GetClient(), o.Logger, o.MetricOptions.MRStateMetrics, &v1alpha1.AccessControlListList{}, o.MetricOptions.PollStateMetricInterval,
-		)
-		if err := mgr.Add(stateMetricsRecorder); err != nil {
-			return fmt.Errorf("cannot register MR state metrics recorder for kind v1alpha1.AccessControlListList: %w", err)
-		}
-	}
-
-	r := managed.NewReconciler(mgr, resource.ManagedKind(v1alpha1.AccessControlListGroupVersionKind), opts...)
-
-	return ctrl.NewControllerManagedBy(mgr).
-		Named(name).
-		WithOptions(o.ForControllerRuntime()).
-		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1alpha1.AccessControlList{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		}, managed.WithInitializers())
 }
 
-// SetupGated adds a controller that reconciles MyType managed resources with safe-start support.
+// SetupGated adds a controller that reconciles AccessControlList managed resources with safe-start support.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
-	o.Gate.Register(func() {
-		if err := Setup(mgr, o); err != nil {
-			panic(fmt.Errorf("cannot setup AccessControlList controller: %w", err))
-		}
-	}, v1alpha1.AccessControlListGroupVersionKind)
-	return nil
+	return common.SetupGated(mgr, o, v1alpha1.AccessControlListGroupVersionKind, Setup)
 }
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.

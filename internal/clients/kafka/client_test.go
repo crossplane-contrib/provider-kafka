@@ -16,6 +16,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var credentials struct {
@@ -568,16 +572,14 @@ func TestConfigureClientCertificate_MutualExclusivity(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	config := Config{
-		TLS: &TLS{
-			ClientCertificateSecretRef: &ClientCertificateSecretRef{
-				Name:      "secret",
-				Namespace: "default",
-			},
-			ClientCertificatePath: &ClientCertificatePath{
-				CertFile: "/path/to/cert",
-				KeyFile:  "/path/to/key",
-			},
+	config := &TLS{
+		ClientCertificateSecretRef: &ClientCertificateSecretRef{
+			Name:      "secret",
+			Namespace: "default",
+		},
+		ClientCertificatePath: &ClientCertificatePath{
+			CertFile: "/path/to/cert",
+			KeyFile:  "/path/to/key",
 		},
 	}
 
@@ -973,4 +975,92 @@ func TestConfigureTLSAdvanced_Combined(t *testing.T) {
 	assert.Equal(t, []string{"h2"}, tc.NextProtos)
 	assert.Equal(t, "example.com", tc.ServerName)
 	assert.NotNil(t, tc.ClientSessionCache)
+}
+
+func TestNewTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	certPEM, _ := generateTestCertificate(t)
+	caFile := t.TempDir() + "/ca.crt"
+	require.NoError(t, os.WriteFile(caFile, certPEM, 0o600))
+
+	cases := map[string]struct {
+		in      *TLS
+		wantNil bool
+		wantErr string
+		check   func(t *testing.T, tc *tls.Config)
+	}{
+		"NilInput": {wantNil: true},
+		"InsecureSkipVerify": {
+			in: &TLS{InsecureSkipVerify: true},
+			check: func(t *testing.T, tc *tls.Config) {
+				assert.True(t, tc.InsecureSkipVerify)
+			},
+		},
+		"CAFromFile": {
+			in: &TLS{CACertificateFile: caFile},
+			check: func(t *testing.T, tc *tls.Config) {
+				assert.NotNil(t, tc.RootCAs)
+			},
+		},
+		"AdvancedOptionsApplied": {
+			in: &TLS{MinVersion: tlsVersion13, ServerName: "connect.example"},
+			check: func(t *testing.T, tc *tls.Config) {
+				assert.Equal(t, uint16(tls.VersionTLS13), tc.MinVersion)
+				assert.Equal(t, "connect.example", tc.ServerName)
+			},
+		},
+		"BothClientCertSources": {
+			in: &TLS{
+				ClientCertificateSecretRef: &ClientCertificateSecretRef{Name: "s", Namespace: "ns"},
+				ClientCertificatePath:      &ClientCertificatePath{CertFile: "/c", KeyFile: "/k"},
+			},
+			wantErr: "cannot specify both",
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, err := NewTLSConfig(context.Background(), tc.in, nil)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantNil {
+				assert.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			tc.check(t, got)
+		})
+	}
+}
+
+func TestSecretVersions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ca := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "ns"}}
+	kube := clientfake.NewClientBuilder().WithObjects(ca).Build()
+	in := &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "ca", Namespace: "ns"}}
+
+	before, err := SecretVersions(ctx, in, kube)
+	require.NoError(t, err)
+	assert.NotEmpty(t, before)
+
+	require.NoError(t, kube.Get(ctx, client.ObjectKeyFromObject(ca), ca))
+	ca.Data = map[string][]byte{"ca.crt": []byte("rotated")}
+	require.NoError(t, kube.Update(ctx, ca))
+	after, err := SecretVersions(ctx, in, kube)
+	require.NoError(t, err)
+	assert.NotEqual(t, before, after, "a changed secret must change the cache key")
+
+	none, err := SecretVersions(ctx, nil, kube)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+
+	_, err = SecretVersions(ctx, &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "missing", Namespace: "ns"}}, kube)
+	require.ErrorContains(t, err, "cannot get secret ns/missing")
 }
