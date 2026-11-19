@@ -20,12 +20,10 @@ package connector
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -61,38 +59,15 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	return common.SetupGated(mgr, o, v1alpha1.ConnectorGroupVersionKind, Setup)
 }
 
+// Connect returns a client for the Kafka Connect cluster in the Connector's provider config.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Connector)
 	if !ok {
 		return nil, errors.New(connhelpers.ErrNotConnector)
 	}
-
-	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
-	}
-
-	var cd apisv1alpha1.ProviderCredentials
-	ref := cr.GetProviderConfigReference()
-	switch ref.Kind {
-	case "ProviderConfig":
-		pc := &apisv1alpha1.ProviderConfig{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: cr.GetNamespace()}, pc); err != nil {
-			return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
-		}
-		cd = pc.Spec.Credentials
-	case "ClusterProviderConfig":
-		cpc := &apisv1alpha1.ClusterProviderConfig{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, fmt.Errorf("%s: %w", common.ErrGetCPC, err)
-		}
-		cd = cpc.Spec.Credentials
-	default:
-		return nil, fmt.Errorf("unsupported provider config kind: %s", ref.Kind)
-	}
-
-	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
+	data, err := common.NamespacedCredentials(ctx, c.kube, c.usage, cr)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
+		return nil, err
 	}
 	return connhelpers.Connect(ctx, c.cache, c.kube, data)
 }

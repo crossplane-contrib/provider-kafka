@@ -79,3 +79,13 @@ func init() {
 		return nil
 	})
 }
+
+// GetACLParameters returns the desired ACL settings.
+func (mg *AccessControlList) GetACLParameters() *common.AccessControlListParameters {
+	return &mg.Spec.ForProvider
+}
+
+// GetACLObservation returns the ACL state observed in Kafka.
+func (mg *AccessControlList) GetACLObservation() *common.AccessControlListObservation {
+	return &mg.Status.AtProvider
+}

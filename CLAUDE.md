@@ -27,9 +27,11 @@ internal/
   controller/
     cluster/                   # Cluster-scoped controllers (topic, acl, user, connector, config)
     namespaced/                # Namespace-scoped controllers (topic, acl, user, connector, config)
-    common/                    # SetupManaged, SetupGated, shared errors, ClientCache interface, KafkaClient
-    connector/                 # Connector logic shared by both scopes (External, drift, conditions)
-    user/                      # User helpers shared by both scopes
+    common/                    # SetupManaged, SetupGated, Cluster/NamespacedCredentials, KafkaClient, shared errors
+    topic/                     # Topic External shared by both scopes
+    acl/                       # ACL External shared by both scopes
+    user/                      # User External and helpers shared by both scopes
+    connector/                 # Connector External shared by both scopes (drift, conditions)
   version/                     # Version var (set via -X linker flag at build)
 examples/                      # Example manifests (ProviderConfig, Topic, ACL, User, Connector)
 ```
@@ -96,7 +98,7 @@ Conventional Commits: `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scop
 
 ## Architecture Notes
 
-- **Two scopes**: cluster-scoped and namespace-scoped resources. Parallel API/controller trees.
+- **Two scopes**: cluster-scoped and namespace-scoped resources. Parallel API trees. Each kind has one shared `External` in `internal/controller/<kind>`, reached through accessor methods on the API types; the scope packages keep only `Setup` and `Connect` (ProviderConfig lookup via `common.ClusterCredentials` / `common.NamespacedCredentials`).
 - **Provider config secret**: JSON blob with `brokers`, optional `sasl`, optional `tls`, optional `connect` (Kafka Connect `url`, `basicAuth`, `tls`; only Connector resources use it). Schema defined in `internal/clients/kafka/config.go`.
 - **SASL mechanisms**: PLAIN, SCRAM-SHA-512, AWS-MSK-IAM
 - **TLS**: Full config — custom CA (secret ref or file), mTLS (secret ref or file path with rotation), cipher suites, TLS version constraints, curve preferences

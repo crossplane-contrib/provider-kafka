@@ -1,0 +1,213 @@
+/*
+Copyright 2026 The Crossplane Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package topic
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
+	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
+	kafkatopic "github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
+	ctrlcommon "github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+)
+
+const (
+	testTopicID     = "abc-123"
+	testRetentionMS = "retention.ms"
+)
+
+func TestObserveWrongType(t *testing.T) {
+	type want struct {
+		o   managed.ExternalObservation
+		err error
+	}
+
+	cases := map[string]struct {
+		reason string
+		want   want
+	}{
+		"NotATopic": {
+			reason: "Should return error when managed resource is not a Topic",
+			want: want{
+				o:   managed.ExternalObservation{},
+				err: errors.New(ctrlcommon.ErrNotTopic),
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			e := &External{}
+			got, err := e.Observe(context.Background(), &fake.Managed{})
+			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
+				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s", tc.reason, diff)
+			}
+			if diff := cmp.Diff(tc.want.o, got); diff != "" {
+				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s", tc.reason, diff)
+			}
+		})
+	}
+}
+
+// TestObserveFirstReconcileNotUpToDate verifies that when status.AtProvider.ID
+// is empty (first reconcile, before AddFinalizer persists status), Observe
+// returns ResourceUpToDate=false even when spec matches the observed topic.
+// This forces an Update call after AddFinalizer, re-populating the status that
+// AddFinalizer's full-object Update would otherwise reset.
+func TestObserveFirstReconcileNotUpToDate(t *testing.T) {
+	t.Parallel()
+
+	strPtr := func(s string) *string { return &s }
+
+	cases := map[string]struct {
+		reason       string
+		existingID   string
+		spec         common.TopicParameters
+		observed     *kafkatopic.Topic
+		wantUpToDate bool
+	}{
+		"EmptyID_SpecMatchesObserved": {
+			reason:     "First reconcile (empty ID) must return not-up-to-date to force Update after AddFinalizer",
+			existingID: "",
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			observed: &kafkatopic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			wantUpToDate: false,
+		},
+		"PopulatedID_SpecMatchesObserved": {
+			reason:     "Subsequent reconcile (populated ID) with matching spec should be up-to-date",
+			existingID: testTopicID,
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			observed: &kafkatopic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+				Config:            map[string]*string{testRetentionMS: strPtr("86400000")},
+			},
+			wantUpToDate: true,
+		},
+		"PopulatedID_SpecDiffers": {
+			reason:     "Subsequent reconcile with different spec should not be up-to-date",
+			existingID: testTopicID,
+			spec: common.TopicParameters{
+				ReplicationFactor: 3,
+				Partitions:        12,
+			},
+			observed: &kafkatopic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        6,
+			},
+			wantUpToDate: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cr := &v1alpha1.Topic{}
+			cr.Spec.ForProvider = tc.spec
+			cr.Status.AtProvider.ID = tc.existingID
+
+			statusPopulated := cr.Status.AtProvider.ID != ""
+
+			got := isResourceUpToDate(cr, statusPopulated, tc.observed)
+
+			assert.Equal(t, tc.wantUpToDate, got, tc.reason)
+		})
+	}
+}
+
+func TestPopulateTopicAtProvider(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+
+	cases := map[string]struct {
+		reason   string
+		observed *kafkatopic.Topic
+		want     common.TopicObservation
+	}{
+		"AllFieldsPopulated": {
+			reason: "All observed fields should be mapped to atProvider",
+			observed: &kafkatopic.Topic{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        12,
+				Config: map[string]*string{
+					testRetentionMS:  strPtr("86400000"),
+					"cleanup.policy": strPtr("delete"),
+				},
+			},
+			want: common.TopicObservation{
+				ID:                testTopicID,
+				ReplicationFactor: 3,
+				Partitions:        12,
+				Config: map[string]*string{
+					testRetentionMS:  strPtr("86400000"),
+					"cleanup.policy": strPtr("delete"),
+				},
+			},
+		},
+		"MinimalFields": {
+			reason: "Observation should work with minimal data and nil config",
+			observed: &kafkatopic.Topic{
+				ID:                "def-456",
+				ReplicationFactor: 1,
+				Partitions:        1,
+			},
+			want: common.TopicObservation{
+				ID:                "def-456",
+				ReplicationFactor: 1,
+				Partitions:        1,
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cr := &v1alpha1.Topic{}
+			cr.Status.SetConditions(xpv2.Available())
+
+			cr.Status.AtProvider = tc.observed.ToObservation()
+
+			if diff := cmp.Diff(tc.want, cr.Status.AtProvider); diff != "" {
+				t.Errorf("\n%s\natProvider: -want, +got:\n%s", tc.reason, diff)
+			}
+		})
+	}
+}

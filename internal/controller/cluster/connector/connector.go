@@ -20,12 +20,10 @@ package connector
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -61,25 +59,15 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	return common.SetupGated(mgr, o, v1alpha1.ConnectorGroupVersionKind, Setup)
 }
 
+// Connect returns a client for the Kafka Connect cluster in the Connector's provider config.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Connector)
 	if !ok {
 		return nil, errors.New(connhelpers.ErrNotConnector)
 	}
-
-	if err := c.usage.Track(ctx, mg.(resource.LegacyManaged)); err != nil { //nolint:staticcheck
-		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
-	}
-
-	pc := &apisv1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
-	}
-
-	cd := pc.Spec.Credentials
-	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
+	data, err := common.ClusterCredentials(ctx, c.kube, c.usage, cr)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
+		return nil, err
 	}
 	return connhelpers.Connect(ctx, c.cache, c.kube, data)
 }

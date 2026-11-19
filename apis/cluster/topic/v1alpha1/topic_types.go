@@ -79,3 +79,13 @@ func init() {
 		return nil
 	})
 }
+
+// GetTopicParameters returns the desired topic settings.
+func (mg *Topic) GetTopicParameters() *common.TopicParameters {
+	return &mg.Spec.ForProvider
+}
+
+// GetTopicObservation returns the topic state observed in Kafka.
+func (mg *Topic) GetTopicObservation() *common.TopicObservation {
+	return &mg.Status.AtProvider
+}
