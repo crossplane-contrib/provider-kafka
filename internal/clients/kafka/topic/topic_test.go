@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	clustertopic "github.com/crossplane-contrib/provider-kafka/apis/cluster/topic/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -582,9 +581,7 @@ func TestPreExistingTopicReconcile(t *testing.T) {
 
 	// "pre-existing" topic is created by Strimzi (cluster/local/kafka-cluster.yaml).
 	cr := &clustertopic.Topic{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "my-cr-name",
-		},
+		Name: "my-cr-name",
 	}
 	meta.SetExternalName(cr, "pre-existing")
 

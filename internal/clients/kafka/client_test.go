@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -1042,7 +1041,7 @@ func TestSecretVersions(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	ca := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "ns"}}
+	ca := &corev1.Secret{Name: "ca", Namespace: "ns"}
 	kube := clientfake.NewClientBuilder().WithObjects(ca).Build()
 	in := &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "ca", Namespace: "ns"}}
 

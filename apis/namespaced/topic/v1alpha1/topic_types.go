@@ -67,7 +67,7 @@ type TopicList struct {
 
 // Topic type metadata.
 var (
-	TopicKind             = reflect.TypeOf(Topic{}).Name()
+	TopicKind             = reflect.TypeFor[Topic]().Name()
 	TopicGroupKind        = schema.GroupKind{Group: Group, Kind: TopicKind}.String()
 	TopicKindAPIVersion   = TopicKind + "." + SchemeGroupVersion.String()
 	TopicGroupVersionKind = SchemeGroupVersion.WithKind(TopicKind)

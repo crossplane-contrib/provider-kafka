@@ -21,20 +21,20 @@ import (
 func TestGetOrCreateCacheHit(t *testing.T) {
 	cache := &ClientCache{}
 	creds := []byte("secret123")
-	var callCount int32
+	var callCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&callCount, 1)
+		callCount.Add(1)
 		return &kadm.Client{}, nil
 	}
 
 	client1, _, err := cache.GetOrCreate(creds, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
+	assert.Equal(t, int32(1), callCount.Load())
 
 	client2, _, err := cache.GetOrCreate(creds, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount)) // Should not call newFn again
+	assert.Equal(t, int32(1), callCount.Load()) // Should not call newFn again
 	assert.Same(t, client1, client2)
 }
 
@@ -60,10 +60,10 @@ func TestGetOrCreateErrorHandling(t *testing.T) {
 func TestGetOrCreateConcurrentAccess(t *testing.T) {
 	cache := &ClientCache{}
 	creds := []byte("secret")
-	var creationCount int32
+	var creationCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&creationCount, 1)
+		creationCount.Add(1)
 		return &kadm.Client{}, nil
 	}
 
@@ -72,7 +72,7 @@ func TestGetOrCreateConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			_, _, err := cache.GetOrCreate(creds, newFn)
@@ -83,7 +83,7 @@ func TestGetOrCreateConcurrentAccess(t *testing.T) {
 	wg.Wait()
 
 	// With the lock held during newFn(), only 1 client should be created
-	assert.Equal(t, int32(1), atomic.LoadInt32(&creationCount))
+	assert.Equal(t, int32(1), creationCount.Load())
 	assert.Len(t, cache.clients, 1)
 }
 
@@ -91,20 +91,20 @@ func TestGetOrCreateConcurrentAccess(t *testing.T) {
 func TestGetOrCreateEmptyCredentials(t *testing.T) {
 	cache := &ClientCache{}
 	emptyCreds := []byte{}
-	var callCount int32
+	var callCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&callCount, 1)
+		callCount.Add(1)
 		return &kadm.Client{}, nil
 	}
 
 	_, _, err := cache.GetOrCreate(emptyCreds, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
+	assert.Equal(t, int32(1), callCount.Load())
 
 	_, _, err = cache.GetOrCreate(emptyCreds, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount)) // Should reuse cached client
+	assert.Equal(t, int32(1), callCount.Load()) // Should reuse cached client
 }
 
 // TestGetOrCreateCredentialComparison verifies that credential comparison is byte-exact.
@@ -112,22 +112,22 @@ func TestGetOrCreateCredentialComparison(t *testing.T) {
 	cache := &ClientCache{}
 	creds1 := []byte("secret")
 	creds2 := []byte("secret")
-	var callCount int32
+	var callCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&callCount, 1)
+		callCount.Add(1)
 		return &kadm.Client{}, nil
 	}
 
 	// Same credentials (different objects, same content)
 	_, _, err := cache.GetOrCreate(creds1, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
+	assert.Equal(t, int32(1), callCount.Load())
 
 	// Should reuse client even though it's a different object
 	_, _, err = cache.GetOrCreate(creds2, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
+	assert.Equal(t, int32(1), callCount.Load())
 }
 
 // TestGetOrCreateErrorPreservesCacheState verifies that cache remains unchanged if newFn fails.
@@ -135,17 +135,17 @@ func TestGetOrCreateErrorPreservesCacheState(t *testing.T) {
 	cache := &ClientCache{}
 	creds1 := []byte("secret1")
 	creds2 := []byte("secret2")
-	var callCount int32
+	var callCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&callCount, 1)
+		callCount.Add(1)
 		return &kadm.Client{}, nil
 	}
 
 	// Create initial client with creds1
 	client1, _, err := cache.GetOrCreate(creds1, newFn)
 	require.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
+	assert.Equal(t, int32(1), callCount.Load())
 
 	// Try to rotate to creds2, but newFn fails
 	failingFn := func() (*kadm.Client, error) {
@@ -179,10 +179,10 @@ func TestGetOrCreateKeepsClientPerCredentials(t *testing.T) {
 	cache := &ClientCache{}
 	credsA := []byte("broker-a")
 	credsB := []byte("broker-b")
-	var callCount int32
+	var callCount atomic.Int32
 
 	newFn := func() (*kadm.Client, error) {
-		atomic.AddInt32(&callCount, 1)
+		callCount.Add(1)
 		return newUnconnectedClient(t)
 	}
 
@@ -195,7 +195,7 @@ func TestGetOrCreateKeepsClientPerCredentials(t *testing.T) {
 	existingClientA, _, err := cache.GetOrCreate(credsA, newFn)
 	require.NoError(t, err)
 	assert.Same(t, clientA, existingClientA, "credentials A should get its existing client back")
-	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount), "one client per credentials, not one per switch")
+	assert.Equal(t, int32(2), callCount.Load(), "one client per credentials, not one per switch")
 }
 
 // TestGetOrCreateOtherCredentialsDoNotCloseClientInUse reproduces the
@@ -236,20 +236,19 @@ func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
 
 	const workers, reconcilesPerWorker = 8, 5
 	var wg sync.WaitGroup
-	var failedOnClosedClient int32
+	var failedOnClosedClient atomic.Int32
 	wg.Add(workers)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func() {
 			defer wg.Done()
-			for r := 0; r < reconcilesPerWorker; r++ {
+			for r := range reconcilesPerWorker {
 				client, release, err := cache.GetOrCreate(creds[(w+r)%len(creds)], newFn)
 				if !assert.NoError(t, err) {
 					return
 				}
-				var dialErr *net.OpError
-				if !errors.As(listTopics(client), &dialErr) {
-					atomic.AddInt32(&failedOnClosedClient, 1)
+				if _, ok := errors.AsType[*net.OpError](listTopics(client)); !ok {
+					failedOnClosedClient.Add(1)
 				}
 				release()
 			}
@@ -257,7 +256,7 @@ func TestGetOrCreateConcurrentReconcilesKeepClientsUsable(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Zero(t, atomic.LoadInt32(&failedOnClosedClient), "reconciles used clients closed by other reconciles")
+	assert.Zero(t, failedOnClosedClient.Load(), "reconciles used clients closed by other reconciles")
 }
 
 // TestGetOrCreateNeverClosesClientInUse verifies that a client in use stays open, however long it is held.
@@ -289,9 +288,9 @@ func TestGetOrCreateClosesIdleClient(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		cache := &ClientCache{}
-		var callCount int32
+		var callCount atomic.Int32
 		newFn := func() (*kadm.Client, error) {
-			atomic.AddInt32(&callCount, 1)
+			callCount.Add(1)
 			return newUnconnectedClient(t)
 		}
 
@@ -310,7 +309,7 @@ func TestGetOrCreateClosesIdleClient(t *testing.T) {
 		client, _, err := cache.GetOrCreate([]byte("broker-a"), newFn)
 		require.NoError(t, err)
 		assert.NotSame(t, idleClient, client, "broker-a should get a new client")
-		assert.Equal(t, int32(3), atomic.LoadInt32(&callCount))
+		assert.Equal(t, int32(3), callCount.Load())
 	})
 }
 

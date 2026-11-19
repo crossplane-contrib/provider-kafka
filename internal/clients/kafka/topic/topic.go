@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
@@ -205,9 +206,7 @@ func Generate(name string, params *v1alpha1.TopicParameters) *Topic {
 
 	if len(params.Config) > 0 {
 		tpc.Config = make(map[string]*string, len(params.Config))
-		for k, v := range params.Config {
-			tpc.Config[k] = v
-		}
+		maps.Copy(tpc.Config, params.Config)
 	}
 
 	return tpc
