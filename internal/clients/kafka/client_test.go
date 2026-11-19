@@ -16,6 +16,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var credentials struct {
@@ -1032,4 +1036,31 @@ func TestNewTLSConfig(t *testing.T) {
 			tc.check(t, got)
 		})
 	}
+}
+
+func TestSecretVersions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ca := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "ns"}}
+	kube := clientfake.NewClientBuilder().WithObjects(ca).Build()
+	in := &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "ca", Namespace: "ns"}}
+
+	before, err := SecretVersions(ctx, in, kube)
+	require.NoError(t, err)
+	assert.NotEmpty(t, before)
+
+	require.NoError(t, kube.Get(ctx, client.ObjectKeyFromObject(ca), ca))
+	ca.Data = map[string][]byte{"ca.crt": []byte("rotated")}
+	require.NoError(t, kube.Update(ctx, ca))
+	after, err := SecretVersions(ctx, in, kube)
+	require.NoError(t, err)
+	assert.NotEqual(t, before, after, "a changed secret must change the cache key")
+
+	none, err := SecretVersions(ctx, nil, kube)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+
+	_, err = SecretVersions(ctx, &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "missing", Namespace: "ns"}}, kube)
+	require.ErrorContains(t, err, "cannot get secret ns/missing")
 }

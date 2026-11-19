@@ -80,3 +80,13 @@ func init() {
 		return nil
 	})
 }
+
+// GetConnectorParameters returns the desired connector settings.
+func (mg *Connector) GetConnectorParameters() common.ConnectorParameters {
+	return mg.Spec.ForProvider
+}
+
+// SetConnectorObservation sets the connector state observed in Kafka Connect.
+func (mg *Connector) SetConnectorObservation(o common.ConnectorObservation) {
+	mg.Status.AtProvider = o
+}

@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -45,8 +44,7 @@ const (
 const (
 	errMissingConnect = "provider config has no connect block with a url"
 
-	requestTimeout = 30 * time.Second
-	maxBodyBytes   = 1 << 20
+	maxBodyBytes = 1 << 20
 )
 
 // Client talks to one Kafka Connect cluster.
@@ -83,8 +81,9 @@ func New(ctx context.Context, c *kafka.Connect, kube client.Client) (*Client, er
 	}
 	cl := &Client{
 		base: strings.TrimSuffix(c.URL, "/"),
+		// No client timeout: the reconcile context deadline bounds each request,
+		// so a slow config validation can use the whole reconcile budget.
 		http: &http.Client{
-			Timeout:   requestTimeout,
 			Transport: &http.Transport{TLSClientConfig: tc, Proxy: http.ProxyFromEnvironment},
 		},
 	}

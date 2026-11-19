@@ -11,22 +11,27 @@ Crossplane provider for managing Apache Kafka resources (topics, ACLs) as Kubern
 ```
 cmd/provider/main.go          # Entrypoint — kong CLI, controller-runtime manager
 apis/
-  cluster/                     # Cluster-scoped CRD types (Topic, ACL, ProviderConfig)
-  namespaced/                  # Namespace-scoped CRD types (Topic, ACL, ProviderConfig)
+  cluster/                     # Cluster-scoped CRD types (Topic, ACL, User, Connector, ProviderConfig)
+  namespaced/                  # Namespace-scoped CRD types (Topic, ACL, User, Connector, ProviderConfig)
   v1alpha1/                    # Shared type definitions
 internal/
   clients/kafka/
-    client.go                  # NewAdminClient — builds franz-go kadm.Client from JSON config
-    config.go                  # Config, SASL, TLS structs (JSON schema for provider secret)
+    client.go                  # NewAdminClient (franz-go kadm.Client), NewTLSConfig, SecretVersions
+    config.go                  # Config, SASL, TLS, Connect structs (JSON schema for provider secret)
     constants.go               # Defaults, error strings, lookup maps
-    cache.go                   # Client caching layer
+    cache.go                   # Generic client cache Cache[T]; ClientCache = Cache[*kadm.Client]
     topic/                     # Topic CRUD operations via kadm
     acl/                       # ACL CRUD operations via kadm
+    user/                      # SCRAM user operations via kadm
+    connect/                   # Kafka Connect REST client (connector config, status, state)
   controller/
-    cluster/                   # Cluster-scoped controllers (topic, acl, config)
-    namespaced/                # Namespace-scoped controllers (topic, acl, config)
+    cluster/                   # Cluster-scoped controllers (topic, acl, user, connector, config)
+    namespaced/                # Namespace-scoped controllers (topic, acl, user, connector, config)
+    common/                    # SetupManaged, SetupGated, shared errors, ClientCache interface
+    connector/                 # Connector logic shared by both scopes (External, drift, conditions)
+    user/                      # User helpers shared by both scopes
   version/                     # Version var (set via -X linker flag at build)
-examples/                      # Example manifests (ProviderConfig, Topic, ACL)
+examples/                      # Example manifests (ProviderConfig, Topic, ACL, User, Connector)
 ```
 
 ## Key Dependencies
@@ -92,11 +97,11 @@ Conventional Commits: `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scop
 ## Architecture Notes
 
 - **Two scopes**: cluster-scoped and namespace-scoped resources. Parallel API/controller trees.
-- **Provider config secret**: JSON blob with `brokers`, optional `sasl`, optional `tls`. Schema defined in `internal/clients/kafka/config.go`.
+- **Provider config secret**: JSON blob with `brokers`, optional `sasl`, optional `tls`, optional `connect` (Kafka Connect `url`, `basicAuth`, `tls`; only Connector resources use it). Schema defined in `internal/clients/kafka/config.go`.
 - **SASL mechanisms**: PLAIN, SCRAM-SHA-512, AWS-MSK-IAM
 - **TLS**: Full config — custom CA (secret ref or file), mTLS (secret ref or file path with rotation), cipher suites, TLS version constraints, curve preferences
 - **AWS MSK IAM**: Uses default AWS credential chain. Optional `roleArn` for cross-account AssumeRole. Credentials cached with configurable expiry window.
-- **Client caching**: `cache.go` caches kadm.Client instances to avoid reconnecting on every reconcile
+- **Client caching**: `cache.go` caches kadm.Client and Kafka Connect clients to avoid reconnecting on every reconcile. Idle clients close after `--client-idle-timeout`. The Connect cache key includes the referenced TLS Secrets' resourceVersions, so a changed Secret gets a new client.
 - **Log level**: `--debug` CLI flag sets franz-go kafka client to debug level (default: warn). Controlled via `kafka.LogLevel` package var, set in `main.go`.
 
 ## Testing Patterns

@@ -1,6 +1,6 @@
 module github.com/crossplane-contrib/provider-kafka
 
-go 1.27.3
+go 1.27.4
 
 tool (
 	github.com/crossplane/crossplane-tools/cmd/angryjet
@@ -26,7 +26,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.37.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
-	sigs.k8s.io/controller-runtime v0.25.2
+	sigs.k8s.io/controller-runtime v0.25.3
 )
 
 require (

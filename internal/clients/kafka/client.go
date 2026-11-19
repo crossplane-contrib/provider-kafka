@@ -139,6 +139,35 @@ func NewTLSConfig(ctx context.Context, t *TLS, kube client.Client) (*tls.Config,
 	return tc, nil
 }
 
+// SecretVersions returns the resource versions of the Secrets t references.
+// Adding them to a client cache key gives a changed Secret a new client.
+func SecretVersions(ctx context.Context, t *TLS, kube client.Client) ([]byte, error) {
+	if t == nil {
+		return nil, nil
+	}
+	var refs []types.NamespacedName
+	if r := t.ClientCertificateSecretRef; r != nil {
+		refs = append(refs, types.NamespacedName{Namespace: r.Namespace, Name: r.Name})
+	}
+	if r := t.CACertificateSecretRef; r != nil {
+		refs = append(refs, types.NamespacedName{Namespace: r.Namespace, Name: r.Name})
+	}
+
+	var out []byte
+	for _, ref := range refs {
+		// NewTLSConfig reports incomplete refs with a clearer error.
+		if ref.Name == "" || ref.Namespace == "" {
+			continue
+		}
+		s := &corev1.Secret{}
+		if err := kube.Get(ctx, ref, s); err != nil {
+			return nil, fmt.Errorf("cannot get secret %s: %w", ref, err)
+		}
+		out = fmt.Appendf(out, "%s=%s;", ref, s.ResourceVersion)
+	}
+	return out, nil
+}
+
 // configureClientCertificate sets up client certificate authentication in the TLS config,
 // supporting both Kubernetes Secret references and on-disk file paths.
 func configureClientCertificate(ctx context.Context, t *TLS, kube client.Client, tc *tls.Config) error {
