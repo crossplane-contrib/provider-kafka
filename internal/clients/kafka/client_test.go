@@ -1037,29 +1037,46 @@ func TestNewTLSConfig(t *testing.T) {
 	}
 }
 
-func TestSecretVersions(t *testing.T) {
+func TestCacheKey(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	ca := &corev1.Secret{Name: "ca", Namespace: "ns"}
 	kube := clientfake.NewClientBuilder().WithObjects(ca).Build()
-	in := &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "ca", Namespace: "ns"}}
+	caFile := t.TempDir() + "/ca.crt"
+	require.NoError(t, os.WriteFile(caFile, []byte("v1"), 0o600))
 
-	before, err := SecretVersions(ctx, in, kube)
+	brokers := []byte(`{"brokers":["b:9092"],"tls":{"caCertificateSecretRef":{"name":"ca","namespace":"ns"}}}`)
+	connect := []byte(`{"connect":{"url":"http://c","tls":{"caCertificateFile":"` + caFile + `"}}}`)
+
+	brokersBefore, err := CacheKey(ctx, brokers, kube)
 	require.NoError(t, err)
-	assert.NotEmpty(t, before)
+	connectBefore, err := CacheKey(ctx, connect, kube)
+	require.NoError(t, err)
 
 	require.NoError(t, kube.Get(ctx, client.ObjectKeyFromObject(ca), ca))
 	ca.Data = map[string][]byte{"ca.crt": []byte("rotated")}
 	require.NoError(t, kube.Update(ctx, ca))
-	after, err := SecretVersions(ctx, in, kube)
+	brokersAfter, err := CacheKey(ctx, brokers, kube)
 	require.NoError(t, err)
-	assert.NotEqual(t, before, after, "a changed secret must change the cache key")
+	assert.NotEqual(t, brokersBefore, brokersAfter, "a changed CA Secret must change the key")
 
-	none, err := SecretVersions(ctx, nil, kube)
+	later := time.Now().Add(time.Minute)
+	require.NoError(t, os.Chtimes(caFile, later, later))
+	connectAfter, err := CacheKey(ctx, connect, kube)
 	require.NoError(t, err)
-	assert.Empty(t, none)
+	assert.NotEqual(t, connectBefore, connectAfter, "a rewritten CA file must change the key")
 
-	_, err = SecretVersions(ctx, &TLS{CACertificateSecretRef: &CACertificateSecretRef{Name: "missing", Namespace: "ns"}}, kube)
+	plain := []byte(`{"brokers":["b:9092"]}`)
+	got, err := CacheKey(ctx, plain, nil)
+	require.NoError(t, err)
+	assert.Equal(t, plain, got)
+
+	malformed := []byte(`not json`)
+	got, err = CacheKey(ctx, malformed, nil)
+	require.NoError(t, err)
+	assert.Equal(t, malformed, got, "the client constructor reports malformed credentials")
+
+	_, err = CacheKey(ctx, []byte(`{"tls":{"clientCertificateSecretRef":{"name":"missing","namespace":"ns"}}}`), kube)
 	require.ErrorContains(t, err, "cannot get secret ns/missing")
 }

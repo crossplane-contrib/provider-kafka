@@ -102,11 +102,9 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, fmt.Errorf("%s: %w", userhelpers.ErrParseCreds, err)
 	}
 
-	svc, release, err := c.cache.GetOrCreate(data, func() (*kadm.Client, error) {
-		return c.newServiceFn(ctx, data, c.kube)
-	})
+	svc, release, err := common.KafkaClient(ctx, c.cache, c.kube, data, c.newServiceFn)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrNewClient, err)
+		return nil, err
 	}
 
 	return &external{kafkaClient: svc, release: release, brokers: cfg.Brokers, kube: c.kube}, nil

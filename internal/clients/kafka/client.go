@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -139,12 +140,43 @@ func NewTLSConfig(ctx context.Context, t *TLS, kube client.Client) (*tls.Config,
 	return tc, nil
 }
 
-// SecretVersions returns the resource versions of the Secrets t references.
-// Adding them to a client cache key gives a changed Secret a new client.
-func SecretVersions(ctx context.Context, t *TLS, kube client.Client) ([]byte, error) {
+// CacheKey returns the client cache key for the provider credentials creds.
+// It adds the versions of the TLS Secrets and the modification times of the CA
+// files that the broker and Connect tls blocks reference, so rotating either
+// gives a new client. Malformed creds come back unchanged, because building the
+// client reports them.
+func CacheKey(ctx context.Context, creds []byte, kube client.Client) ([]byte, error) {
+	var cfg Config
+	if err := json.Unmarshal(creds, &cfg); err != nil {
+		return creds, nil //nolint:nilerr // building the client reports malformed credentials
+	}
+	key := slices.Clone(creds)
+	tlsBlocks := []*TLS{cfg.TLS}
+	if cfg.Connect != nil {
+		tlsBlocks = append(tlsBlocks, cfg.Connect.TLS)
+	}
+	for _, t := range tlsBlocks {
+		v, err := tlsKey(ctx, t, kube)
+		if err != nil {
+			return nil, err
+		}
+		key = append(key, v...)
+	}
+	return key, nil
+}
+
+// tlsKey returns the resource versions of the Secrets t references and the
+// modification time of its CA file.
+func tlsKey(ctx context.Context, t *TLS, kube client.Client) ([]byte, error) {
 	if t == nil {
 		return nil, nil
 	}
+	var out []byte
+	// NewTLSConfig reports a missing CA file with a clearer error.
+	if fi, err := os.Stat(t.CACertificateFile); t.CACertificateFile != "" && err == nil {
+		out = fmt.Appendf(out, "%s=%d;", t.CACertificateFile, fi.ModTime().UnixNano())
+	}
+
 	var refs []types.NamespacedName
 	if r := t.ClientCertificateSecretRef; r != nil {
 		refs = append(refs, types.NamespacedName{Namespace: r.Namespace, Name: r.Name})
@@ -152,8 +184,6 @@ func SecretVersions(ctx context.Context, t *TLS, kube client.Client) ([]byte, er
 	if r := t.CACertificateSecretRef; r != nil {
 		refs = append(refs, types.NamespacedName{Namespace: r.Namespace, Name: r.Name})
 	}
-
-	var out []byte
 	for _, ref := range refs {
 		// NewTLSConfig reports incomplete refs with a clearer error.
 		if ref.Name == "" || ref.Namespace == "" {
