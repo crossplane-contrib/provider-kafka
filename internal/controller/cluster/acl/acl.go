@@ -19,26 +19,29 @@ package acl
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	"github.com/twmb/franz-go/pkg/kadm"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/acl/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/cluster/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/acl"
+	aclhelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/acl"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
 )
+
+var _ aclhelpers.Resource = &v1alpha1.AccessControlList{}
+
+// A connector is expected to produce an ExternalClient when its Connect method is called.
+type connector struct {
+	cache        common.ClientCache
+	kube         client.Client
+	newServiceFn common.NewClientFn
+	usage        *resource.LegacyProviderConfigUsageTracker
+}
 
 // Setup adds a controller that reconciles AccessControlList managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
@@ -56,151 +59,19 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	return common.SetupGated(mgr, o, v1alpha1.AccessControlListGroupVersionKind, Setup)
 }
 
-// A connector is expected to produce an ExternalClient when its Connect method is called.
-type connector struct {
-	cache        common.ClientCache
-	kube         client.Client
-	log          logging.Logger
-	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
-	usage        *resource.LegacyProviderConfigUsageTracker
-}
-
-// Connect typically produces an ExternalClient by:
-// 1. Tracking that the managed resource is using a ProviderConfig.
-// 2. Getting the managed resource's ProviderConfig.
-// 3. Getting the credentials specified by the ProviderConfig.
-// 4. Using the credentials to form a client.
+// Connect returns a client for the Kafka cluster in the AccessControlList's provider config.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.AccessControlList)
 	if !ok {
 		return nil, errors.New(common.ErrNotAccessControlList)
 	}
-
-	// Switch to LegacyManaged to support ProviderConfigUsage tracking
-	lmg := mg.(resource.LegacyManaged) //nolint:staticcheck
-
-	if err := c.usage.Track(ctx, lmg); err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
-	}
-
-	pc := &apisv1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
-	}
-
-	cd := pc.Spec.Credentials
-	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
+	data, err := common.ClusterCredentials(ctx, c.kube, c.usage, cr)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
+		return nil, err
 	}
-
 	svc, release, err := common.KafkaClient(ctx, c.cache, c.kube, data, c.newServiceFn)
 	if err != nil {
 		return nil, err
 	}
-
-	return &external{kafkaClient: svc, release: release, log: c.log}, nil
-}
-
-func (c *external) Disconnect(_ context.Context) error {
-	c.kafkaClient = nil
-	if c.release != nil {
-		c.release()
-	}
-	return nil
-}
-
-// An ExternalClient observes, then either creates, updates, or deletes an
-// external resource to ensure it reflects the managed resource's desired state.
-type external struct {
-	kafkaClient *kadm.Client
-	release     func()
-	log         logging.Logger
-}
-
-func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.AccessControlList)
-	if !ok {
-		return managed.ExternalObservation{}, errors.New(common.ErrNotAccessControlList)
-	}
-
-	// Check if the external name is set, to determine if ACL has been created or not
-	ext := meta.GetExternalName(cr)
-	if ext == "" {
-		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-
-	extName, err := acl.ConvertFromJSON(meta.GetExternalName(cr))
-	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: %w", err)
-	}
-	if extName == nil {
-		return managed.ExternalObservation{}, fmt.Errorf("could not convert external name from JSON: nil result")
-	}
-	generated := acl.Generate(&cr.Spec.ForProvider)
-	compare := acl.CompareAcls(*extName, *generated)
-	diff := acl.Diff(*extName, *generated)
-
-	if !compare {
-		err := strings.Join(diff, " ")
-		return managed.ExternalObservation{
-			ResourceExists:   true,
-			ResourceUpToDate: false,
-		}, errors.New(err)
-	}
-
-	ae, err := acl.List(ctx, c.kafkaClient, extName)
-	if err != nil {
-		return managed.ExternalObservation{}, fmt.Errorf("%s: %w", common.ErrListACL, err)
-	}
-
-	if ae == nil {
-		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-
-	cr.Status.AtProvider.ResourceName = ae.ResourceName
-	cr.Status.AtProvider.ResourceType = ae.ResourceType
-	cr.Status.AtProvider.ResourcePrincipal = ae.ResourcePrincipal
-	cr.Status.AtProvider.ResourceHost = ae.ResourceHost
-	cr.Status.AtProvider.ResourceOperation = ae.ResourceOperation
-	cr.Status.AtProvider.ResourcePermissionType = ae.ResourcePermissionType
-	cr.Status.AtProvider.ResourcePatternTypeFilter = ae.ResourcePatternTypeFilter
-	cr.Status.SetConditions(xpv2.Available())
-
-	return managed.ExternalObservation{
-		ResourceExists:          true,
-		ResourceUpToDate:        true,
-		ResourceLateInitialized: false,
-	}, nil
-}
-
-func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.AccessControlList)
-	if !ok {
-		return managed.ExternalCreation{}, errors.New(common.ErrNotAccessControlList)
-	}
-
-	generated := acl.Generate(&cr.Spec.ForProvider)
-	extName, err := acl.ConvertToJSON(generated)
-	if err != nil {
-		return managed.ExternalCreation{}, fmt.Errorf("could not convert external name to JSON: %w", err)
-	}
-	// Always set the external name to the JSON form to ensure it's valid,
-	// even if it was previously set to a non-JSON value (e.g., by default initializers).
-	meta.SetExternalName(cr, extName)
-	return managed.ExternalCreation{}, acl.Create(ctx, c.kafkaClient, generated)
-}
-
-func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	return managed.ExternalUpdate{}, errors.New(common.ErrUpdateNotSupported)
-}
-
-func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.AccessControlList)
-	cr.Status.SetConditions(xpv2.Deleting())
-	if !ok {
-		return managed.ExternalDelete{}, errors.New(common.ErrNotAccessControlList)
-	}
-
-	return managed.ExternalDelete{}, acl.Delete(ctx, c.kafkaClient, acl.Generate(&cr.Spec.ForProvider))
+	return aclhelpers.NewExternal(svc, release), nil
 }

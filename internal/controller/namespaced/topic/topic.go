@@ -19,42 +19,28 @@ package topic
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	"github.com/twmb/franz-go/pkg/kadm"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/namespaced/topic/v1alpha1"
 	apisv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/namespaced/v1alpha1"
 	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
-	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka/topic"
 	"github.com/crossplane-contrib/provider-kafka/internal/controller/common"
+	topichelpers "github.com/crossplane-contrib/provider-kafka/internal/controller/topic"
 )
+
+var _ topichelpers.Resource = &v1alpha1.Topic{}
 
 // A connector is expected to produce an ExternalClient when its Connect method is called.
 type connector struct {
 	cache        common.ClientCache
 	kube         client.Client
-	log          logging.Logger
-	newServiceFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
+	newServiceFn common.NewClientFn
 	usage        *resource.ProviderConfigUsageTracker
-}
-
-// An ExternalClient observes, then either creates, updates, or deletes an
-// external resource to ensure it reflects the managed resource's desired state.
-type external struct {
-	kafkaClient *kadm.Client
-	release     func()
-	log         logging.Logger
 }
 
 // Setup adds a controller that reconciles Topic managed resources.
@@ -68,142 +54,24 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		})
 }
 
-// SetupGated adds a controller that reconciles MyType managed resources with safe-start support.
+// SetupGated adds a controller that reconciles Topic managed resources with safe-start support.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	return common.SetupGated(mgr, o, v1alpha1.TopicGroupVersionKind, Setup)
 }
 
-// Connect typically produces an ExternalClient by:
-// 1. Tracking that the managed resource is using a ProviderConfig.
-// 2. Getting the managed resource's ProviderConfig.
-// 3. Getting the credentials specified by the ProviderConfig.
-// 4. Using the credentials to form a client.
+// Connect returns a client for the Kafka cluster in the Topic's provider config.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
 	cr, ok := mg.(*v1alpha1.Topic)
 	if !ok {
 		return nil, errors.New(common.ErrNotTopic)
 	}
-
-	if err := c.usage.Track(ctx, cr); err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrTrackPCUsage, err)
-	}
-
-	var cd apisv1alpha1.ProviderCredentials
-
-	// Switch to ModernManaged resource to get ProviderConfigRef
-	m := mg.(resource.ModernManaged)
-	ref := m.GetProviderConfigReference()
-
-	switch ref.Kind {
-	case "ProviderConfig":
-		pc := &apisv1alpha1.ProviderConfig{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: m.GetNamespace()}, pc); err != nil {
-			return nil, fmt.Errorf("%s: %w", common.ErrGetPC, err)
-		}
-		cd = pc.Spec.Credentials
-	case "ClusterProviderConfig":
-		cpc := &apisv1alpha1.ClusterProviderConfig{}
-		if err := c.kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
-			return nil, fmt.Errorf("%s: %w", common.ErrGetCPC, err)
-		}
-		cd = cpc.Spec.Credentials
-	default:
-		return nil, fmt.Errorf("unsupported provider config kind: %s", ref.Kind)
-	}
-
-	data, err := resource.CommonCredentialExtractor(ctx, cd.Source, c.kube, cd.CommonCredentialSelectors)
+	data, err := common.NamespacedCredentials(ctx, c.kube, c.usage, cr)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", common.ErrGetCreds, err)
+		return nil, err
 	}
-
 	svc, release, err := common.KafkaClient(ctx, c.cache, c.kube, data, c.newServiceFn)
 	if err != nil {
 		return nil, err
 	}
-
-	return &external{kafkaClient: svc, release: release, log: c.log}, nil
-}
-
-func (c *external) Disconnect(_ context.Context) error {
-	c.kafkaClient = nil
-	if c.release != nil {
-		c.release()
-	}
-	return nil
-}
-
-func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.Topic)
-	if !ok {
-		return managed.ExternalObservation{}, errors.New(common.ErrNotTopic)
-	}
-
-	tpc, err := topic.Get(ctx, c.kafkaClient, meta.GetExternalName(cr))
-	if err != nil { // Discern whether the topic doesn't exist or something went wrong
-		if strings.HasPrefix(err.Error(), topic.ErrTopicDoesNotExist) {
-			return managed.ExternalObservation{ResourceExists: false}, nil
-		}
-		return managed.ExternalObservation{}, fmt.Errorf(common.ErrGetTopic+": %w", err)
-	}
-
-	// On the first reconcile, AddFinalizer performs a full-object Update that
-	// resets the in-memory status before it can be persisted. Returning
-	// ResourceUpToDate=false forces an Update call which runs after
-	// AddFinalizer and re-populates status there.
-	statusPopulated := cr.Status.AtProvider.ID != ""
-
-	cr.Status.AtProvider = tpc.ToObservation()
-	cr.Status.SetConditions(xpv2.Available())
-
-	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: isResourceUpToDate(cr, statusPopulated, tpc),
-	}, nil
-}
-
-func isResourceUpToDate(cr *v1alpha1.Topic, statusPopulated bool, observed *topic.Topic) bool {
-	return statusPopulated && topic.IsUpToDate(&cr.Spec.ForProvider, observed)
-}
-
-func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Topic)
-	if !ok {
-		return managed.ExternalCreation{}, errors.New(common.ErrNotTopic)
-	}
-	return managed.ExternalCreation{}, topic.Create(ctx, c.kafkaClient, topic.Generate(meta.GetExternalName(cr), &cr.Spec.ForProvider))
-}
-
-func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Topic)
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New(common.ErrNotTopic)
-	}
-
-	name := meta.GetExternalName(cr)
-
-	if err := topic.Update(ctx, c.kafkaClient, topic.Generate(name, &cr.Spec.ForProvider)); err != nil {
-		return managed.ExternalUpdate{}, err
-	}
-
-	if cr.Status.AtProvider.ID == "" {
-		tpc, err := topic.Get(ctx, c.kafkaClient, name)
-		if err != nil {
-			return managed.ExternalUpdate{}, fmt.Errorf(common.ErrGetTopic+": %w", err)
-		}
-
-		cr.Status.AtProvider = tpc.ToObservation()
-		cr.Status.SetConditions(xpv2.Available())
-	}
-
-	return managed.ExternalUpdate{}, nil
-}
-
-func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.Topic)
-	cr.Status.SetConditions(xpv2.Deleting())
-	if !ok {
-		return managed.ExternalDelete{}, errors.New(common.ErrNotTopic)
-	}
-
-	return managed.ExternalDelete{}, topic.Delete(ctx, c.kafkaClient, meta.GetExternalName(cr))
+	return topichelpers.NewExternal(svc, release), nil
 }

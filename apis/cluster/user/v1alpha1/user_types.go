@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	common "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
 )
@@ -78,4 +79,30 @@ func init() {
 		s.AddKnownTypes(SchemeGroupVersion, &User{}, &UserList{})
 		return nil
 	})
+}
+
+// GetMechanisms returns the SCRAM mechanisms the user should be enrolled in.
+func (mg *User) GetMechanisms() []common.Mechanism {
+	return mg.Spec.ForProvider.Mechanisms
+}
+
+// GetUserObservation returns the user state observed in Kafka.
+func (mg *User) GetUserObservation() *common.UserObservation {
+	return &mg.Status.AtProvider
+}
+
+// GetPasswordSecret returns the Secret key that holds the user's password, or
+// nil when the provider generates the password.
+func (mg *User) GetPasswordSecret() *common.SecretKeySelector {
+	return mg.Spec.ForProvider.PasswordSecretRef
+}
+
+// GetConnectionSecret returns the Secret the provider writes the user's
+// credentials to, or nil.
+func (mg *User) GetConnectionSecret() *types.NamespacedName {
+	ref := mg.GetWriteConnectionSecretToReference()
+	if ref == nil {
+		return nil
+	}
+	return &types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}
 }
