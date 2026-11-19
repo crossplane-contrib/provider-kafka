@@ -240,11 +240,11 @@ Ready when the connector and all of its tasks are in that state, and
 `status.atProvider` lists the connector and task states. `stopped` needs
 Kafka Connect 3.5 or later.
 
-Kafka Connect validates the config on every create and update, and some
-connectors, such as Debezium and JDBC, connect to their external system to do
-it. One Connector reconcile may take up to `--connector-reconcile-timeout`
-(env `CONNECTOR_RECONCILE_TIMEOUT`, default `3m`). Raise it if validation takes
-longer.
+Kafka Connect validates the config on every create and update, and some connectors,
+such as Debezium and JDBC, connect to their external system to do it.
+One Connector reconcile may take up to `--connector-reconcile-timeout`
+(env `CONNECTOR_RECONCILE_TIMEOUT`, default `3m`).
+Raise it if validation takes longer.
 
 The provider does not restart failed connectors or tasks.
 The resource stays not Ready until you restart them through the Connect REST API
