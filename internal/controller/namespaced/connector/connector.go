@@ -53,7 +53,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
 			cache: &kafka.Cache[*connect.Client]{},
-		})
+		}, managed.WithTimeout(connhelpers.ReconcileTimeout))
 }
 
 // SetupGated adds a controller with safe-start support.

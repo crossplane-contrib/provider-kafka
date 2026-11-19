@@ -23,6 +23,7 @@ import (
 	"maps"
 	"strconv"
 	"strings"
+	"time"
 
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
@@ -40,6 +41,11 @@ const (
 	ErrSetState     = "cannot change connector state"
 	ErrDelete       = "cannot delete connector"
 )
+
+// ReconcileTimeout bounds one Connector reconcile. Kafka Connect allows a
+// config PUT 90s to validate, and a reconcile can also send two status reads
+// and a state change, so the 1 minute crossplane-runtime default is too short.
+const ReconcileTimeout = 3 * time.Minute
 
 // Connector config keys managed through dedicated spec fields.
 const (
