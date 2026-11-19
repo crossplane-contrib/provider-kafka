@@ -8,7 +8,6 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -59,28 +58,28 @@ func newConnector(t *testing.T, creds []byte) (*connector, *v1alpha1.Connector) 
 	require.NoError(t, apis.AddToScheme(scheme))
 
 	cr := &v1alpha1.Connector{
-		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.ConnectorKind},
-		ObjectMeta: metav1.ObjectMeta{Name: "my-connector", UID: "connector-uid"},
+		APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.ConnectorKind,
+		Name: "my-connector", UID: "connector-uid",
 	}
 	cr.Spec.ProviderConfigReference = &xpv2.Reference{Name: "pc"}
 
 	pc := &apisv1alpha1.ProviderConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: "pc"},
+		Name: "pc",
 		Spec: apisv1alpha1.ProviderConfigSpec{
 			Credentials: apisv1alpha1.ProviderCredentials{
 				Source: xpv2.CredentialsSourceSecret,
 				CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
 					SecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{Name: "creds", Namespace: "default"},
-						Key:             "credentials",
+						Name: "creds", Namespace: "default",
+						Key: "credentials",
 					},
 				},
 			},
 		},
 	}
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: "default"},
-		Data:       map[string][]byte{"credentials": creds},
+		Name: "creds", Namespace: "default",
+		Data: map[string][]byte{"credentials": creds},
 	}
 	kube := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(pc, sec).Build()
 

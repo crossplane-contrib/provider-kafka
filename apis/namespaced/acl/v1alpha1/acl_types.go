@@ -67,7 +67,7 @@ type AccessControlListList struct {
 
 // AccessControlList type metadata.
 var (
-	AccessControlListKind             = reflect.TypeOf(AccessControlList{}).Name()
+	AccessControlListKind             = reflect.TypeFor[AccessControlList]().Name()
 	AccessControlListGroupKind        = schema.GroupKind{Group: Group, Kind: AccessControlListKind}.String()
 	AccessControlListKindAPIVersion   = AccessControlListKind + "." + SchemeGroupVersion.String()
 	AccessControlListGroupVersionKind = SchemeGroupVersion.WithKind(AccessControlListKind)

@@ -32,7 +32,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -216,9 +215,7 @@ func TestConnectionDetails(t *testing.T) {
 
 func userWithPasswordRef(name, crNamespace, key string) *v1alpha1.User {
 	return &v1alpha1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: crNamespace,
-		},
+		Namespace: crNamespace,
 		Spec: v1alpha1.UserSpec{
 			ForProvider: commonv1alpha1.NamespacedUserParameters{
 				PasswordSecretRef: &commonv1alpha1.NamespacedSecretKeySelector{
@@ -235,9 +232,7 @@ func userWithPasswordRef(name, crNamespace, key string) *v1alpha1.User {
 // no namespace field — the CR's own namespace is used at runtime.
 func userWithWriteRefInNamespace(name, ns string) *v1alpha1.User {
 	u := &v1alpha1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
-		},
+		Namespace: ns,
 	}
 	u.Spec.WriteConnectionSecretToReference = &xpv2.LocalSecretReference{Name: name}
 	return u
@@ -245,11 +240,9 @@ func userWithWriteRefInNamespace(name, ns string) *v1alpha1.User {
 
 func secret(name, namespace string, data map[string][]byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: data,
+		Name:      name,
+		Namespace: namespace,
+		Data:      data,
 	}
 }
 
@@ -433,20 +426,20 @@ func newConnector(t *testing.T, cache common.ClientCache, creds []byte) (*connec
 	require.NoError(t, apis.AddToScheme(scheme))
 
 	cr := &v1alpha1.User{
-		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.UserKind},
-		ObjectMeta: metav1.ObjectMeta{Name: "alice", Namespace: "team-a", UID: "user-uid"},
+		APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.UserKind,
+		Name: "alice", Namespace: "team-a", UID: "user-uid",
 	}
 	cr.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{Name: "pc", Kind: "ProviderConfig"}
 
 	pc := &apisv1alpha1.ProviderConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: cr.Namespace},
+		Name: "pc", Namespace: cr.Namespace,
 		Spec: apisv1alpha1.ProviderConfigSpec{
 			Credentials: apisv1alpha1.ProviderCredentials{
 				Source: xpv2.CredentialsSourceSecret,
 				CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
 					SecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{Name: "creds", Namespace: cr.Namespace},
-						Key:             "credentials",
+						Name: "creds", Namespace: cr.Namespace,
+						Key: "credentials",
 					},
 				},
 			},

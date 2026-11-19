@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/crossplane-contrib/provider-kafka/apis/cluster/connector/v1alpha1"
 	commonv1alpha1 "github.com/crossplane-contrib/provider-kafka/apis/v1alpha1"
@@ -110,8 +109,8 @@ func newExternal(t *testing.T, f *fakeConnect) *External {
 
 func newConnectorCR(params commonv1alpha1.ConnectorParameters) *v1alpha1.Connector {
 	cr := &v1alpha1.Connector{
-		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.ConnectorKind},
-		ObjectMeta: metav1.ObjectMeta{Name: connName, UID: "connector-uid"},
+		APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.ConnectorKind,
+		Name: connName, UID: "connector-uid",
 	}
 	cr.Spec.ForProvider = params
 	meta.SetExternalName(cr, connName)

@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -166,28 +165,28 @@ func newConnector(t *testing.T, cache ctrlcommon.ClientCache, creds []byte) (*co
 	require.NoError(t, apis.AddToScheme(scheme))
 
 	cr := &v1alpha1.AccessControlList{
-		TypeMeta:   metav1.TypeMeta{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.AccessControlListKind},
-		ObjectMeta: metav1.ObjectMeta{Name: "acl", Namespace: "team-a", UID: "acl-uid"},
+		APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: v1alpha1.AccessControlListKind,
+		Name: "acl", Namespace: "team-a", UID: "acl-uid",
 	}
 	cr.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{Name: "pc", Kind: "ProviderConfig"}
 
 	pc := &apisv1alpha1.ProviderConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: cr.Namespace},
+		Name: "pc", Namespace: cr.Namespace,
 		Spec: apisv1alpha1.ProviderConfigSpec{
 			Credentials: apisv1alpha1.ProviderCredentials{
 				Source: xpv2.CredentialsSourceSecret,
 				CommonCredentialSelectors: xpv2.CommonCredentialSelectors{
 					SecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{Name: "creds", Namespace: cr.Namespace},
-						Key:             "credentials",
+						Name: "creds", Namespace: cr.Namespace,
+						Key: "credentials",
 					},
 				},
 			},
 		},
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: cr.Namespace},
-		Data:       map[string][]byte{"credentials": creds},
+		Name: "creds", Namespace: cr.Namespace,
+		Data: map[string][]byte{"credentials": creds},
 	}
 	kube := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(pc, secret).Build()
 

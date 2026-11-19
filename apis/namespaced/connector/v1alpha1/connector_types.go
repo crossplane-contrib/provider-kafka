@@ -68,7 +68,7 @@ type ConnectorList struct {
 
 // Connector type metadata.
 var (
-	ConnectorKind             = reflect.TypeOf(Connector{}).Name()
+	ConnectorKind             = reflect.TypeFor[Connector]().Name()
 	ConnectorGroupKind        = schema.GroupKind{Group: Group, Kind: ConnectorKind}.String()
 	ConnectorKindAPIVersion   = ConnectorKind + "." + SchemeGroupVersion.String()
 	ConnectorGroupVersionKind = SchemeGroupVersion.WithKind(ConnectorKind)
