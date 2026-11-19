@@ -86,26 +86,33 @@ func TestUpToDate(t *testing.T) {
 func TestStateUpToDate(t *testing.T) {
 	t.Parallel()
 
+	paused, stopped := commonv1alpha1.ConnectorStatePaused, commonv1alpha1.ConnectorStateStopped
 	cases := map[string]struct {
 		desired  commonv1alpha1.ConnectorState
-		observed string
+		observed *connect.Status
 		want     bool
 	}{
-		"RunningRunning":    {desired: commonv1alpha1.ConnectorStateRunning, observed: "RUNNING", want: true},
-		"DefaultIsRunning":  {desired: "", observed: "RUNNING", want: true},
-		"RunningPaused":     {desired: commonv1alpha1.ConnectorStateRunning, observed: "PAUSED"},
-		"PausedPaused":      {desired: commonv1alpha1.ConnectorStatePaused, observed: "PAUSED", want: true},
-		"StoppedRunning":    {desired: commonv1alpha1.ConnectorStateStopped, observed: "RUNNING"},
-		"RunningFailed":     {desired: commonv1alpha1.ConnectorStateRunning, observed: "FAILED", want: true},
-		"DefaultUnassigned": {desired: "", observed: "UNASSIGNED", want: true},
-		"StoppedFailed":     {desired: commonv1alpha1.ConnectorStateStopped, observed: "FAILED"},
-		"PausedUnassigned":  {desired: commonv1alpha1.ConnectorStatePaused, observed: "UNASSIGNED"},
+		"RunningRunning":    {desired: commonv1alpha1.ConnectorStateRunning, observed: status("RUNNING"), want: true},
+		"DefaultIsRunning":  {desired: "", observed: status("RUNNING"), want: true},
+		"RunningPaused":     {desired: commonv1alpha1.ConnectorStateRunning, observed: status("PAUSED")},
+		"PausedPaused":      {desired: paused, observed: status("PAUSED"), want: true},
+		"StoppedRunning":    {desired: stopped, observed: status("RUNNING")},
+		"RunningFailed":     {desired: commonv1alpha1.ConnectorStateRunning, observed: status("FAILED"), want: true},
+		"DefaultUnassigned": {desired: "", observed: status("UNASSIGNED"), want: true},
+		// Re-sending pause or stop cannot change a failed connector, so it is not drift.
+		"StoppedFailed":    {desired: stopped, observed: status("FAILED"), want: true},
+		"PausedUnassigned": {desired: paused, observed: status("UNASSIGNED"), want: true},
+		// Pause still reaches the tasks of a failed connector.
+		"PausedFailedTaskRunning": {desired: paused, observed: status("FAILED", "RUNNING")},
+		"PausedFailedTaskPaused":  {desired: paused, observed: status("FAILED", "PAUSED"), want: true},
+		"PausedFailedTaskFailed":  {desired: paused, observed: status("FAILED", "FAILED"), want: true},
+		"RunningFailedTaskPaused": {desired: commonv1alpha1.ConnectorStateRunning, observed: status("FAILED", "PAUSED")},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc.want, StateUpToDate(tc.desired, status(tc.observed)))
+			assert.Equal(t, tc.want, StateUpToDate(tc.desired, tc.observed))
 		})
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"maps"
 	"strconv"
 	"strings"
+	"time"
 
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
@@ -40,6 +41,11 @@ const (
 	ErrSetState     = "cannot change connector state"
 	ErrDelete       = "cannot delete connector"
 )
+
+// ReconcileTimeout bounds one Connector reconcile. Set from --connector-reconcile-timeout.
+// Kafka Connect allows a config PUT 90s to validate, and a reconcile can also send two
+// status reads and a state change, so the 1 minute crossplane-runtime default is too short.
+var ReconcileTimeout = 3 * time.Minute
 
 // Connector config keys managed through dedicated spec fields.
 const (
@@ -78,17 +84,25 @@ func UpToDate(desired, observed map[string]string) bool {
 	return maps.Equal(desired, observed)
 }
 
-// StateUpToDate reports whether the connector is in the desired state. FAILED
-// and UNASSIGNED are not drift when the connector should run, because resume
-// cannot fix them, and Condition reports them. They are drift when it should
-// be paused or stopped, because those actions still reach its tasks.
+// StateUpToDate reports whether the connector is in the desired state. No
+// action changes a FAILED or UNASSIGNED connector, so its own state is not
+// drift and Condition reports it. Pause, resume and stop still reach its
+// tasks, so a running, paused or stopped task in another state is drift.
 func StateUpToDate(desired commonv1alpha1.ConnectorState, s *connect.Status) bool {
 	want := wantState(desired)
-	switch s.Connector.State {
-	case stateRunning, statePaused, stateStopped:
+	if controllable(s.Connector.State) {
 		return s.Connector.State == want
 	}
-	return want == stateRunning
+	for _, t := range s.Tasks {
+		if controllable(t.State) && t.State != want {
+			return false
+		}
+	}
+	return true
+}
+
+func controllable(state string) bool {
+	return state == stateRunning || state == statePaused || state == stateStopped
 }
 
 // StateAction returns the REST action that moves a connector to desired.

@@ -19,6 +19,7 @@ package connect
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -96,8 +97,8 @@ func New(ctx context.Context, c *kafka.Connect, kube client.Client) (*Client, er
 // GetConfig returns the stored connector config. exists is false when the
 // connector does not exist.
 func (c *Client) GetConfig(ctx context.Context, name string) (cfg map[string]string, exists bool, err error) {
-	code, err := c.do(ctx, http.MethodGet, connectorPath(name, "config"), nil, &cfg)
-	if code == http.StatusNotFound {
+	notFound, err := c.do(ctx, http.MethodGet, connectorPath(name, "config"), nil, &cfg)
+	if notFound {
 		return nil, false, nil
 	}
 	if err != nil {
@@ -117,8 +118,8 @@ func (c *Client) PutConfig(ctx context.Context, name string, cfg map[string]stri
 // connector is created.
 func (c *Client) GetStatus(ctx context.Context, name string) (*Status, error) {
 	st := &Status{}
-	code, err := c.do(ctx, http.MethodGet, connectorPath(name, "status"), nil, st)
-	if code == http.StatusNotFound {
+	notFound, err := c.do(ctx, http.MethodGet, connectorPath(name, "status"), nil, st)
+	if notFound {
 		return nil, nil
 	}
 	if err != nil {
@@ -136,8 +137,8 @@ func (c *Client) SetState(ctx context.Context, name, action string) error {
 
 // Delete deletes the connector. A connector that does not exist is not an error.
 func (c *Client) Delete(ctx context.Context, name string) error {
-	code, err := c.do(ctx, http.MethodDelete, connectorPath(name, ""), nil, nil)
-	if code == http.StatusNotFound {
+	notFound, err := c.do(ctx, http.MethodDelete, connectorPath(name, ""), nil, nil)
+	if notFound {
 		return nil
 	}
 	return err
@@ -157,36 +158,41 @@ func connectorPath(name, sub string) string {
 }
 
 // do sends a request with an optional JSON body and decodes a 2xx response into out when out is non-nil.
-// It returns the HTTP status code, or 0 when the request did not complete.
+// notFound is true only for a 404 that Kafka Connect itself sent. A 404 from anything else,
+// such as a proxy in front of Connect with a wrong path, is an error, so Delete never reports
+// success for a connector it could not reach.
 // Request bodies never appear in errors because connector configs can hold secrets.
 // The error message Kafka Connect returns does appear, and a validation error can quote the config value it rejects.
-func (c *Client) do(ctx context.Context, method, path string, in, out any) (int, error) {
+func (c *Client) do(ctx context.Context, method, path string, in, out any) (notFound bool, err error) {
 	req, err := c.newRequest(ctx, method, path, in)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("%s %s: %w", method, path, err)
+		return false, fmt.Errorf("%s %s: %w", method, path, err)
 	}
 	defer resp.Body.Close() //nolint:errcheck // read-only body
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
 	if err != nil {
-		return resp.StatusCode, fmt.Errorf("%s %s: cannot read response: %w", method, path, err)
+		return false, fmt.Errorf("%s %s: cannot read response: %w", method, path, err)
 	}
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		return resp.StatusCode, fmt.Errorf("%s %s: %d: %s", method, path, resp.StatusCode, errorMessage(resp.StatusCode, data))
+		var e connectError
+		_ = json.Unmarshal(data, &e) // a body that is not a Connect error leaves e empty
+		err := fmt.Errorf("%s %s: %d: %s", method, path, resp.StatusCode, cmp.Or(e.Message, http.StatusText(resp.StatusCode)))
+		return resp.StatusCode == http.StatusNotFound && e.ErrorCode == http.StatusNotFound, err
 	}
 
 	if out != nil && len(data) > 0 {
 		if err := json.Unmarshal(data, out); err != nil {
-			return resp.StatusCode, fmt.Errorf("%s %s: cannot decode response: %w", method, path, err)
+			return false, fmt.Errorf("%s %s: cannot decode response: %w", method, path, err)
 		}
 	}
-	return resp.StatusCode, nil
+	return false, nil
 }
 
 func (c *Client) newRequest(ctx context.Context, method, path string, in any) (*http.Request, error) {
@@ -213,13 +219,8 @@ func (c *Client) newRequest(ctx context.Context, method, path string, in any) (*
 	return req, nil
 }
 
-// errorMessage extracts the message field of a Connect error response.
-func errorMessage(code int, data []byte) string {
-	var e struct {
-		Message string `json:"message"`
-	}
-	if json.Unmarshal(data, &e) == nil && e.Message != "" {
-		return e.Message
-	}
-	return http.StatusText(code)
+// connectError is the body of a Kafka Connect error response.
+type connectError struct {
+	ErrorCode int    `json:"error_code"`
+	Message   string `json:"message"`
 }

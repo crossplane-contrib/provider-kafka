@@ -82,6 +82,12 @@ func TestGetConfig(t *testing.T) {
 			body:    `{"error_code":500,"message":"boom"}`,
 			wantErr: "boom",
 		},
+		// A proxy in front of Connect answers 404 when the URL path is wrong.
+		"NotFoundFromProxy": {
+			status:  http.StatusNotFound,
+			body:    `404 page not found`,
+			wantErr: "404: Not Found",
+		},
 	}
 
 	for name, tc := range cases {
@@ -183,6 +189,8 @@ func TestDelete(t *testing.T) {
 		"Deleted":  {status: http.StatusNoContent},
 		"NotFound": {status: http.StatusNotFound, body: `{"error_code":404,"message":"not found"}`},
 		"Conflict": {status: http.StatusConflict, body: `{"error_code":409,"message":"rebalance"}`, wantErr: "rebalance"},
+		// Reporting success here would remove the finalizer and leave the connector running.
+		"NotFoundFromProxy": {status: http.StatusNotFound, body: `<html>Not Found</html>`, wantErr: "404"},
 	}
 
 	for name, tc := range cases {
