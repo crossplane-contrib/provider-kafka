@@ -16,9 +16,37 @@ limitations under the License.
 
 package common
 
-import "github.com/twmb/franz-go/pkg/kadm"
+import (
+	"context"
+	"fmt"
+
+	"github.com/twmb/franz-go/pkg/kadm"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/crossplane-contrib/provider-kafka/internal/clients/kafka"
+)
 
 // ClientCache returns a cached Kafka client and a func that releases it.
 type ClientCache interface {
 	GetOrCreate(creds []byte, newFn func() (*kadm.Client, error)) (*kadm.Client, func(), error)
+}
+
+// NewClientFn builds a Kafka client from provider credentials.
+type NewClientFn func(ctx context.Context, creds []byte, kube client.Client) (*kadm.Client, error)
+
+// KafkaClient returns the client cached for the provider credentials creds, or
+// builds one with newFn, and a func that releases it. A rotated TLS Secret or
+// CA file gets a new client.
+func KafkaClient(ctx context.Context, cache ClientCache, kube client.Client, creds []byte, newFn NewClientFn) (*kadm.Client, func(), error) {
+	key, err := kafka.CacheKey(ctx, creds, kube)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", ErrNewClient, err)
+	}
+	svc, release, err := cache.GetOrCreate(key, func() (*kadm.Client, error) {
+		return newFn(ctx, creds, kube)
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", ErrNewClient, err)
+	}
+	return svc, release, nil
 }

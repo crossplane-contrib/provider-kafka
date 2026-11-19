@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -61,18 +60,13 @@ func Connect(ctx context.Context, cache *kafka.Cache[*connect.Client], kube clie
 		return nil, fmt.Errorf("%s: %w", ErrParseCreds, err)
 	}
 
-	var tlsCfg *kafka.TLS
-	if cfg.Connect != nil {
-		tlsCfg = cfg.Connect.TLS
-	}
-	versions, err := kafka.SecretVersions(ctx, tlsCfg, kube)
+	key, err := kafka.CacheKey(ctx, creds, kube)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ErrNewClient, err)
 	}
 
 	// Reuse the client so its idle connections survive between reconciles.
-	// The key includes the TLS Secrets' versions, so a changed Secret gets a new client.
-	cl, release, err := cache.GetOrCreate(slices.Concat(creds, versions), func() (*connect.Client, error) {
+	cl, release, err := cache.GetOrCreate(key, func() (*connect.Client, error) {
 		return connect.New(ctx, cfg.Connect, kube)
 	})
 	if err != nil {

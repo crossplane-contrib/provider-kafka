@@ -32,7 +32,9 @@ manage [Kafka](https://kafka.apache.org/) resources.
 
     **Client idle timeout**: The provider caches one Kafka client per set of
     ProviderConfig credentials and closes it after `--client-idle-timeout`
-    (env `CLIENT_IDLE_TIMEOUT`, default `10m`) without use.
+    (env `CLIENT_IDLE_TIMEOUT`, default `10m`) without use. When a TLS Secret or
+    CA file that the credentials reference changes, the next reconcile builds a
+    new client with the new certificates.
 
     **TLS**: Enable TLS by adding a `tls` block. Set `insecureSkipVerify: true` to
     skip server certificate verification.

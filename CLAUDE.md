@@ -16,7 +16,7 @@ apis/
   v1alpha1/                    # Shared type definitions
 internal/
   clients/kafka/
-    client.go                  # NewAdminClient (franz-go kadm.Client), NewTLSConfig, SecretVersions
+    client.go                  # NewAdminClient (franz-go kadm.Client), NewTLSConfig, CacheKey
     config.go                  # Config, SASL, TLS, Connect structs (JSON schema for provider secret)
     constants.go               # Defaults, error strings, lookup maps
     cache.go                   # Generic client cache Cache[T]; ClientCache = Cache[*kadm.Client]
@@ -27,7 +27,7 @@ internal/
   controller/
     cluster/                   # Cluster-scoped controllers (topic, acl, user, connector, config)
     namespaced/                # Namespace-scoped controllers (topic, acl, user, connector, config)
-    common/                    # SetupManaged, SetupGated, shared errors, ClientCache interface
+    common/                    # SetupManaged, SetupGated, shared errors, ClientCache interface, KafkaClient
     connector/                 # Connector logic shared by both scopes (External, drift, conditions)
     user/                      # User helpers shared by both scopes
   version/                     # Version var (set via -X linker flag at build)
@@ -101,7 +101,7 @@ Conventional Commits: `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scop
 - **SASL mechanisms**: PLAIN, SCRAM-SHA-512, AWS-MSK-IAM
 - **TLS**: Full config — custom CA (secret ref or file), mTLS (secret ref or file path with rotation), cipher suites, TLS version constraints, curve preferences
 - **AWS MSK IAM**: Uses default AWS credential chain. Optional `roleArn` for cross-account AssumeRole. Credentials cached with configurable expiry window.
-- **Client caching**: `cache.go` caches kadm.Client and Kafka Connect clients to avoid reconnecting on every reconcile. Idle clients close after `--client-idle-timeout`. The Connect cache key includes the referenced TLS Secrets' resourceVersions, so a changed Secret gets a new client.
+- **Client caching**: `cache.go` caches kadm.Client and Kafka Connect clients to avoid reconnecting on every reconcile. Idle clients close after `--client-idle-timeout`. The cache key (`kafka.CacheKey`) includes the referenced TLS Secrets' resourceVersions and CA files' modification times, so rotating either gets a new client.
 - **Log level**: `--debug` CLI flag sets franz-go kafka client to debug level (default: warn). Controlled via `kafka.LogLevel` package var, set in `main.go`.
 
 ## Testing Patterns
